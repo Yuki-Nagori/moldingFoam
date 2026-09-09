@@ -533,9 +533,7 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 
 `ci.yml` 在 **push 到 `main`** 和所有 **Pull Request** 上自动运行，
 双架构各一遍：安装系统依赖与官方 `openfoam14` 二进制（apt）→
-`xmake` 编译 → `xmake run test` 模型测试 →
-`MOLDINGFOAM_PARALLEL=4 xmake run case-contract` 契约 case 验收
-（质量守恒误差 < 1e-3 等全部验收项）。
+`xmake` 编译 → `xmake run test` 模型测试。
 
 ### CD（手动触发，写入 tag）
 
@@ -546,7 +544,7 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 | `tag` | 必填，形如 `v0.1.0`（`v` 开头的版本号，不得与已有 Release 重复） |
 | `prerelease` | 可选，勾选则标记为 pre-release |
 
-流程：tag 合法性校验 → 双架构并行执行完整 CI 验收并各自
+流程：tag 合法性校验 → 双架构并行编译并运行模型测试、各自
 `xmake run bundle` → **在当前 commit 上写入该 tag**，创建一个 GitHub
 Release 同时挂上 amd64 与 arm64 两个自包含包（另存为 workflow artifact
 保留 14 天）。

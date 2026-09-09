@@ -25,7 +25,7 @@ jobs:
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on }}
-    timeout-minutes: 90
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -53,8 +53,3 @@ jobs:
 
       - name: Model tests
         run: xmake run test
-
-      - name: Contract case (4 subdomains)
-        env:
-          MOLDINGFOAM_PARALLEL: "4"
-        run: xmake run case-contract

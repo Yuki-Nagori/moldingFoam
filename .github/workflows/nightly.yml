@@ -1,0 +1,91 @@
+# Nightly full-system regression: the contract case is too slow for
+# per-PR CI, so it runs once a night (and on demand) on amd64. A failure
+# opens an issue with the logs.
+
+name: nightly
+
+on:
+  schedule:
+    - cron: '0 22 * * *'   # UTC 22:00 = 北京时间 6:00
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract-case:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      MOLDINGFOAM_PARALLEL: "4"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ libopenmpi-dev openmpi-bin python3 curl ca-certificates
+
+      - name: Install OpenFOAM-14 (official binary, cached)
+        uses: actions/cache@v4
+        id: ofcache
+        with:
+          path: /opt/openfoam14
+          key: openfoam14-20260724-amd64
+      - name: Install OpenFOAM-14 (on cache miss)
+        if: steps.ofcache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL https://dl.openfoam.org/gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/openfoam.asc >/dev/null
+          sudo add-apt-repository -y http://dl.openfoam.org/ubuntu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openfoam14
+
+      - name: Install xmake
+        run: |
+          curl -fsSL https://xmake.io/shget.text | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build and run model tests
+        run: |
+          xmake
+          xmake run test
+
+      - name: Contract case (4 subdomains)
+        run: |
+          set -o pipefail
+          xmake run case-contract 2>&1 | tee acceptance.txt
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p dist
+          cp case-contract/log.foamRun case-contract/log.blockMesh acceptance.txt dist/ 2>/dev/null || true
+          cp -r case-contract/postProcessing dist/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contract-case-logs
+          path: dist/
+          retention-days: 14
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="nightly contract-case FAILED $(date -u +%Y-%m-%d)"
+          EXISTING=$(gh issue list -R "$GITHUB_REPOSITORY" \
+            --search "$TITLE in:title" --state open --json number -q '.[0].number')
+          BODY=$(head -100 acceptance.txt 2>/dev/null || echo "see logs")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" -R "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi

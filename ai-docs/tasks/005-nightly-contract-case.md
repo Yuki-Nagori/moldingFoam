@@ -1,6 +1,9 @@
 # 005 — CI 夜间契约 case 回归
 
-- 状态：planned
+- 状态：done（2026-09-10。`.github/workflows/nightly.yml`：schedule
+  UTC 22:00 + workflow_dispatch；apt 安装带 actions/cache 缓存；
+  失败自动开/评论 issue 并上传 log artifact。运行时验证需推送后
+  手动触发一次全链路）
 - 优先级：P2
 - 依赖：无
 - 预估规模：半天

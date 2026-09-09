@@ -555,6 +555,12 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 双架构各一遍：安装系统依赖与官方 `openfoam14` 二进制（apt）→
 `xmake` 编译 → `xmake run test` 模型测试。
 
+### 夜间契约 case 回归（`nightly.yml`）
+
+契约 case 在 PR 级 CI 上太慢（runner 上 20–40 分钟），由
+**每夜定时任务**（UTC 22:00）在 amd64 runner 上运行完整验收，失败时
+自动开/评论 issue 并上传日志 artifact；也可在 Actions 页手动触发。
+
 ### CD（手动触发，写入 tag）
 
 `cd.yml` 由 **Actions 页 → CD → Run workflow** 手动触发，触发时填写：

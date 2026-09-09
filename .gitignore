@@ -1,69 +1,22 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-*.so.*
-
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Build directories
+# xmake
+.xmake/
 build/
-Build/
-build-*/
 
-# CMake generated files
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-install_manifest.txt
-compile_commands.json
+# wmake build artifacts (src/lnInclude, Make/<options>/...)
+*.o
+*.d
+*.so
+lnInclude/
 
-# Temporary files
-*.tmp
+# logs & editor scratch
 *.log
-*.bak
 *.swp
+.DS_Store
 
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
-.cache/
+# OpenFOAM runtime artifacts of the contract case
+case-contract/constant/polyMesh/
+case-contract/postProcessing/
+case-contract/dynamicCode/
+case-contract/processor*/
+case-contract/0.[0-9]*/
+case-contract/[1-9]*

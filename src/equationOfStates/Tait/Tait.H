@@ -212,9 +212,6 @@ class Tait
 
     // Private Member Functions
 
-        //- Solidification temperature at pressure p [K]
-        inline scalar Tt(scalar p) const;
-
         //- Zero-pressure-offset specific volume of the melt branch [m^3/kg]
         inline scalar v0m(scalar p, scalar T) const;
 
@@ -244,25 +241,25 @@ class Tait
         //  melted [-]
         inline scalar meltX(scalar p, scalar T) const;
 
-        //- Melt weight in [0, 1] returned by the C1 smoothstep blending
-        //  across the solidification temperature [-]
-        inline scalar meltWeight(scalar p, scalar T) const;
-
         //- Derivative of the smoothstep weight w.r.t. the normalised band
         //  coordinate; vanishes at the band edges [-]
         inline scalar meltWeightPrime(scalar p, scalar T) const;
 
-        //- Volumetric thermal expansion of the melt branch [1/K]
-        inline scalar alphavm(scalar p, scalar T) const;
-
-        //- Volumetric thermal expansion of the solid branch [1/K]
-        inline scalar alphavs(scalar p, scalar T) const;
-
-        //- d vhat/dp|T of the blended specific volume [m^3/kg/Pa]
-        inline scalar vhatPrimeP(scalar p, scalar T) const;
-
-        //- d vhat/dT|p of the blended specific volume [m^3/kg/K]
-        inline scalar vhatPrimeT(scalar p, scalar T) const;
+        //- NOTE: the blended specific volume and its first derivatives
+        //  w.r.t. pressure and temperature are evaluated in a single pass
+        //  by blendedDerivs(); the branch helpers above are shared
+        //  between vhat() and blendedDerivs()
+        //- Compute the blended specific volume and its partial
+        //  derivatives w.r.t. pressure and temperature in one pass; the
+        //  per-branch evaluations (exp/log) are shared between the three
+        inline void blendedDerivs
+        (
+            scalar p,
+            scalar T,
+            scalar& v,
+            scalar& vP,
+            scalar& vT
+        ) const;
 
 
 public:
@@ -354,6 +351,18 @@ public:
         //- Return the volumetric coefficient of thermal expansion
         //  alphav = (1/vhat) d vhat/dT|p [1/K]
         inline scalar alphav(scalar p, scalar T) const;
+
+        //- Return the solidification temperature at pressure p [K]
+        inline scalar Tt(scalar p) const;
+
+        //- Return the melt weight in [0, 1] of the C1 smoothstep blending
+        //  across the solidification temperature [-]
+        inline scalar meltWeight(scalar p, scalar T) const;
+
+        //- Return d(meltWeight)/dT|p [1/K]: a peaked weight of unit
+        //  integral across the transition band; latentHeat times this is
+        //  the apparent-Cp latent-heat term of hMeltThermo
+        inline scalar latentCpWeight(scalar p, scalar T) const;
 
         //- Write to Ostream
         void write(Ostream& os) const;

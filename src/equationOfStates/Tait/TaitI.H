@@ -135,61 +135,77 @@ const
 
 
 template<class Specie>
-inline Foam::scalar Foam::Tait<Specie>::vhatPrimeP(scalar p, scalar T) const
+inline Foam::scalar Foam::Tait<Specie>::latentCpWeight(scalar p, scalar T) const
 {
-    // d vhat/dp|T of the blended specific volume, including the
-    // melt-weight contribution which depends on pressure through Tt(p)
-    const scalar vm = vhatm(p, T);
-    const scalar vs = vhats(p, T);
-    const scalar w = meltWeight(p, T);
+    // d(meltWeight)/dT|p: a peaked weight of unit integral across the
+    // transition band; latentHeat times this is the apparent-Cp
+    // latent-heat term of hMeltThermo
+    if (band_ <= scalar(0))
+    {
+        return 0;
+    }
 
-    // With smoothBand = 0 the weight derivative vanishes; guard the
-    // division so the 0-weight case never multiplies an infinity
-    const scalar wp =
-        band_ > scalar(0) ? meltWeightPrime(p, T)*(-b6_/(2*band_)) : 0;
-
-    // v0 depends on p through Tt(p): d v0/dp = -b2*b6
-    const scalar vmp = -b2m_*b6_*fm(p, T) - C_*v0m(p, T)/(Bm(T) + p);
-    const scalar vsp = -b2s_*b6_*fs(p, T) - C_*v0s(p, T)/(Bs(T) + p);
-
-    return w*vmp + wp*(vm - vs) + (1 - w)*vsp;
+    return meltWeightPrime(p, T)/(2*band_);
 }
 
 
 template<class Specie>
-inline Foam::scalar Foam::Tait<Specie>::vhatPrimeT(scalar p, scalar T) const
+inline void Foam::Tait<Specie>::blendedDerivs
+(
+    scalar p,
+    scalar T,
+    scalar& v,
+    scalar& vP,
+    scalar& vT
+) const
 {
-    // d vhat/dT|p of the blended specific volume, including the
-    // melt-weight contribution
-    const scalar vm = vhatm(p, T);
-    const scalar vs = vhats(p, T);
-    const scalar w = meltWeight(p, T);
-    const scalar wt =
-        band_ > scalar(0) ? meltWeightPrime(p, T)/(2*band_) : 0;
+    // Both branches are always evaluated and their values and partial
+    // derivatives are shared between v, dv/dp and dv/dT, so a caller
+    // gets all three for the cost of a single vhat() evaluation
 
-    // vm/vs from above are reused: vhatm/vhats are the dominant cost of
-    // this routine (exp + log each), so they are never computed twice
-    const scalar vmt = vm*alphavm(p, T);
-    const scalar vst = vs*alphavs(p, T);
+    const scalar TtX = T - Tt(p);
 
-    return w*vmt + wt*(vm - vs) + (1 - w)*vst;
-}
+    // Melt branch: vhatm = v0m*fm, with v0m linear in (T - Tt(p)) and
+    // fm the Tait logarithmic compression factor
+    const scalar v0m = b1m_ + b2m_*TtX;
+    const scalar Bm = b3m_*exp(-b4m_*T);
+    const scalar fm = 1.0 - C_*log(max(scalar(1) + p/Bm, scalar(small)));
+    const scalar vm = v0m*fm;
+    const scalar vmP = -b2m_*b6_*fm - C_*v0m/(Bm + p);
+    const scalar vmT = b2m_*fm - C_*p*b4m_*v0m/(Bm + p);
 
+    // Solid branch
+    const scalar v0s = b1s_ + b2s_*TtX;
+    const scalar Bs = b3s_*exp(-b4s_*T);
+    const scalar fs = 1.0 - C_*log(max(scalar(1) + p/Bs, scalar(small)));
+    const scalar vs = v0s*fs;
+    const scalar vsP = -b2s_*b6_*fs - C_*v0s/(Bs + p);
+    const scalar vsT = b2s_*fs - C_*p*b4s_*v0s/(Bs + p);
 
-template<class Specie>
-inline Foam::scalar Foam::Tait<Specie>::alphavm(scalar p, scalar T) const
-{
-    // Volumetric thermal expansion of the melt branch,
-    // (1/vhatm) d vhatm/dT|p = v0m'/v0m + fm'/fm, with fm' = -C*b4*p/(B+p)
-    return b2m_/v0m(p, T) - C_*b4m_*p/((Bm(T) + p)*fm(p, T));
-}
+    // Blend weight and its partial derivatives; with smoothBand = 0 the
+    // weight is a step function and its derivatives vanish
+    scalar w, wp, wt;
+    if (band_ <= scalar(0))
+    {
+        w = TtX > 0 ? scalar(1) : scalar(0);
+        wp = 0;
+        wt = 0;
+    }
+    else
+    {
+        const scalar x =
+            min(max(TtX/(2*band_) + scalar(0.5), scalar(0)), scalar(1));
 
+        w = x*x*(3 - 2*x);
 
-template<class Specie>
-inline Foam::scalar Foam::Tait<Specie>::alphavs(scalar p, scalar T) const
-{
-    // Volumetric thermal expansion of the solid branch
-    return b2s_/v0s(p, T) - C_*b4s_*p/((Bs(T) + p)*fs(p, T));
+        const scalar wPrime = 6*x*(1 - x);
+        wp = wPrime*(-b6_/(2*band_));
+        wt = wPrime/(2*band_);
+    }
+
+    v  = w*vm + (1 - w)*vs;
+    vP = w*vmP + wp*(vm - vs) + (1 - w)*vsP;
+    vT = w*vmT + wt*(vm - vs) + (1 - w)*vsT;
 }
 
 
@@ -304,8 +320,12 @@ inline Foam::scalar Foam::Tait<Specie>::Cv(scalar p, scalar T) const
 template<class Specie>
 inline Foam::scalar Foam::Tait<Specie>::sp(scalar p, scalar T) const
 {
-    // Maxwell relation: (ds/dp)|T = -(dv/dT)|p = -vhat*alphav
-    return -vhat(p, T)*alphav(p, T);
+    // Maxwell relation: (ds/dp)|T = -(dv/dT)|p; vhat*alphav reduces
+    // exactly to dvhat/dT|p
+    scalar v, vP, vT;
+    blendedDerivs(p, T, v, vP, vT);
+
+    return -vT;
 }
 
 
@@ -321,8 +341,11 @@ template<class Specie>
 inline Foam::scalar Foam::Tait<Specie>::psi(scalar p, scalar T) const
 {
     // psi = drho/dp|T = -rho^2 d vhat/dp|T, exact for the blended
-    // specific volume
-    return -sqr(rho(p, T))*vhatPrimeP(p, T);
+    // specific volume; rho = 1/vhat so vhat cancels from the square
+    scalar v, vP, vT;
+    blendedDerivs(p, T, v, vP, vT);
+
+    return -vP/sqr(v);
 }
 
 
@@ -339,7 +362,10 @@ inline Foam::scalar Foam::Tait<Specie>::CpMCv(scalar p, scalar T) const
     // The identity Cp - Cv = T alphav^2/psi with alphav = vT/v and
     // psi = -vP/v^2 reduces exactly to -T vT^2/vP: the blended specific
     // volume cancels out and is never evaluated
-    return -T*sqr(vhatPrimeT(p, T))/vhatPrimeP(p, T);
+    scalar v, vP, vT;
+    blendedDerivs(p, T, v, vP, vT);
+
+    return -T*vT*vT/vP;
 }
 
 
@@ -348,7 +374,10 @@ inline Foam::scalar Foam::Tait<Specie>::alphav(scalar p, scalar T) const
 {
     // alphav = (1/vhat) d vhat/dT|p, exact for the blended specific
     // volume
-    return vhatPrimeT(p, T)/vhat(p, T);
+    scalar v, vP, vT;
+    blendedDerivs(p, T, v, vP, vT);
+
+    return vT/v;
 }
 
 

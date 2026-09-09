@@ -1,0 +1,142 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+License
+    This file is part of moldingFoam, an external solver-module distribution
+    for OpenFOAM.
+
+    moldingFoam is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    moldingFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with moldingFoam.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "moldingStage.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    defineTypeNameAndDebug(moldingStage, 0);
+}
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::moldingStage::moldingStage
+(
+    const fvMesh& mesh,
+    const Time& runTime,
+    scalar switchFraction,
+    autoPtr<Function1<scalar>> pressure
+)
+:
+    regIOobject
+    (
+        IOobject
+        (
+            typeName,
+            Time::timeName(runTime.value()),
+            mesh,
+            // Persisted into the time directory so a restart from
+            // latestTime restores the V/P stage; the pressure curve is
+            // always re-read from constant/moldingDict by the solver
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE,
+            true
+        )
+    ),
+    switchFraction_(switchFraction),
+    stage_(stage::filling),
+    switchTime_(-1),
+    pressure_(std::move(pressure))
+{
+    if (switchFraction_ <= 0 || switchFraction_ > 1)
+    {
+        FatalIOErrorInFunction(mesh.time().controlDict())
+            << "The packing switchFraction must be in (0, 1]: switchFraction = "
+            << switchFraction_
+            << exit(FatalIOError);
+    }
+
+    // Restore the stage state on a restart from latestTime
+    if (headerOk())
+    {
+        Istream& is = readStream(typeName);
+
+        label packingFlag(0);
+        is >> packingFlag >> switchTime_;
+
+        // Snapshot the stream state and release the stream before it is
+        // used: close() destroys the stream held by readStream
+        const bool goodRead(is.good());
+        close();
+
+        if (goodRead)
+        {
+            stage_ = packingFlag ? stage::packing : stage::filling;
+
+            if (packing())
+            {
+                Info<< "moldingStage: restart in packing stage"
+                    << " (V/P switch time " << switchTime_ << " s)"
+                    << endl;
+            }
+        }
+    }
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+Foam::scalar Foam::moldingStage::pressure(scalar t) const
+{
+    if (!packing())
+    {
+        return 0;
+    }
+
+    return pressure_->value(t - switchTime_);
+}
+
+
+void Foam::moldingStage::switchToPacking(scalar t)
+{
+    stage_ = stage::packing;
+    switchTime_ = t;
+}
+
+
+bool Foam::moldingStage::readData(Istream& is)
+{
+    label packingFlag(0);
+    is >> packingFlag >> switchTime_;
+
+    stage_ = packingFlag ? stage::packing : stage::filling;
+
+    return is.good();
+}
+
+
+bool Foam::moldingStage::writeData(Ostream& os) const
+{
+    os << label(stage_ == stage::packing) << token::SPACE << switchTime_;
+
+    return os.good();
+}
+
+
+// ************************************************************************* //

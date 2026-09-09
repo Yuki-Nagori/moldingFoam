@@ -407,10 +407,12 @@ Tt   = b5 + b6·p
 `Tt(p)` 时吸放 `latentHeat`（`physicalProperties.melt` 的 `latentHeat`
 关键字）。`CpMCv = -T·vT²/vP` 保持解析精确。
 
-> ⚠️ **限制**：`compressibleVoF` 的能量预报器按 T 矩阵求解，而
-> 压力相关的 `Tt(p)` 使过渡带内 `Cv = Cp - CpMCv` 变负，较大的
-> `latentHeat` 会让 T 解发散。契约 case 保持 `latentHeat 0`（等价常
-> Cp）；启用潜热需要 he 型能量矩阵的求解器或自行评估稳定性。
+> ⚠️ **限制**：`compressibleVoF` 的能量预报器按 T 矩阵求解，压力相关的
+> `Tt(p)` 使过渡带内 `Cv = Cp - CpMCv` 变负，非零 `latentHeat` 会令
+> T 解发散（已实测，多种稳定化尝试均不足）。因此契约 case 保持
+> `latentHeat 0`；`hMelt` 类、能量预报器的半隐式潜热线性化机制与其
+> 测试均已就位，完整的 he 型能量预报器是进行中的研发项——方案、
+> 实验记录与工作拆解见 `ai-docs/tasks/001-he-energy-predictor.md`。
 
 状态方程是热物理包的编译期模板参数，`src/moldingFoamThermos.C` 在本库
 内实例化 `pureMixture + const + hConst + Tait` 组合（`sensibleInternalEnergy`

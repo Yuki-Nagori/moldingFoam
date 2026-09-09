@@ -95,6 +95,25 @@ class moldingFoam
         //  the mould cavity mesh is static
         scalar vTot_;
 
+        //- Latent-heat linearisation enabled? True when the melt phase
+        //  selects the hMelt thermodynamics with non-zero latentHeat
+        //  and a non-degenerate transition band
+        bool latentOn_;
+
+        //- Solidification temperature at atmospheric pressure [K]
+        //  (hMelt/Tait coefficient b5)
+        scalar latentTt0_;
+
+        //- Pressure sensitivity of the solidification temperature
+        //  [K/Pa] (hMelt/Tait coefficient b6)
+        scalar latentB6_;
+
+        //- Half-width of the solidification band [K]
+        scalar latentBand_;
+
+        //- Latent heat of solidification [J/kg]
+        scalar latentHeat_;
+
 
 public:
 
@@ -123,6 +142,16 @@ public:
         //- Advance the moulding stage and the ejection criterion
         //  before the PIMPLE loop
         virtual void preSolve();
+
+        //- Solve the energy equation. As compressibleVoF, plus a
+        //  semi-implicit latent-heat linearisation: when the melt phase
+        //  uses the hMelt thermodynamics, the T-matrix diagonal gets
+        //  an additional alpha1*rho1*latentCp/dt term (the implicit-Euler
+        //  discretisation of the latent storage rate rho*L*dw/dT*dT/dt).
+        //  This compensates the negative apparent Cv of the Tait blend
+        //  inside the solidification band, where the pressure-shifted
+        //  front term of CpMCv = T*alphav^2/psi dominates
+        virtual void thermophysicalPredictor();
 };
 
 

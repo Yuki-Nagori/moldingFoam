@@ -32,6 +32,13 @@ License
 #include "IFstream.H"
 #include "OSspecific.H"
 #include "fvcVolumeIntegrate.H"
+#include "fvcMeshPhi.H"
+#include "fvcDdt.H"
+#include "fvcDiv.H"
+#include "fvmDiv.H"
+#include "fvmSup.H"
+#include "fvmLaplacian.H"
+#include "dimensionedScalar.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -54,6 +61,11 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     ejected_(false),
     ejectionTemperature_(great),
     releasePressure_(great),
+    latentOn_(false),
+    latentTt0_(0),
+    latentB6_(0),
+    latentBand_(0),
+    latentHeat_(0),
     vTot_(gSum(mesh.V().primitiveField()))
 {
     // The molding dictionary is the external case-generation contract. The
@@ -121,6 +133,63 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        releasePressure     = " << releasePressure
             << endl;
     }
+
+    // Latent-heat linearisation parameters: read from the melt phase
+    // physical properties so the energy predictor (see
+    // thermophysicalPredictor) can add the apparent-Cp diagonal when
+    // the hMelt thermodynamics with non-zero latentHeat are selected.
+    // The Tait coefficients are intentionally duplicated from the phase
+    // dictionary: the abstract thermo interface does not expose them.
+    const fileName meltPropsPath
+    (
+        runTime.constant()/fileName("physicalProperties.melt")
+    );
+
+    if (isFile(meltPropsPath))
+    {
+        IFstream is(meltPropsPath);
+
+        if (!is.good())
+        {
+            FatalIOErrorInFunction(meltPropsPath)
+                << "Cannot open " << meltPropsPath
+                << exit(FatalIOError);
+        }
+
+        dictionary meltDict(is);
+
+        latentOn_ =
+            meltDict.subDict("thermoType").lookup<word>("thermo")
+         == "hMelt";
+
+        if (latentOn_)
+        {
+            const dictionary& eqnDict
+            (
+                meltDict.subDict("mixture").subDict("equationOfState")
+            );
+            const dictionary& thermoDict
+            (
+                meltDict.subDict("mixture").subDict("thermodynamics")
+            );
+
+            latentTt0_ = eqnDict.lookup<scalar>("b5");
+            latentB6_ = eqnDict.lookup<scalar>("b6");
+            latentBand_ = eqnDict.lookupOrDefault<scalar>("smoothBand", 0);
+            latentHeat_ =
+                thermoDict.lookupOrDefault<scalar>("latentHeat", 0);
+
+            latentOn_ = latentHeat_ > 0 && latentBand_ > 0;
+
+            if (latentOn_)
+            {
+                Info<< "moldingFoam: latent-heat linearisation enabled:"
+                    << " latentHeat = " << latentHeat_
+                    << " J/kg, Tt0 = " << latentTt0_
+                    << " K, band = " << latentBand_ << " K" << endl;
+            }
+        }
+    }
     else
     {
         WarningInFunction
@@ -149,6 +218,154 @@ bool Foam::solvers::moldingFoam::read()
     {
         return false;
     }
+}
+
+
+void Foam::solvers::moldingFoam::thermophysicalPredictor()
+{
+    // Reproduces compressibleVoF::thermophysicalPredictor, plus a
+    // semi-implicit latent-heat linearisation when the melt phase uses
+    // the hMelt thermodynamics. Inside the Tait solidification band the
+    // apparent Cv = Cp - CpMCv goes negative (the pressure-shifted front
+    // term of CpMCv = T*alphav^2/psi dominates), which the T matrix
+    // cannot tolerate. The extra SuSp term adds rho1*alpha1*latentCp/dt
+    // to the diagonal: the implicit-Euler discretisation of the latent
+    // storage rate rho*latentHeat*dw/dT*dT/dt (the standard effective
+    // capacity treatment). It vanishes at steady state, so the converged
+    // equation and its conservation properties are unchanged. Combined
+    // with a limitTemperature fvConstraint (case side) the solved T
+    // stays bounded while crossing the band.
+
+    const volScalarField& rho1(mixture_.rho1());
+    const volScalarField& rho2(mixture_.rho2());
+    const volScalarField& e1(mixture_.thermo1().he());
+    const volScalarField& e2(mixture_.thermo2().he());
+
+    const fvScalarMatrix e1Source(fvModels().source(alpha1, rho1, e1));
+    const fvScalarMatrix e2Source(fvModels().source(alpha2, rho2, e2));
+
+    volScalarField& T = mixture_.T();
+
+    const volScalarField::Internal& Cv1 = mixture_.thermo1().Cv()();
+    const volScalarField::Internal& Cv2 = mixture_.thermo2().Cv()();
+
+    fvScalarMatrix TEqn
+    (
+        correction
+        (
+            Cv1
+           *(
+                fvm::ddt(alpha1, rho1, T) + fvm::div(alphaRhoPhi1, T)
+              - (
+                    e1Source.hasDiag()
+                  ? fvm::Sp(contErr1(), T) + fvm::Sp(e1Source.A(), T)
+                  : fvm::Sp(contErr1(), T)
+                )
+            )
+          + Cv2
+           *(
+                fvm::ddt(alpha2, rho2, T) + fvm::div(alphaRhoPhi2, T)
+              - (
+                    e2Source.hasDiag()
+                  ? fvm::Sp(contErr2(), T) + fvm::Sp(e2Source.A(), T)
+                  : fvm::Sp(contErr2(), T)
+                )
+            )
+        )
+
+      + fvc::ddt(alpha1, rho1, e1) + fvc::div(alphaRhoPhi1, e1)
+      - contErr1()*e1
+      + fvc::ddt(alpha2, rho2, e2) + fvc::div(alphaRhoPhi2, e2)
+      - contErr2()*e2
+
+      - fvm::laplacian(thermophysicalTransport.kappaEff(), T)
+
+      + (
+            mixture_.totalInternalEnergy()
+          ?
+            fvc::div(fvc::absolute(phi, U), p)()()
+          + (fvc::ddt(rho, K) + fvc::div(rhoPhi, K))()()
+          - (U()&(fvModels().source(rho, U)&U)()) - (contErr1() + contErr2())*K
+          :
+            p*fvc::div(fvc::absolute(phi, U))()()
+        )
+     ==
+        (e1Source&e1)
+      + (e2Source&e2)
+    );
+
+    if (latentOn_)
+    {
+        // Peak of the apparent-Cp latent term of the melt phase:
+        // latentHeat*1.5/(2*band) [J/kg/K] at the band centre
+        const dimensionedScalar latentCpPeak
+        (
+            "latentCpPeak",
+            (dimEnergy/dimMass)/dimTemperature,
+            latentHeat_*1.5/(2*latentBand_)
+        );
+
+        volScalarField::Internal latentCpW
+        (
+            IOobject
+            (
+                "latentCpW",
+                T.instance(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            latentCpPeak
+        );
+
+        const volScalarField::Internal& Ti = T();
+        const volScalarField::Internal& pi = p();
+
+        forAll(latentCpW, i)
+        {
+            const scalar Tt(latentTt0_ + latentB6_*pi[i]);
+            const scalar x
+            (
+                min
+                (
+                    max((Ti[i] - Tt + latentBand_)/(2*latentBand_), 0),
+                    1
+                )
+            );
+            latentCpW[i] *= 6*x*(1 - x);   // normalised shape, peak 1
+        }
+
+        // Semi-implicit latent storage: at convergence (T = T.oldTime())
+        // the term vanishes, so the solved equation remains the exact
+        // energy equation
+        TEqn +=
+            fvm::SuSp
+            (
+                alpha1()*rho1()*latentCpW/runTime.deltaT(),
+                T
+            );
+    }
+
+    TEqn.relax();
+
+    fvConstraints().constrain(TEqn);
+
+    TEqn.solve();
+
+    // Clamp the solved temperature: cells inside the solidification band
+    // have a near-zero/negative apparent Cv and the linear solve can
+    // overshoot; correctThermo's Newton needs a positive starting T
+    T = max
+    (
+        min(T, dimensionedScalar("TMax", dimTemperature, 3000)),
+        dimensionedScalar("TMin", dimTemperature, 250)
+    );
+
+    fvConstraints().constrain(T);
+
+    mixture_.correctThermo();
+    mixture_.correct();
 }
 
 

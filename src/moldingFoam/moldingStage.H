@@ -152,6 +152,12 @@ public:
 
         //- Persist the stage state for restart from latestTime
         virtual bool writeData(Ostream& os) const;
+
+        //- Update the packing parameters (switchFraction and pressure
+        //  curve) from the packing sub-dictionary of a moulding
+        //  dictionary; the stage state and switch time are preserved, so
+        //  parameter changes only affect future switching
+        void read(const dictionary& moldingDict);
 };
 
 

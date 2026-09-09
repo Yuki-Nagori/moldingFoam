@@ -139,4 +139,45 @@ bool Foam::moldingStage::writeData(Ostream& os) const
 }
 
 
+void Foam::moldingStage::read(const dictionary& moldingDict)
+{
+    const dictionary& packingDict(moldingDict.subDict("packing"));
+
+    const scalar newSwitchFraction
+    (
+        packingDict.lookup<scalar>("switchFraction")
+    );
+
+    if (newSwitchFraction <= 0 || newSwitchFraction > 1)
+    {
+        FatalIOErrorInFunction(packingDict)
+            << "The packing switchFraction must be in (0, 1]: switchFraction = "
+            << newSwitchFraction
+            << exit(FatalIOError);
+    }
+
+    autoPtr<Function1<scalar>> newPressure
+    (
+        Function1<scalar>::New
+        (
+            "pressure",
+            dimTime,
+            dimPressure,
+            packingDict
+        )
+    );
+
+    Info<< "moldingStage: packing parameters updated:"
+        << " switchFraction = " << switchFraction_
+        << " -> " << newSwitchFraction << nl
+        << "moldingStage: pressure type "
+        << packingDict.subDict("pressure").lookup<word>("type") << endl;
+
+    // Only the parameters are updated: the stage state and switch time
+    // are preserved, so changes take effect from now on
+    switchFraction_ = newSwitchFraction;
+    pressure_ = std::move(newPressure);
+}
+
+
 // ************************************************************************* //

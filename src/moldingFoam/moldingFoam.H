@@ -61,6 +61,7 @@ SourceFiles
 #define moldingFoam_H
 
 #include "compressibleVoF.H"
+#include <ctime>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -94,6 +95,18 @@ class moldingFoam
         //- Total mesh volume [m^3], computed once in the constructor;
         //  the mould cavity mesh is static
         scalar vTot_;
+
+        //- Modification time of constant/moldingDict, for the runtime
+        //  reload in preSolve
+        time_t moldingDictModTime_;
+
+
+    // Private Member Functions
+
+        //- Reload constant/moldingDict if its modification time changed:
+        //  updates the stage packing parameters and the cooling
+        //  thresholds, printing old -> new for anything that changed
+        void readMoldingDict();
 
         //- Latent-heat linearisation enabled? True when the melt phase
         //  selects the hMelt thermodynamics with non-zero latentHeat

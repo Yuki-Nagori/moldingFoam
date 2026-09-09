@@ -1,6 +1,8 @@
 # 004 — moldingDict 运行时重载
 
-- 状态：planned
+- 状态：done（2026-09-10。验收：运行中修改
+  `cooling.ejectionTemperature`，下一时间步日志输出参数更新，
+  契约 case 全项验收通过，质量守恒 7.400e-04）
 - 优先级：P1（小改动，交互体验）
 - 依赖：无
 - 预估规模：半天

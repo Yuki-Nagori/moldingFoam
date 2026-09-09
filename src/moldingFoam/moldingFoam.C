@@ -66,7 +66,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     latentB6_(0),
     latentBand_(0),
     latentHeat_(0),
-    vTot_(gSum(mesh.V().primitiveField()))
+    vTot_(gSum(mesh.V().primitiveField())),
+    moldingDictModTime_(0)
 {
     // The molding dictionary is the external case-generation contract. The
     // packing group drives the V/P switch and the packing pressure curve
@@ -212,12 +213,81 @@ bool Foam::solvers::moldingFoam::read()
 {
     if (compressibleVoF::read())
     {
+        readMoldingDict();
         return true;
     }
     else
     {
         return false;
     }
+}
+
+
+void Foam::solvers::moldingFoam::readMoldingDict()
+{
+    const fileName moldingDictPath
+    (
+        runTime.constant()/fileName("moldingDict")
+    );
+
+    if (!isFile(moldingDictPath))
+    {
+        return;
+    }
+
+    const time_t modTime(lastModified(moldingDictPath));
+
+    if (modTime == moldingDictModTime_)
+    {
+        return;
+    }
+
+    IFstream is(moldingDictPath);
+
+    if (!is.good())
+    {
+        FatalIOErrorInFunction(moldingDictPath)
+            << "Cannot open " << moldingDictPath
+            << exit(FatalIOError);
+    }
+
+    dictionary moldingDict(is);
+
+    const dictionary& coolingDict(moldingDict.subDict("cooling"));
+
+    const scalar newEjectionTemperature
+    (
+        coolingDict.lookup<scalar>("ejectionTemperature")
+    );
+
+    const scalar newReleasePressure
+    (
+        coolingDict.lookupOrDefault<scalar>("releasePressure", 1e5)
+    );
+
+    if
+    (
+        newEjectionTemperature != ejectionTemperature_
+     || newReleasePressure != releasePressure_
+    )
+    {
+        Info<< "moldingFoam: cooling parameters updated:"
+            << " ejectionTemperature " << ejectionTemperature_
+            << " -> " << newEjectionTemperature
+            << ", releasePressure " << releasePressure_
+            << " -> " << newReleasePressure << endl;
+
+        ejectionTemperature_ = newEjectionTemperature;
+        releasePressure_ = newReleasePressure;
+    }
+
+    if (mesh.foundObject<moldingStage>(moldingStage::typeName))
+    {
+        mesh.lookupObjectRef<moldingStage>(moldingStage::typeName)
+            .read(moldingDict);
+    }
+
+    moldingDictModTime_ = modTime;
 }
 
 
@@ -372,6 +442,11 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 void Foam::solvers::moldingFoam::preSolve()
 {
     compressibleVoF::preSolve();
+
+    // Runtime reload of constant/moldingDict: the runTimeModifiable
+    // mechanism only monitors controlDict, so the moulding dictionary is
+    // polled explicitly every step
+    readMoldingDict();
 
     if (!mesh.foundObject<moldingStage>(moldingStage::typeName))
     {

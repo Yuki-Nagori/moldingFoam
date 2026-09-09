@@ -402,9 +402,15 @@ Tt   = b5 + b6·p
 带宽内用三次 C¹ 平滑步混合熔体/固体两支，并计入权重导数项，保证混合
 密度及其一阶导数在过渡带内连续，消除保压段收敛抖动。
 
-与 openInjMoldSim 一致，EOS 对 `Cp`/`Cv` 的贡献取零（`CpMCv = T·α²/ψ`
-仍为解析精确），即相变潜热不计入能量方程；这是有意的物理简化，冷却段
-穿过 `Tt` 附近的温度预测会偏冷。
+潜热由 `hMelt` 热力学组合提供：在常 Cp 基础上，叠加由 Tait 混合权重对
+温度的导数构造的表观 Cp 潜热峰（跨过渡带单位积分），能量方程穿过
+`Tt(p)` 时吸放 `latentHeat`（`physicalProperties.melt` 的 `latentHeat`
+关键字）。`CpMCv = -T·vT²/vP` 保持解析精确。
+
+> ⚠️ **限制**：`compressibleVoF` 的能量预报器按 T 矩阵求解，而
+> 压力相关的 `Tt(p)` 使过渡带内 `Cv = Cp - CpMCv` 变负，较大的
+> `latentHeat` 会让 T 解发散。契约 case 保持 `latentHeat 0`（等价常
+> Cp）；启用潜热需要 he 型能量矩阵的求解器或自行评估稳定性。
 
 状态方程是热物理包的编译期模板参数，`src/moldingFoamThermos.C` 在本库
 内实例化 `pureMixture + const + hConst + Tait` 组合（`sensibleInternalEnergy`
@@ -452,12 +458,23 @@ thermoType
 | `system/fvSchemes`、`system/fvSolution`、`system/decomposeParDict` | 数值格式与分解 |
 | `0/alpha.melt`、`0/U`、`0/p`、`0/p_rgh`、`0/T` | 场；熔体经 `inlet` 注入，`vent` 排气，模壁恒温 |
 | `constant/phaseProperties` | `phases (melt air)` + 表面张力 |
-| `constant/physicalProperties.melt` | 熔体相：`equationOfState Tait` |
+| `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
-| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.pressure`（`table`）、`cooling.ejectionTemperature` |
+| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure` |
 
 ### 契约变更日志
+
+**v1.2**（潜热与顶出判据）：
+
+- `constant/physicalProperties.melt`：`thermo hConst` 改为
+  `thermo hMelt`（本库新注册的组合类，带表观 Cp 潜热峰），
+  `thermodynamics` 新增可选 `latentHeat` 关键字（缺省 0，等价常 Cp）；
+- `constant/moldingDict`：`cooling` 组新增可选 `releasePressure`
+  （缺省 1e5），顶出检查在保压目标压力降至该值后才启动，替代原先
+  硬编码的 1 bar。
+
+未改名、未删除任何关键字；旧 case 不添加新键即保持原行为。
 
 **v1.1**（M2/M3 交付）：
 
@@ -490,6 +507,7 @@ moldingFoam/
 │   ├── moldingFoam/boundaryConditions/  双模式浇口边界条件（M2）
 │   ├── viscosityModels/CrossWlf/        Cross-WLF 黏度模型
 │   ├── equationOfStates/Tait/           Tait 状态方程
+│   ├── thermo/hMeltThermo.C             潜热热力学组合 hMelt
 │   └── moldingFoamThermos.C             Tait 热物理组合注册
 ├── case-contract/           契约 case（见第 8 节）
 ├── tests/                   modelTests（可重复数值测试）

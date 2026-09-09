@@ -1,0 +1,44 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 moldingFoam contributors
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Mixture momentum transport: laminar generalised Newtonian with the
+    CrossWlf model (HDPE-like grade) registered by libmoldingFoam.so.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      momentumTransport;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+simulationType  laminar;
+
+laminar
+{
+    model           generalisedNewtonian;
+
+    viscosityModel  CrossWlf;
+
+    CrossWlfCoeffs
+    {
+        n           0.393539;   // [-]
+        tauStar     64568.9;    // [Pa]
+        D1          3.76174e15; // [Pa s]
+        D2          153.15;     // [K]
+        D3          0;          // [K/Pa]
+        A1          33.21;      // [-]
+        A2          51.6;       // [K]
+        etaMin      5;          // [Pa s]
+        etaMax      1e6;        // [Pa s]
+        gammaDotMin 1e-06;      // [1/s]
+    }
+}
+
+// ************************************************************************* //

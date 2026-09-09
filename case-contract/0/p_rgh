@@ -1,0 +1,52 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 moldingFoam contributors
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Static pressure minus the hydrostatic reference; the vent is open to
+    the atmosphere at 1 bar.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      p_rgh;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform 1e5;
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    inlet
+    {
+        type            moldingPrghPressure;
+        refValue        uniform 1e5;
+        refGradient     uniform 0;
+        valueFraction   uniform 0;
+        value           uniform 1e5;
+    }
+
+    vent
+    {
+        type            prghTotalPressure;
+        p0              uniform 1e5;
+        value           $internalField;
+    }
+
+    walls
+    {
+        type            fixedFluxPressure;
+        value           $internalField;
+    }
+}
+
+// ************************************************************************* //

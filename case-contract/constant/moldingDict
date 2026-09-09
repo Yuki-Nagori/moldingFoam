@@ -1,0 +1,68 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 moldingFoam contributors
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Molding process contract dictionary. The layout of this file is the
+    external case-generation contract of the moldingFoam project: keyword
+    names are frozen once released and any change is documented in the
+    project README.
+
+    The solver validates this dictionary at start-up. Stage M2 (packing)
+    switches from velocity to pressure control when the filled cavity
+    volume fraction reaches packing.switchFraction and holds the gate
+    pressure following packing.pressure; stage M3 (cooling) stops the run
+    once the average melt temperature falls below
+    cooling.ejectionTemperature (the mould wall temperature is the
+    fixedValue of the T boundary condition on the walls patch).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      moldingDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+injection
+{
+    // Melt temperature at the gate [K] (informational; the actual inlet
+    // temperature is set by the T boundary condition)
+    meltTemperature  480;
+}
+
+packing
+{
+    // Stage M2: switch from velocity (filling) to pressure (packing)
+    // control when this fraction of the cavity volume is filled [-]
+    switchFraction   0.9;
+
+    // Stage M2: packing pressure profile as a function of time [s], [Pa].
+    // The profile ramps up smoothly from atmospheric to avoid a pressure
+    // step at the V/P switch; the modest hold pressure of this contract
+    // case bounds the Courant-limited time step during packing
+    pressure
+    {
+        type            table;
+        values
+        (
+            (0    1e5)
+            (0.05 2.5e5)
+            (0.25 2.5e5)
+            (0.35 1e5)
+        );
+    }
+}
+
+cooling
+{
+    // Stage M3: average melt temperature below which the part can be
+    // ejected [K]
+    ejectionTemperature  393.15;
+}
+
+// ************************************************************************* //

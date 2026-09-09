@@ -378,11 +378,16 @@ void latentHeatTests()
         );
     }
 
-    // dHs/dT matches the apparent Cp inside the band (away from the
-    // second-derivative discontinuities at the edges)
+    // dHs/dT matches the apparent Cp inside the band. The apparent Cp is
+    // C1 but not C2 across the band edges, so the central difference of
+    // hs carries a truncation error proportional to h^2 times the
+    // (large) third derivative of the latent peak: the step is kept
+    // small enough that the reference stays accurate to ~1e-9 relative
+    // (sampling stops 0.05 K short of the edges)
     {
         bool ok = true;
-        const scalar h = 1e-3;
+        scalar maxErr(0);
+        const scalar h = 1e-5;
         for
         (
             scalar T = Tt - band + 0.05;
@@ -392,8 +397,11 @@ void latentHeatTests()
         {
             const scalar dhsFD =
                 (thermo.hs(p, T + h) - thermo.hs(p, T - h))/(2*h);
-            ok = ok && relDiff(dhsFD, thermo.Cp(p, T)) < 1e-8;
+            const scalar err(relDiff(dhsFD, thermo.Cp(p, T)));
+            maxErr = max(maxErr, err);
+            ok = ok && err < 1e-8;
         }
+        Info<< "    max relative error dHs/dT = " << maxErr << nl;
         checkBool("hMelt: dHs/dT matches the apparent Cp", ok);
     }
 

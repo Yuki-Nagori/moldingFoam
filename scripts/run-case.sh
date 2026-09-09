@@ -18,6 +18,11 @@
 
 set -euo pipefail
 
+# Allow more MPI ranks than detected cores: CI runners expose fewer
+# physical cores than subdomains, and small VMs may too (OpenMPI only;
+# other MPI implementations ignore the variable)
+export OMPI_MCA_rmaps_base_oversubscribe=1
+
 nprocs="${2:-1}"
 
 # Resolve to an absolute path before changing directory

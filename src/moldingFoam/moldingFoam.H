@@ -86,6 +86,11 @@ class moldingFoam
         //  [K], read from constant/moldingDict
         scalar ejectionTemperature_;
 
+        //- Packing pressure target at or below which the packing pressure
+        //  counts as released, enabling the ejection check [Pa], read
+        //  from constant/moldingDict
+        scalar releasePressure_;
+
         //- Total mesh volume [m^3], computed once in the constructor;
         //  the mould cavity mesh is static
         scalar vTot_;

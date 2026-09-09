@@ -53,6 +53,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     compressibleVoF(mesh),
     ejected_(false),
     ejectionTemperature_(great),
+    releasePressure_(great),
     vTot_(gSum(mesh.V().primitiveField()))
 {
     // The molding dictionary is the external case-generation contract. The
@@ -94,7 +95,14 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar ejectionTemperature =
             coolingDict.lookup<scalar>("ejectionTemperature");
 
+        // Pressure target below which the packing pressure counts as
+        // released; defaults to atmospheric to preserve the behaviour of
+        // contract cases that do not specify it
+        const scalar releasePressure =
+            coolingDict.lookupOrDefault<scalar>("releasePressure", 1e5);
+
         ejectionTemperature_ = ejectionTemperature;
+        releasePressure_ = releasePressure;
 
         // The stage object registers itself on the mesh and is shared with
         // the molding boundary conditions
@@ -109,7 +117,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        pressure type       = "
             << packingDict.subDict("pressure").lookup<word>("type") << nl
             << "    cooling:" << nl
-            << "        ejectionTemperature = " << ejectionTemperature
+            << "        ejectionTemperature = " << ejectionTemperature << nl
+            << "        releasePressure     = " << releasePressure
             << endl;
     }
     else
@@ -212,11 +221,11 @@ void Foam::solvers::moldingFoam::preSolve()
             }
         }
 
-        // Stage M3: once the packing pressure has been released to
-        // atmospheric the part continues cooling; it is ready for ejection
-        // when the average melt temperature falls below the ejection
-        // temperature
-        if (pTarget <= 1e5 && !ejected_)
+        // Stage M3: once the packing pressure has been released (the
+        // target is at or below cooling.releasePressure) the part
+        // continues cooling; it is ready for ejection when the average
+        // melt temperature falls below the ejection temperature
+        if (pTarget <= releasePressure_ && !ejected_)
         {
             const volScalarField alphaRho1
             (

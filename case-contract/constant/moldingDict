@@ -63,6 +63,10 @@ cooling
     // Stage M3: average melt temperature below which the part can be
     // ejected [K]
     ejectionTemperature  393.15;
+
+    // Stage M3: the ejection check only starts once the packing pressure
+    // target has been released down to this value [Pa]
+    releasePressure  1e5;
 }
 
 // ************************************************************************* //

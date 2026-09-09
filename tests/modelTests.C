@@ -43,9 +43,16 @@ Description
       exponential cap are reproduced;
     - the clamps [etaMin, etaMax] are respected.
 
+    hMelt thermodynamics (apparent-Cp latent heat):
+    - the latent-Cp peak vanishes at the band edges (C1 continuity);
+    - its integral across the transition band equals latentHeat;
+    - dHs/dT matches the apparent Cp;
+    - latentHeat = 0 reproduces constant-Cp behaviour.
+
 \*---------------------------------------------------------------------------*/
 
 #include "Tait.H"
+#include "hMeltThermo.H"
 #include "CrossWlf.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -326,6 +333,84 @@ static const char* crossWlfDictString =
     "etaMax 1e6;"
     "gammaDotMin 1e-06;";
 
+// * * * * * * * * * * * * Test latent heat (hMelt)  * * * * * * * * * * * //
+
+void latentHeatTests()
+{
+    IStringStream is(taitDictString);
+    dictionary dict(is);
+
+    typedef hMeltThermo<Tait<specie>> hMelt;
+
+    const scalar Cp0 = 2400;
+    const scalar L = 2e5;
+
+    hMelt thermo(Tait<specie>("melt", dict), Cp0, 0, L, Tstd, 0);
+
+    const scalar p = 1e6;
+    const scalar band = 0.5;
+    const scalar Tt = thermo.Tt(p);
+
+    // The apparent-Cp peak vanishes at the band edges (C1 continuity)
+    checkBool
+    (
+        "hMelt: latent-Cp peak vanishes at the band edges",
+        thermo.Cp(p, Tt - band) == Cp0 && thermo.Cp(p, Tt + band) == Cp0
+    );
+
+    // Peak of dw/dT is 1.5/(2*band) at the band centre
+    checkBool
+    (
+        "hMelt: apparent-Cp peak reproduced at the band centre",
+        relDiff(thermo.Cp(p, Tt), Cp0 + L*1.5/(2*band)) < 1e-12
+    );
+
+    // The integral of the latent peak across the band is exactly the
+    // latent heat: hs(Tt + band) - hs(Tt - band) = Cp0*2*band + L
+    {
+        const scalar dhs =
+            thermo.hs(p, Tt + band) - thermo.hs(p, Tt - band);
+        const scalar expected = Cp0*2*band + L;
+        checkBool
+        (
+            "hMelt: enthalpy absorbs the full latent heat across the band",
+            relDiff(dhs, expected) < 1e-12
+        );
+    }
+
+    // dHs/dT matches the apparent Cp inside the band (away from the
+    // second-derivative discontinuities at the edges)
+    {
+        bool ok = true;
+        const scalar h = 1e-3;
+        for
+        (
+            scalar T = Tt - band + 0.05;
+            T <= Tt + band - 0.05 + small;
+            T += 0.05
+        )
+        {
+            const scalar dhsFD =
+                (thermo.hs(p, T + h) - thermo.hs(p, T - h))/(2*h);
+            ok = ok && relDiff(dhsFD, thermo.Cp(p, T)) < 1e-8;
+        }
+        checkBool("hMelt: dHs/dT matches the apparent Cp", ok);
+    }
+
+    // latentHeat = 0 reproduces constant-Cp behaviour
+    {
+        hMelt plain(Tait<specie>("melt", dict), Cp0, 0, 0, Tstd, 0);
+
+        checkBool
+        (
+            "hMelt: latentHeat = 0 reproduces constant-Cp behaviour",
+            plain.Cp(p, 480) == Cp0
+         && plain.hs(p, 480) == Cp0*(480 - Tstd)
+        );
+    }
+}
+
+
 void crossWlfTests()
 {
     IStringStream is(crossWlfDictString);
@@ -450,6 +535,7 @@ int main()
         << "=======================" << endl;
 
     taitTests();
+    latentHeatTests();
     crossWlfTests();
 
     if (nFailed)

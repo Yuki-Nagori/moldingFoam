@@ -3,6 +3,7 @@ moldingFoam/moldingStage.C
 moldingFoam/boundaryConditions/moldingInletVelocity/moldingInletVelocityFvPatchVectorField.C
 moldingFoam/boundaryConditions/moldingPrghPressure/moldingPrghPressureFvPatchScalarField.C
 moldingFoamThermos.C
+thermo/hMeltThermo.C
 viscosityModels/CrossWlf/CrossWlf.C
 
 LIB = $(FOAM_USER_LIBBIN)/libmoldingFoam

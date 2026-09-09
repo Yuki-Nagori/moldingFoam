@@ -7,8 +7,10 @@
 -------------------------------------------------------------------------------
 Description
     Physical properties of the polymer melt phase (HDPE-like): Tait
-    equation of state registered by libmoldingFoam.so with constant Cp and
-    transport reference values.
+    equation of state registered by libmoldingFoam.so with the hMelt
+    thermodynamics (base Cp plus the apparent-Cp latent-heat peak at the
+    Tait solidification temperature) and constant transport reference
+    values.
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
@@ -24,7 +26,7 @@ thermoType
     type            heRhoThermo;
     mixture         pureMixture;
     transport       const;
-    thermo          hConst;
+    thermo          hMelt;
     equationOfState Tait;
     specie          specie;
     energy          sensibleInternalEnergy;
@@ -54,7 +56,14 @@ mixture
 
     thermodynamics
     {
-        Cp          2400;   // [J/kg/K]
+        Cp          2400;   // [J/kg/K] base value; the apparent-Cp
+                            // latent-heat peak across the Tait
+                            // transition band is added on top
+        latentHeat  0;      // [J/kg] heat of solidification; keep 0 for
+                            // the compressibleVoF T-matrix energy
+                            // predictor (non-zero values make the
+                            // in-band Cv negative and diverge, see
+                            // README section 6)
         hf          0;      // [J/kg]
     }
 

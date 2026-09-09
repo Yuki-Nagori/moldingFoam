@@ -12,6 +12,7 @@ EXE_INC = \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I../src \
     -I../src/equationOfStates/Tait \
+    -I../src/thermo \
     -I../src/viscosityModels/CrossWlf
 
 EXE_LIBS = \

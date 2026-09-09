@@ -37,7 +37,7 @@ Description
             type            heRhoThermo;
             mixture         pureMixture;
             transport       const;
-            thermo          hConst;
+            thermo          hMelt;
             equationOfState Tait;
             specie          specie;
             energy          sensibleInternalEnergy;
@@ -45,7 +45,10 @@ Description
     \endverbatim
 
     in the phase physical-properties dictionary (e.g.
-    \c constant/physicalProperties.melt).
+    \c constant/physicalProperties.melt). The \c hMelt thermodynamics add
+    an apparent-Cp latent-heat peak at the Tait solidification
+    temperature; \c hConst is also registered for phases without
+    solidification (e.g. the air phase).
 
 \*---------------------------------------------------------------------------*/
 
@@ -60,6 +63,7 @@ Description
 #include "sensibleEnthalpy.H"
 
 #include "Tait.H"
+#include "hMeltThermo.H"
 
 #include "makeFluidThermo.H"
 #include "forThermo.H"
@@ -85,6 +89,30 @@ namespace Foam
         constTransport,
         sensibleEnthalpy,
         hConstThermo,
+        Tait,
+        specie,
+        makeFluidThermo,
+        rhoFluidThermo,
+        pureMixture
+    );
+
+    forThermo
+    (
+        constTransport,
+        sensibleInternalEnergy,
+        hMeltThermo,
+        Tait,
+        specie,
+        makeFluidThermo,
+        rhoFluidThermo,
+        pureMixture
+    );
+
+    forThermo
+    (
+        constTransport,
+        sensibleEnthalpy,
+        hMeltThermo,
         Tait,
         specie,
         makeFluidThermo,

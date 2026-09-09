@@ -52,7 +52,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
 :
     compressibleVoF(mesh),
     ejected_(false),
-    ejectionTemperature_(great)
+    ejectionTemperature_(great),
+    vTot_(gSum(mesh.V().primitiveField()))
 {
     // The molding dictionary is the external case-generation contract. The
     // packing group drives the V/P switch and the packing pressure curve
@@ -159,10 +160,11 @@ void Foam::solvers::moldingFoam::preSolve()
     // from flow-rate control (filling) to pressure control (packing)
     if (!stage.packing())
     {
-        const scalar vTot(gSum(mesh.V().primitiveField()));
+        // vTot_ is cached: the mesh is static, so the reduction would
+        // return the same value every step
         const scalar filledFraction
         (
-            fvc::domainIntegrate(alpha1).value()/max(vTot, small)
+            fvc::domainIntegrate(alpha1).value()/max(vTot_, small)
         );
 
         if (filledFraction >= stage.switchFraction())

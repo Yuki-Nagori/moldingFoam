@@ -58,7 +58,7 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::etaValue
     scalar p,
     scalar T,
     scalar gammaDot
-) 
+)
 {
     // Floor the strain rate to prevent the zero-shear-rate limit diverging
     gammaDot = max(gammaDot, c.gammaDotMin);
@@ -72,15 +72,16 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::etaValue
     const scalar denom = max(c.A2 + x, scalar(small));
 
     // Cap the exponent argument so that eta0 <= etaMax; this is what keeps
-    // the model bounded in the frozen region
+    // the model bounded in the frozen region (eCap = log(etaMax/D1),
+    // pre-computed at read time)
     scalar e = -c.A1*x/denom;
-    e = min(e, log(c.etaMax/c.D1));
+    e = min(e, c.eCap);
 
     const scalar eta0 = c.D1*exp(e);
 
     const scalar eta =
         eta0
-       /(scalar(1) + pow(eta0*gammaDot/c.tauStar, scalar(1) - c.n));
+       /(scalar(1) + pow(eta0*gammaDot/c.tauStar, c.oneMinusN));
 
     return min(max(eta, c.etaMin), c.etaMax);
 }
@@ -123,6 +124,10 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::readCoeffs
     c.etaMax = coeffsDict.lookup<scalar>("etaMax");
     c.gammaDotMin =
         coeffsDict.lookupOrDefault<scalar>("gammaDotMin", 1e-6);
+
+    // Derived, per-call invariants hoisted out of the per-cell loops
+    c.oneMinusN = 1 - c.n;
+    c.eCap = log(c.etaMax/c.D1);
 
     return c;
 }

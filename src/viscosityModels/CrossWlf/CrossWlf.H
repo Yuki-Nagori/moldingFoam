@@ -166,6 +166,12 @@ public:
 
         //- Strain-rate floor [1/s]
         scalar gammaDotMin;
+
+        //- Pre-computed log(etaMax/D1): caps eta0 in the frozen region
+        scalar eCap;
+
+        //- Pre-computed 1 - n for the Cross power law
+        scalar oneMinusN;
     };
 
 

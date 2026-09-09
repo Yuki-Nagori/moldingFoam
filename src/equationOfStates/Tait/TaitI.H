@@ -167,8 +167,10 @@ inline Foam::scalar Foam::Tait<Specie>::vhatPrimeT(scalar p, scalar T) const
     const scalar wt =
         band_ > scalar(0) ? meltWeightPrime(p, T)/(2*band_) : 0;
 
-    const scalar vmt = vhatm(p, T)*alphavm(p, T);
-    const scalar vst = vhats(p, T)*alphavs(p, T);
+    // vm/vs from above are reused: vhatm/vhats are the dominant cost of
+    // this routine (exp + log each), so they are never computed twice
+    const scalar vmt = vm*alphavm(p, T);
+    const scalar vst = vs*alphavs(p, T);
 
     return w*vmt + wt*(vm - vs) + (1 - w)*vst;
 }
@@ -334,9 +336,10 @@ inline Foam::scalar Foam::Tait<Specie>::Z(scalar p, scalar T) const
 template<class Specie>
 inline Foam::scalar Foam::Tait<Specie>::CpMCv(scalar p, scalar T) const
 {
-    // Thermodynamic identity Cp - Cv = T alphav^2/psi applied to the
-    // blended properties; exact outside the transition band
-    return T*sqr(alphav(p, T))/psi(p, T);
+    // The identity Cp - Cv = T alphav^2/psi with alphav = vT/v and
+    // psi = -vP/v^2 reduces exactly to -T vT^2/vP: the blended specific
+    // volume cancels out and is never evaluated
+    return -T*sqr(vhatPrimeT(p, T))/vhatPrimeP(p, T);
 }
 
 

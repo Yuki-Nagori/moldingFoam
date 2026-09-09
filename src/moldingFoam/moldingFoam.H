@@ -86,6 +86,10 @@ class moldingFoam
         //  [K], read from constant/moldingDict
         scalar ejectionTemperature_;
 
+        //- Total mesh volume [m^3], computed once in the constructor;
+        //  the mould cavity mesh is static
+        scalar vTot_;
+
 
 public:
 

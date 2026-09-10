@@ -32,7 +32,7 @@
 
 | 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
 |------|------|--------|------|------|----------|
-| [001](tasks/001-he-energy-predictor.md) | he 型能量预报器（启用潜热） | P0 | planned | 无 | 1–2 周 |
+| [001](tasks/001-he-energy-predictor.md) | he 型能量预报器（启用潜热） | P0 | **in-progress**（提示词已就位，待实现） | 无 | 1–2 周 |
 | [002](tasks/002-mold-thermal-coupling.md) | 模具热耦合（集总参数模温模型） | P2 | planned | 建议在 001 之后 | 3–5 天 |
 | [003](tasks/003-venting-model.md) | 排气反压/困气模型 | P3 | planned | 无 | 3–5 天 |
 | [004](tasks/004-molding-dict-runtime-reload.md) | moldingDict 运行时重载 | P1 | **done** | 无 | 半天 |

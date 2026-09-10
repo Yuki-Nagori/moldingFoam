@@ -111,6 +111,29 @@ target("moldingFoam")
 set -e
 mkdir -p "$FOAM_USER_LIBBIN" "$FOAM_USER_APPBIN"
 export WM_NCOMPPROCS=$(nproc)
+
+# Compiler shim: the wmake Arm64 rules emit -mcpu=native, which bakes
+# the BUILD machine's CPU features (e.g. SVE auto-vectorisation on CI
+# Arm runners) into the objects and crashes with SIGILL on recipient
+# machines without them. Strip the native flags so the wmake-built
+# artifacts stay baseline ARMv8-A portable (x86 builds never see these
+# flags and pass through unchanged).
+mkdir -p "$HOME/.moldingFoam-bin"
+cat > "$HOME/.moldingFoam-bin/g++" <<'SHIM'
+#!/bin/bash
+args=()
+for a in "$@"
+do
+    case "$a" in
+        -mcpu=native|-march=native|-mtune=native) ;;
+        *) args+=("$a") ;;
+    esac
+done
+exec /usr/bin/g++ "${args[@]}"
+SHIM
+chmod +x "$HOME/.moldingFoam-bin/g++"
+export PATH="$HOME/.moldingFoam-bin:$PATH"
+
 cd %s
 wmake libso src
 wmake tests
@@ -227,10 +250,12 @@ target("bundle")
             "export FOAM_INST_DIR=$(cd $(dirname $bashrcFile)/../.. && pwd -P)")))
 
         -- merge the moldingFoam products into the tree: FOAM_LIBBIN and
-        -- the platform bin dir are on LD_LIBRARY_PATH/PATH via bashrc
+        -- the platform bin dir are on LD_LIBRARY_PATH/PATH via bashrc.
+        -- NOTE: libmoldingFoamSolver.so is deliberately NOT included:
+        -- the contract controlDict loads libmoldingFoam.so via libs(),
+        -- and shipping the solver-name alias as well makes foamRun load
+        -- the same library twice (Duplicate entry warnings)
         os.cp(string.format("%s/libmoldingFoam.so", userlib),
-            string.format("%s/platforms/%s/lib/", treedir, wmo))
-        os.cp(string.format("%s/libmoldingFoamSolver.so", userlib),
             string.format("%s/platforms/%s/lib/", treedir, wmo))
         os.cp(string.format("%s/modelTests", userbin),
             string.format("%s/platforms/%s/bin/", treedir, wmo))

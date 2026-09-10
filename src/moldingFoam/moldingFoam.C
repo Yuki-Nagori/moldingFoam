@@ -198,6 +198,10 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << " The molding contract dictionary is optional in stage M1"
             << " and becomes mandatory in stages M2/M3." << endl;
     }
+
+    // Baseline for the runtime reload: the constructor has just applied
+    // the current dictionary contents
+    moldingDictModTime_ = lastModified(moldingDictPath);
 }
 
 

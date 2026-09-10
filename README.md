@@ -285,7 +285,11 @@ $ modelTests        # 自检；case 中照常 solver moldingFoam + libs ("libmol
 
 打包时会将 deb 硬编码的 `FOAM_INST_DIR=/opt` 恢复为上游按 bashrc 位置
 自推导的逻辑，因此环境树可解压到任意路径使用。运行要求：与打包机同
-架构的 Linux + libopenmpi3 运行库。许可与源码指引见包内
+架构的 Linux + libopenmpi3 运行库。`libmoldingFoam.so`/`modelTests`
+以 **基线指令集** 编译（ARMv8-A / x86-64，构建时剥离
+`-mcpu=native` 系 flags），任意同架构 CPU 均可运行；bundle 不含
+`libmoldingFoamSolver.so` 别名（controlDict 经 `libs()` 显式加载，
+避免重复加载告警）。许可与源码指引见包内
 `MOLDINGFOAM-BUNDLE.md`（OpenFOAM 与 moldingFoam 均为 GPL-3.0，见
 第 10 节）。
 

@@ -56,6 +56,14 @@ jobs:
         run: |
           xmake
           xmake run test
+          xmake run test-solver
+          xmake run couette
+          xmake run couetteSlip
+
+      - name: Stefan solidification validation
+        run: |
+          set -o pipefail
+          xmake run stefan 2>&1 | tee stefan.txt
 
       - name: Contract case (4 subdomains)
         run: |
@@ -68,6 +76,7 @@ jobs:
           mkdir -p dist
           cp case-contract/log.foamRun case-contract/log.blockMesh acceptance.txt dist/ 2>/dev/null || true
           cp -r case-contract/postProcessing dist/ 2>/dev/null || true
+          cp validation/stefan/log.foamRun stefan.txt dist/ 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
         with:

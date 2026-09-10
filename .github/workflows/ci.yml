@@ -1,6 +1,7 @@
 # CI for moldingFoam: build against the official OpenFOAM-14 binary on
-# both amd64 and arm64, run the model tests and the contract case
-# acceptance.
+# both amd64 and arm64 and run the model tests. The solver feature cases,
+# analytic validations and the full contract case are too slow for per-PR
+# CI and run nightly.
 
 name: CI
 

@@ -313,8 +313,9 @@ $ MOLDINGFOAM_PARALLEL=4 xmake run case-contract       # 4 子域并行 + 验收
   流出）的相对误差 **< 1e-3**（控制字典中的 `inletMassFlow`、
   `ventMassFlow`、`polymerMass` 函数对象）。
 
-实测（8 核 ARM64 虚拟机）：串行误差 7.37e-4、并行 7.32e-4，全部通过；
-全周期约 3950 步，串行约 12–15 分钟，4 子域并行约 5–8 分钟。
+实测（8 核 ARM64 虚拟机，热流道保温 1.3 MPa、排气/浇口密封生效）：
+4 子域并行质量守恒误差 **9.31e-04**（阈值 1e-3），全周期 8834 步约
+11.5 分钟，全部通过。
 
 日志与结果保留在 `case-contract/`（`log.foamRun`、`postProcessing/`、
 各时间步目录）。
@@ -332,6 +333,8 @@ $ xmake run test
 | 模型 | 检查项 |
 |------|--------|
 | Tait | `p=0` 时两个分支均满足 `v̂ = v0(T)`；解析 `psi` 与 `∂ρ/∂T` 与中心差分对拍（rtol 1e-6，覆盖熔体/固体/平滑过渡带）；HDPE 牌号 PVT 数据点复现 |
+| hMelt | 潜热 Cp 峰在带宽边缘连续为零；峰中心值解析对拍（rtol 1e-12）；跨带积分恰为 `latentHeat`；`d(hs)/dT = Cp + latentCp` 与中心差分对拍（rtol 1e-8）；`latentHeat 0` 退化到常 Cp |
+| moldThermalState | 后向 Euler 离散能量守恒恒等式对拍（rtol 1e-12，含功率源）；稳态 = 导热加权平均；超大时间步落在平衡点；`dt→0` 返回原温；无耦合不变 |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
@@ -345,16 +348,21 @@ $ xmake run test
 `Foam::solvers::moldingFoam` 继承 `Foam::solvers::compressibleVoF`，以
 `moldingFoam` 注册进 `foamRun` 求解器表。完整成型周期：
 
-- **填充（M1）**：行为等价 `compressibleVoF`；流量控制注入；
-- **保压（M2）**：求解器跟踪填充体积分数 `∫α.melt dV / V_腔`，达到
-  `packing.switchFraction` 触发 V/P 切换；闸口切换为压力控制，跟随
-  `pressure` 曲线（Function1 `table`，相对切换时刻计时）。实现为库内
-  两个双模式边界条件 `moldingInletVelocity` 与 `moldingPrghPressure`，
-  通过求解器注册在网格上的 `moldingStage` 对象读取阶段——不修改任何
-  上游边界条件；
-- **冷却（M3）**：模壁（walls patch 的 `T`）保持在模温；保压压力释放
-  至大气压后，一旦平均熔体温度降至 `cooling.ejectionTemperature`
-  以下，求解器打印并停止运行。
+- **填充（M1）**：流量控制注入；排气口只透气（`moldingVentVelocity` /
+  `moldingVentPressure`），熔体前沿到达后密封（`ventSealAlpha`）；
+- **保压（M2）**：填充体积分数达到 `packing.switchFraction`，或闸口压力
+  达到 `packing.switchPressure`（保压设定压力）时触发 V/P 切换，闸口
+  切换为压力控制、跟随 `pressure` 曲线（Function1 `table`，相对切换
+  时刻计时）；切换压力与保压曲线起点一致，无压力阶跃。达到
+  `packing.gateSealTime`（或压力降到 `cooling.releasePressure`）后
+  **闸口封冻**，型腔停止排料。实现为库内四个边界条件
+  （`moldingInletVelocity`、`moldingPrghPressure`、`moldingVentVelocity`、
+  `moldingVentPressure`），通过求解器注册在网格上的 `moldingStage`
+  对象读取阶段与密封状态——不修改任何上游边界条件；
+- **冷却（M3）**：模壁温度由 `fixedValue` 恒温或集总模温边界
+  `moldingMoldTemperature`（见下）给出；浇口封冻、压力释放后，一旦
+  平均熔体温度降至 `cooling.ejectionTemperature` 以下，求解器打印并
+  停止运行。
 
 `system/controlDict` 用法契约：
 
@@ -367,6 +375,63 @@ libs            ("libmoldingFoam.so");
 `foamRun` 还会探测 `lib<Solver>Solver.so`，因此构建时会安装
 `libmoldingFoamSolver.so -> libmoldingFoam.so` 符号链接，两条加载路径
 均可工作。
+
+### moldingMoldTemperature（集总模温边界，M3）
+
+`Foam::moldingMoldTemperatureFvPatchScalarField`，用于 `0/T` 的模壁
+patch，把模具表示为单一热容 `C`：
+
+```
+C dT/dt = Σ_f h_f (T_cell,f − T)   ← 铸件跨壁面导热
+        + h_A (T_water − T)        ← 冷却水换热（h_A = waterHTC·wettedArea）
+        + Q                        ← 可选功率源
+```
+
+其中 `h_f = kappaEff·deltaCoeffs·magSf` 与能量方程隐式边界的面导热
+系数**完全同源**。边界按**后向 Euler** 更新（与能量方程的时间离散
+一致）：
+
+```
+T^{n+1} = (C/dt·T^n + Σ h_f T_cell + h_A T_water + Q)/(C/dt + Σ h_f + h_A)
+```
+
+- 无条件稳定（`C/dt` 与 `h_A` 都在分母），`dt → ∞` 也不会越过平衡点；
+- 每个外迭代重新求值、始终从 `T^n` 推进一步，既精化耦合又不会重复
+  推进状态；离散能量守恒 `C(T^{n+1}−T^n) = dt·Q_net` 严格成立；
+- 温度状态经 `UniformDimensionedField` 随场写出、重启续读（与上游
+  `lumpedMassTemperature` 同模式），比求解器侧显式耦合精度高得多；
+- 每个 patch 独立一个集总量；`fixedValue` 模壁（缺省）行为不变。
+
+用法示例：
+
+```c++
+walls
+{
+    type             moldingMoldTemperature;
+    heatCapacity     500;      // [J/K]
+    waterHTC         2000;     // [W/m^2/K]
+    wettedArea       2.7e-3;   // [m^2]
+    waterTemperature 300;      // [K]
+    T                353;      // [K] 初始模温
+    value            uniform 353;
+}
+```
+
+### 注塑周期状态（moldingStage）与排气/闸口密封
+
+`moldingStage`（regIOobject，注册于网格）除 V/P 阶段外，还承载两个
+密封状态并随场持久化（重启续读）：
+
+- `ventSealed`：排气口熔体前沿到达（`max(alpha.melt) ≥ ventSealAlpha`）
+  后置位。`moldingVentVelocity` 置零速度、`moldingVentPressure` 转
+  零通量，使排气口"只透气、不漏料"；
+- `gateSealed`：V/P 切换后经过 `packing.gateSealTime`（或保压目标降到
+  `cooling.releasePressure`）置位。`moldingInletVelocity` 置零、
+  `moldingPrghPressure` 转零梯度，型腔成为封闭可压缩体，冷却期不再
+  排料，平均熔体温度单调。
+
+V/P 切换判据为填充分数 `switchFraction` 或闸口压力 `switchPressure`
+先到者；保压曲线起点与 `switchPressure` 一致以避免压力阶跃。
 
 ### CrossWlf（黏度）
 
@@ -406,17 +471,25 @@ Tt   = b5 + b6·p
 带宽内用三次 C¹ 平滑步混合熔体/固体两支，并计入权重导数项，保证混合
 密度及其一阶导数在过渡带内连续，消除保压段收敛抖动。
 
-潜热由 `hMelt` 热力学组合提供：在常 Cp 基础上，叠加由 Tait 混合权重对
-温度的导数构造的表观 Cp 潜热峰（跨过渡带单位积分），能量方程穿过
-`Tt(p)` 时吸放 `latentHeat`（`physicalProperties.melt` 的 `latentHeat`
-关键字）。`CpMCv = -T·vT²/vP` 保持解析精确。
+潜热由 `hMelt` 热力学组合提供：显焓 `hs` 在常 Cp 基础上叠加潜热平台
+`latentHeat·(w(T) - w(Tref))`（单位积分穿过 Tait 过渡带），能量方程
+穿过 `Tt(p)` 时吸放 `latentHeat`（`physicalProperties.melt` 的
+`latentHeat` 关键字，缺省 0）。
 
-> ⚠️ **限制**：`compressibleVoF` 的能量预报器按 T 矩阵求解，压力相关的
-> `Tt(p)` 使过渡带内 `Cv = Cp - CpMCv` 变负，非零 `latentHeat` 会令
-> T 解发散（已实测，多种稳定化尝试均不足）。因此契约 case 保持
-> `latentHeat 0`；`hMelt` 类、能量预报器的半隐式潜热线性化机制与其
-> 测试均已就位，完整的 he 型能量预报器是进行中的研发项——方案、
-> 实验记录与工作拆解见 `ai-docs/tasks/001-he-energy-predictor.md`。
+能量预报器（`moldingFoam::thermophysicalPredictor()` 覆写）的数值要点：
+
+- **潜热峰只进能量方程、不进物性**：`hMeltThermo` 将表观容量拆分为
+  `Cv = Cp + latentCp - CpMCv`（能量矩阵正定对角）与仅含显热的
+  `Cp`（物性传输用）。`constTransport` 的导热率 `kappa = Cp·μ/Pr`
+  若把 1 K 带宽内的潜热峰计入，κ 会瞬间放大两个数量级并摧毁温度场
+  （已实测，见 `ai-docs/tasks/001`）；
+- `Tait::CpMCv` 忽略 `b6` 前沿扫掠耦合（量级 0.15 K/MPa），使带内
+  `Cv` 保持正定；
+- 线性求解后对 `T` 施加 250–3000 K 安全钳制，为 `correctThermo` 的
+  Newton 反演提供有限正初值。
+
+契约 case 现以 `latentHeat 2e5` 运行；潜热使冷却曲线在凝固带内出现
+平台，制品在顶出判据前完成潜热释放（见 `ai-docs/tasks/001`）。
 
 状态方程是热物理包的编译期模板参数，`src/moldingFoamThermos.C` 在本库
 内实例化 `pureMixture + const + hConst + Tait` 组合（`sensibleInternalEnergy`
@@ -441,10 +514,12 @@ thermoType
 
 ## 7. 性能与数值控制
 
-- 全周期（填充+保压+冷却+顶出）约 3950 步 / 12–15 分钟（串行）；
-- 保压压力会在闸口/排气口驱动射流，界面库朗数随之上升。契约 case 的
-  `maxCo 0.5 / maxAlphaCo 0.1 / nSubCycles 6 / MULESCorr no` 是满足
-  1e-3 质量守恒容差的实测组合；放宽控制会使该误差升至 0.5% 左右；
+- 全周期（填充+保压+冷却+顶出）约 8834 步、4 子域并行约 11.5 分钟
+  （8 核 ARM64 VM）；
+- 保压期的可压缩界面输运是质量守恒的主要误差源：契约 case 的
+  `maxCo 0.5 / maxAlphaCo 0.05 / nSubCycles 12 / MULESCorr no` 是
+  1.3 MPa 保压下满足 1e-3 容差的实测组合；放宽到 `maxAlphaCo 0.1 /
+  nSubCycles 6` 会使误差升至 1.5–2.6e-3；
 - 更高的保压压力（如 40–100 MPa）物理上完全支持，但时间步会按库朗数
   成比例缩小，请相应评估时长预算；
 - `CrossWlf::nu` 逐单元求值（内部场+边界场单一代码路径），与
@@ -462,14 +537,54 @@ thermoType
 | `system/controlDict` | `application foamRun`、`solver moldingFoam`、`libs ("libmoldingFoam.so")`、时间控制、验收函数对象 |
 | `system/blockMeshDict` | 矩形板腔 + 底面浇口（`inlet`）+ 顶部排气（`vent`），2 mm 厚 |
 | `system/fvSchemes`、`system/fvSolution`、`system/decomposeParDict` | 数值格式与分解 |
-| `0/alpha.melt`、`0/U`、`0/p`、`0/p_rgh`、`0/T` | 场；熔体经 `inlet` 注入，`vent` 排气，模壁恒温 |
+| `0/alpha.melt`、`0/U`、`0/p`、`0/p_rgh`、`0/T` | 场；熔体经 `inlet` 注入；`vent` 用 `moldingVentVelocity` + `moldingVentPressure`（只透气、遇熔体密封）；模壁默认 `fixedValue` 恒温，可选 `moldingMoldTemperature` 集总模温边界（均为本库自注册，见第 6 节） |
 | `constant/phaseProperties` | `phases (melt air)` + 表面张力 |
 | `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
-| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure` |
+| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha` |
 
 ### 契约变更日志
+
+**v1.4**（注塑周期物理完备化：排气封堵 / 压力切换 / 闸口封冻）：
+
+- `0/U` 的 `vent`：`pressureInletOutletVelocity` → `moldingVentVelocity`
+  （自注册；未密封时按压力出/入流，熔体到达后置零速度）；
+- `0/p_rgh` 的 `vent`：`prghTotalPressure` → `moldingVentPressure`
+  （自注册；未密封时定压 `p0`，熔体到达后零通量）；
+- `constant/moldingDict`：
+  - `packing.switchPressure`：闸口压力达到该值即触发 V/P 切换（保压
+    设定压力），避免熔体封死排气口后继续按流量充注造成过压；
+  - `packing.gateSealTime`：V/P 切换后该时刻闸口封冻，型腔在压力释放
+    后不再排料；
+  - 顶层 `ventSealAlpha`：排气口熔体体积分数密封阈值（缺省 0.5）；
+  - 保压曲线调整为 1.3 MPa 平台 0.15 s 后降至 1e5（起点与切换压力
+    一致，无压力阶跃）；
+- `system/fvSolution`：`nSubCycles 6 → 12`；`system/controlDict`：
+  `maxAlphaCo 0.10 → 0.05`（高压保压下把可压缩界面输运的质量误差
+  压回 1e-3 以内）。
+
+未改名、未删除任何既有必需关键字；不写新键、vent 保持上游类型的
+旧 case 行为与 v1.3 一致。
+
+**v1.3**（潜热启用与集总模温边界）：
+
+- `constant/physicalProperties.melt`：`latentHeat` 关键字正式生效
+  （契约 case 取 HDPE 量级 `2e5`；v1.2 时期因数值限制实际按 0 使用）；
+- `constant/moldingDict`：`cooling.ejectionTemperature` 由 393.15 K
+  调整为 383.15 K（低于 Tait 凝固温度 `Tt = 390.65 K`），使顶出前
+  制品确实释放潜热；
+- `0/T` 模壁边界：新增可选类型 `moldingMoldTemperature`（本库
+  自注册的集总模温边界，缺省仍为 `fixedValue` 恒温，向后兼容）：
+  `heatCapacity` [J/K]、`waterHTC` [W/m²/K]（可选）、`wettedArea`
+  [m²]（可选）、`waterTemperature` [K]（可选）、`Q` [W]（可选源）、
+  `T` [K] 初始模温；
+- `system/fvConstraints`：移除 `limitTemperature` 约束。熔体与空气
+  共享单一 `T` 场，`phase melt` 绑定的是不存在的 `T.melt`，约束
+  实际从不生效（上游会告警）；温度安全钳制改由求解器内部完成。
+
+未改名、未删除任何既有必需关键字；模壁保持 `fixedValue` 的旧 case
+行为与 v1.2 一致。
 
 **v1.2**（潜热与顶出判据）：
 
@@ -510,7 +625,10 @@ moldingFoam/
 ├── src/
 │   ├── Make/{files,options} libmoldingFoam.so 的 wmake 工程
 │   ├── moldingFoam/         foamRun 求解器模块 "moldingFoam" + moldingStage
-│   ├── moldingFoam/boundaryConditions/  双模式浇口边界条件（M2）
+│   │                        + moldThermalState（集总模温更新律，M3）
+│   ├── moldingFoam/boundaryConditions/  双模式浇口边界（M2）
+│   │                        + 相感知排气边界 moldingVent{Velocity,Pressure}
+│   │                        + 集总模温边界 moldingMoldTemperature（M3）
 │   ├── viscosityModels/CrossWlf/        Cross-WLF 黏度模型
 │   ├── equationOfStates/Tait/           Tait 状态方程
 │   ├── thermo/hMeltThermo.C             潜热热力学组合 hMelt

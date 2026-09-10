@@ -32,11 +32,23 @@
 
 | 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
 |------|------|--------|------|------|----------|
-| [001](tasks/001-he-energy-predictor.md) | he 型能量预报器（启用潜热） | P0 | **in-progress**（提示词已就位，待实现） | 无 | 1–2 周 |
-| [002](tasks/002-mold-thermal-coupling.md) | 模具热耦合（集总参数模温模型） | P2 | planned | 建议在 001 之后 | 3–5 天 |
-| [003](tasks/003-venting-model.md) | 排气反压/困气模型 | P3 | planned | 无 | 3–5 天 |
+| [001](tasks/001-he-energy-predictor.md) | 潜热能量预报器（启用 latentHeat） | P0 | **done**（根因修正，非 he 方案；周期完备化后质量守恒 9.305e-04） | 无 | 1–2 周 |
+| [002](tasks/002-mold-thermal-coupling.md) | 模具热耦合（集总参数模温模型） | P2 | **done** | 建议在 001 之后 | 3–5 天 |
+| [003](tasks/003-venting-model.md) | 排气反压/困气模型 | P1 | planned（2026-09-10 评审修订；相感知密封已由 006 完成） | 006 | 3–5 天 |
 | [004](tasks/004-molding-dict-runtime-reload.md) | moldingDict 运行时重载 | P1 | **done** | 无 | 半天 |
 | [005](tasks/005-nightly-contract-case.md) | CI 夜间契约 case 回归 | P2 | **done**（运行验证待推送后手动触发） | 无 | 半天 |
+| [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.305e-04，周期单调） | 无 | 2–4 天 |
+| [007](tasks/007-viscous-dissipation.md) | 黏性生热（能量方程剪切耗散项） | P0 | planned | 001/006 之后 | 2–4 天 |
+| [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | planned | 002 之后 | 1–2 周 |
+| [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | planned | 006 | 1–2 周 |
+| [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | planned | 006 | 3–5 天 |
+| [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | planned | 无 | 3–5 天 |
+| [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | planned | 002/008 | 3–5 天 |
+| [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | planned | 001–012 | 数周起 |
+| [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | planned | 001 | 1–2 周 |
+| [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | planned | 001/002 | 2–4 周 |
+| [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | planned | 001/006 | 1–2 周 |
+| [017](tasks/017-benchmark-validation.md) | 基准验证（实验/商用软件对拍） | P1 | planned | 001/002/006 | 1–2 周 |
 
 ## 背景速览（新会话必读）
 
@@ -48,10 +60,16 @@
   注册表读取阶段。
 - 材料模型：Tait 双域 PVT（`src/equationOfStates/Tait/`，单遍
   `blendedDerivs` 求值）、Cross-WLF 黏度、hMelt 潜热热力学
-  （`src/thermo/hMeltThermo.*`，`latentHeat` 缺省 0）。
-- 已知核心缺口：**潜热尚未在求解器中启用**——`compressibleVoF` 的
-  能量预报器按 T 矩阵求解，带内 `Cv` 为负导致发散，需要 001 号任务
-  的 he 型能量预报器。失败实验记录（max(Cv,Cp) 线性化）见 001 号
-  文件的"已否决方案"。
-- 验收基线：契约 case（`MOLDINGFOAM_PARALLEL=4`）质量守恒相对误差
-  ≈ 7.3–7.4e-4（阈值 1e-3），全部阶段证据 PASS。
+  （`src/thermo/hMeltThermo.*`）：潜热峰只进能量方程的表观 `Cv`，
+  显热 `Cp` 保持平滑，避免 `kappa = Cp·mu/Pr` 在带内放大。
+- **潜热已启用**：契约 case `latentHeat 2e5` 稳定运行至顶出（001 号
+  任务已完成；根因与最终方案见其完成报告）。
+- 集总参数模温模型已落地（002 号任务）：`0/T` 模壁可选类型
+  `moldingMoldTemperature`（自注册边界，后向 Euler 隐式更新，离散
+  能量守恒），缺省 `fixedValue` = 恒温模壁。
+- 注塑周期已物理完备化（006 号任务）：排气口只透气、遇熔体密封；
+  V/P 压力触发无阶跃；保压结束闸口封冻，冷却期不再排料，平均熔体
+  温度单调。
+- 验收基线：契约 case（`MOLDINGFOAM_PARALLEL=4`，`latentHeat 2e5`、
+  1.3 MPa 保压）质量守恒相对误差 **9.305e-04**（阈值 1e-3），全部
+  阶段证据 PASS。

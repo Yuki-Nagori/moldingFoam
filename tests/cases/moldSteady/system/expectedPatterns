@@ -1,0 +1,4 @@
+# Many cycles: the mould approaches its periodic-steady temperature
+cycle 1 complete; starting cycle 2/400
+cycle 399 complete; starting cycle 400/400
+ejection criterion met: .*\(cycle 400/400\)

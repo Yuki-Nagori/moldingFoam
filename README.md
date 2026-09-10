@@ -353,6 +353,7 @@ $ xmake run test
 |------|------|
 | `cycleReset` | 顶出后按 `nCycles` 重置流场并进入第 2 周期（并行/串行均可） |
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
+| `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
 `system/expectedPatterns` 正则检查之后运行）。

@@ -64,6 +64,19 @@ do
         fi
     done < system/expectedPatterns
 
+    if [ -f system/verifyScript ]
+    then
+        verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' \
+            system/verifyScript | head -1)
+
+        if [ -n "$verifier" ] \
+           && ! python3 "$(dirname "$0")/$verifier" "$caseDir"
+        then
+            echo "FAIL: $name: $verifier"
+            caseFailed=1
+        fi
+    fi
+
     if [ "$caseFailed" -ne 0 ]
     then
         nFailed=$((nFailed + 1))

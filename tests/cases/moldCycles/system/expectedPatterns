@@ -1,0 +1,4 @@
+# Three cycles: two resets and the final stop
+cycle 1 complete; starting cycle 2/3
+cycle 2 complete; starting cycle 3/3
+ejection criterion met: .*\(cycle 3/3\)

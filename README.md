@@ -352,6 +352,10 @@ $ xmake run test
 | 用例 | 检查 |
 |------|------|
 | `cycleReset` | 顶出后按 `nCycles` 重置流场并进入第 2 周期（并行/串行均可） |
+| `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
+
+用例可带 `system/verifyScript` 指定数值验证脚本（在
+`system/expectedPatterns` 正则检查之后运行）。
 
 新增特性时优先补一个 `tests/cases/<name>` 小 case，把契约 case 留给
 集成级回归。

@@ -354,6 +354,7 @@ $ xmake run test
 | `cycleReset` | 顶出后按 `nCycles` 重置流场并进入第 2 周期（并行/串行均可） |
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
+| `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
 `system/expectedPatterns` 正则检查之后运行）。
@@ -520,9 +521,9 @@ p_vent = p0 + sign(ṁ)·ṁ²/(2·ρ·CdA²)
   后置位。`moldingVentVelocity` 置零速度、`moldingVentPressure` 转
   零通量，使排气口"只透气、不漏料"；
 - `gateSealed`：V/P 切换后经过 `packing.gateSealTime`（或保压目标降到
-  `cooling.releasePressure`）置位。`moldingInletVelocity` 置零、
-  `moldingPrghPressure` 转零梯度，型腔成为封闭可压缩体，冷却期不再
-  排料，平均熔体温度单调。
+  `cooling.releasePressure`，或可选的 `gateFreezeTemperature` 温度
+  判据）置位。`moldingInletVelocity` 置零、`moldingPrghPressure` 转
+  零梯度，型腔成为封闭可压缩体，冷却期不再排料，平均熔体温度单调。
 
 V/P 切换判据为填充分数 `switchFraction` 或闸口压力 `switchPressure`
 先到者；保压曲线起点与 `switchPressure` 一致以避免压力阶跃。
@@ -639,6 +640,13 @@ thermoType
 | `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation`、`nCycles`、`trapAirInterval`、`trapAirAlpha` |
 
 ### 契约变更日志
+
+**v1.11**（闸口温度型封冻，任务 010）：
+
+- `constant/moldingDict`：新增可选 `gateFreezeTemperature` [K]：保压
+  阶段闸口单元质量加权平均温度降到该值即封冻（与 `gateSealTime`、
+  releasePressure 兜底并存）。缺省不写行为与 v1.10 一致；契约 case
+  的固定 480 K 入口不会触发该判据。
 
 **v1.10**（模壁深层热阻，任务 008 第一阶段）：
 

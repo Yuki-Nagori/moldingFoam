@@ -95,6 +95,10 @@ class moldingFoam
         //  defaults to great (seal when the packing pressure is released)
         scalar gateSealTime_;
 
+        //- Gate mass-weighted average melt temperature at or below which
+        //  the gate freezes off [K]; defaults to -great (disabled)
+        scalar gateFreezeTemperature_;
+
         //- Melt volume fraction on the vent patch above which the vent
         //  is sealed (polymer must not escape through the vent)
         scalar ventSealAlpha_;
@@ -154,6 +158,11 @@ class moldingFoam
         //- Area-averaged gate pressure [Pa] over the moldingPrghPressure
         //  patches; zero when there is no such patch
         scalar gatePressure() const;
+
+        //- Mass-weighted average melt temperature [K] over the
+        //  moldingPrghPressure patch cells; zero when there is no such
+        //  patch
+        scalar gateTemperature() const;
 
         //- Read the CrossWlf coefficients for the dissipation source
         //  from constant/momentumTransport

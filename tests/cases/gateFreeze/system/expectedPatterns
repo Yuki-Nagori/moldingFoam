@@ -1,0 +1,2 @@
+# The physical gate-freeze criterion must seal the gate
+gate sealed at .* \(gate temperature = .* <= gateFreezeTemperature = 485 K\)

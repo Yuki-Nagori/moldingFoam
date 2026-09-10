@@ -68,6 +68,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     releasePressure_(great),
     switchPressure_(great),
     gateSealTime_(great),
+    gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
@@ -140,6 +141,15 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar gateSealTime =
             packingDict.lookupOrDefault<scalar>("gateSealTime", great);
 
+        // Optional gate melt temperature at or below which the gate
+        // freezes off; disabled by default (time / pressure release only)
+        const scalar gateFreezeTemperature =
+            moldingDict.lookupOrDefault<scalar>
+            (
+                "gateFreezeTemperature",
+                -great
+            );
+
         // Melt volume fraction on the vent patch above which the vent is
         // sealed (polymer must not escape through the vent)
         const scalar ventSealAlpha =
@@ -173,6 +183,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         releasePressure_ = releasePressure;
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
+        gateFreezeTemperature_ = gateFreezeTemperature;
         ventSealAlpha_ = ventSealAlpha;
         trapAirInterval_ = trapAirInterval;
         trapAirAlpha_ = trapAirAlpha;
@@ -196,6 +207,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        switchFraction      = " << switchFraction << nl
             << "        switchPressure      = " << switchPressure << nl
             << "        gateSealTime        = " << gateSealTime << nl
+            << "        gateFreezeTemperature = " << gateFreezeTemperature
+            << nl
             << "        pressure type       = "
             << packingDict.subDict("pressure").lookup<word>("type") << nl
             << "    cooling:" << nl
@@ -377,6 +390,11 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         )
     );
 
+    const scalar newGateFreezeTemperature
+    (
+        moldingDict.lookupOrDefault<scalar>("gateFreezeTemperature", -great)
+    );
+
     const scalar newVentSealAlpha
     (
         moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5)
@@ -403,6 +421,7 @@ void Foam::solvers::moldingFoam::readMoldingDict()
      || newReleasePressure != releasePressure_
      || newSwitchPressure != switchPressure_
      || newGateSealTime != gateSealTime_
+     || newGateFreezeTemperature != gateFreezeTemperature_
      || newVentSealAlpha != ventSealAlpha_
      || newTrapAirInterval != trapAirInterval_
      || newTrapAirAlpha != trapAirAlpha_
@@ -420,6 +439,8 @@ void Foam::solvers::moldingFoam::readMoldingDict()
             << " -> " << newSwitchPressure
             << ", gateSealTime " << gateSealTime_
             << " -> " << newGateSealTime
+            << ", gateFreezeTemperature " << gateFreezeTemperature_
+            << " -> " << newGateFreezeTemperature
             << ", ventSealAlpha " << ventSealAlpha_
             << " -> " << newVentSealAlpha
             << ", trapAirInterval " << trapAirInterval_
@@ -433,6 +454,7 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         releasePressure_ = newReleasePressure;
         switchPressure_ = newSwitchPressure;
         gateSealTime_ = newGateSealTime;
+        gateFreezeTemperature_ = newGateFreezeTemperature;
         ventSealAlpha_ = newVentSealAlpha;
         trapAirInterval_ = newTrapAirInterval;
         trapAirAlpha_ = newTrapAirAlpha;
@@ -477,6 +499,54 @@ Foam::scalar Foam::solvers::moldingFoam::gatePressure() const
     }
 
     return area > small ? numer/area : 0;
+}
+
+
+Foam::scalar Foam::solvers::moldingFoam::gateTemperature() const
+{
+    scalar mSum(0);
+    scalar mTSum(0);
+
+    const volScalarField& T(mixture_.T());
+
+    forAll(p_rgh.boundaryField(), pi)
+    {
+        if
+        (
+            p_rgh.boundaryField()[pi].type()
+         == moldingPrghPressureFvPatchScalarField::typeName
+        )
+        {
+            const fvPatch& fvp = mesh.boundary()[pi];
+
+            const scalarField Ti
+            (
+                T.boundaryField()[pi].patchInternalField()
+            );
+            const scalarField ai
+            (
+                alpha1.boundaryField()[pi].patchInternalField()
+            );
+            const scalarField rhoi
+            (
+                mixture_.rho1().boundaryField()[pi].patchInternalField()
+            );
+            const scalarField magSf(fvp.magSf());
+
+            forAll(Ti, i)
+            {
+                const scalar m(ai[i]*rhoi[i]*magSf[i]);
+
+                mSum += m;
+                mTSum += m*Ti[i];
+            }
+        }
+    }
+
+    reduce(mSum, sumOp<scalar>());
+    reduce(mTSum, sumOp<scalar>());
+
+    return mSum > small ? mTSum/mSum : 0;
 }
 
 
@@ -1068,6 +1138,25 @@ void Foam::solvers::moldingFoam::preSolve()
         // The gate freezes off at the end of packing, once the target
         // has fallen to the release pressure: it then holds zero flow,
         // so the part cannot drain during cooling
+        // Physical gate freeze: seal once the gate melt reaches the
+        // no-flow temperature. Optional: the contract's fixed 480 K
+        // hot-runner inlet keeps the gate hot, so this requires a
+        // configured threshold and a cooling gate
+        if (!stage.gateSealed() && gateFreezeTemperature_ > -great)
+        {
+            const scalar Tgate(gateTemperature());
+
+            if (Tgate <= gateFreezeTemperature_)
+            {
+                stage.sealGate();
+
+                Info<< "moldingFoam: gate sealed at t = " << runTime.value()
+                    << " s (gate temperature = " << Tgate
+                    << " K <= gateFreezeTemperature = "
+                    << gateFreezeTemperature_ << " K)" << endl;
+            }
+        }
+
         const scalar timeInPacking(runTime.value() - stage.switchTime());
 
         if

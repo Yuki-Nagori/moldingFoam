@@ -94,12 +94,13 @@ inline Foam::scalar Foam::hMeltThermo<EquationOfState>::Cp
     const scalar T
 ) const
 {
-    // Apparent Cp: the base value plus the latent-heat peak, whose
-    // integral across the transition band is exactly latentHeat
-    return
-        Cp_
-      + latentHeat_*EquationOfState::latentCpWeight(p, T)
-      + EquationOfState::Cp(p, T);
+    // The sensible (base) heat capacity only: the latent-heat peak is a
+    // linearisation device of the energy equation, not a material
+    // property, and must stay out of the transport properties (the
+    // thermal conductivity of constTransport is kappa = Cp*mu/Pr; a
+    // 100x latent peak in Cp would make kappa spike across the 1 K
+    // transition band and destroy the energy predictor)
+    return Cp_ + EquationOfState::Cp(p, T);
 }
 
 
@@ -166,13 +167,30 @@ inline Foam::scalar Foam::hMeltThermo<EquationOfState>::ea
 
 
 template<class EquationOfState>
+inline Foam::scalar Foam::hMeltThermo<EquationOfState>::latentCp
+(
+    const scalar p,
+    const scalar T
+) const
+{
+    // Apparent-Cp latent-heat peak: d(hs)/dT - Cp
+    return latentHeat_*EquationOfState::latentCpWeight(p, T);
+}
+
+
+template<class EquationOfState>
 inline Foam::scalar Foam::hMeltThermo<EquationOfState>::Cv
 (
     const scalar p,
     const scalar T
 ) const
 {
-    return Cp(p, T) - EquationOfState::CpMCv(p, T);
+    // Apparent heat capacity at constant volume used by the energy
+    // equation: base Cp + latent-heat peak - (Cp - Cv) coupling. This
+    // is d(es)/dT up to the neglected (small) p*dv/dT term, and stays
+    // positive across the solidification band so the energy matrix
+    // diagonal is positive definite
+    return Cp(p, T) + latentCp(p, T) - EquationOfState::CpMCv(p, T);
 }
 
 

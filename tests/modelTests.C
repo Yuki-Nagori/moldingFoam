@@ -43,17 +43,26 @@ Description
       exponential cap are reproduced;
     - the clamps [etaMin, etaMax] are respected.
 
-    hMelt thermodynamics (apparent-Cp latent heat):
+    hMelt thermodynamics (latent heat):
     - the latent-Cp peak vanishes at the band edges (C1 continuity);
     - its integral across the transition band equals latentHeat;
-    - dHs/dT matches the apparent Cp;
+    - dHs/dT matches Cp + latentCp;
     - latentHeat = 0 reproduces constant-Cp behaviour.
+
+    Lumped mould thermal state (moldingMoldTemperature update rule):
+    - the discrete energy balance holds to machine precision for every
+      update;
+    - the steady state equals (hFilm*Tfilm + hA*Twater + Q)/(hFilm + hA);
+    - an arbitrarily large time step is bounded by the equilibrium;
+    - dt -> 0 returns the previous temperature;
+    - with no coupling the temperature does not change.
 
 \*---------------------------------------------------------------------------*/
 
 #include "Tait.H"
 #include "hMeltThermo.H"
 #include "CrossWlf.H"
+#include "moldThermalState.H"
 #include "dictionary.H"
 #include "IFstream.H"
 #include "IOstreams.H"
@@ -351,18 +360,27 @@ void latentHeatTests()
     const scalar band = 0.5;
     const scalar Tt = thermo.Tt(p);
 
-    // The apparent-Cp peak vanishes at the band edges (C1 continuity)
+    // The latent-Cp peak vanishes at the band edges (C1 continuity) and
+    // the sensible Cp stays base-only (transport consistency)
     checkBool
     (
         "hMelt: latent-Cp peak vanishes at the band edges",
-        thermo.Cp(p, Tt - band) == Cp0 && thermo.Cp(p, Tt + band) == Cp0
+        thermo.latentCp(p, Tt - band) == 0
+     && thermo.latentCp(p, Tt + band) == 0
+     && thermo.Cp(p, Tt) == Cp0
     );
 
-    // Peak of dw/dT is 1.5/(2*band) at the band centre
+    // Peak of dw/dT is 1.5/(2*band) at the band centre; the energy-
+    // equation Cv carries the peak on top of the base capacity
     checkBool
     (
-        "hMelt: apparent-Cp peak reproduced at the band centre",
-        relDiff(thermo.Cp(p, Tt), Cp0 + L*1.5/(2*band)) < 1e-12
+        "hMelt: apparent-Cv peak reproduced at the band centre",
+        relDiff(thermo.latentCp(p, Tt), L*1.5/(2*band)) < 1e-12
+     && relDiff
+        (
+            thermo.Cv(p, Tt),
+            Cp0 + L*1.5/(2*band) - thermo.CpMCv(p, Tt)
+        ) < 1e-12
     );
 
     // The integral of the latent peak across the band is exactly the
@@ -397,12 +415,15 @@ void latentHeatTests()
         {
             const scalar dhsFD =
                 (thermo.hs(p, T + h) - thermo.hs(p, T - h))/(2*h);
-            const scalar err(relDiff(dhsFD, thermo.Cp(p, T)));
+            const scalar err
+            (
+                relDiff(dhsFD, thermo.Cp(p, T) + thermo.latentCp(p, T))
+            );
             maxErr = max(maxErr, err);
             ok = ok && err < 1e-8;
         }
         Info<< "    max relative error dHs/dT = " << maxErr << nl;
-        checkBool("hMelt: dHs/dT matches the apparent Cp", ok);
+        checkBool("hMelt: dHs/dT matches Cp + latentCp", ok);
     }
 
     // latentHeat = 0 reproduces constant-Cp behaviour
@@ -413,7 +434,114 @@ void latentHeatTests()
         (
             "hMelt: latentHeat = 0 reproduces constant-Cp behaviour",
             plain.Cp(p, 480) == Cp0
+         && plain.latentCp(p, 480) == 0
          && plain.hs(p, 480) == Cp0*(480 - Tstd)
+        );
+    }
+}
+
+
+void moldThermalTests()
+{
+    // Parameter set representative of the contract case after the V/P
+    // switch: a 500 J/K insert with a fast casting-side film
+    const scalar C = 500;        // J/K
+    const scalar hA = 5.4;       // W/K
+    const scalar Tw = 300;       // K
+    const scalar T0 = 353;       // K
+    const scalar hFilm = 3.8e7;  // W/K
+    const scalar Tfilm = 354;    // K
+    const scalar dt = 2.6e-4;    // s
+
+    // The update must satisfy the discrete energy balance
+    //   C(Tnew - Told) = dt (hFilm(Tfilm - Tnew) + hA(Tw - Tnew) + Q)
+    // to machine precision (this is the conservation property that the
+    // energy equation's boundary flux relies on)
+    {
+        const scalar Q = 0;
+        const scalar Tnew =
+            moldThermalState::Tnew(C, hA, Tw, T0, hFilm, Tfilm, dt, Q);
+
+        const scalar lhs = C*(Tnew - T0);
+        const scalar rhs =
+            dt*(hFilm*(Tfilm - Tnew) + hA*(Tw - Tnew) + Q);
+
+        Info<< "    C*(Tnew-Told) = " << lhs
+            << " J, dt*q = " << rhs << " J" << endl;
+
+        checkBool
+        (
+            "moldThermalState: discrete energy balance holds",
+            relDiff(lhs, rhs) < 1e-12
+        );
+
+        const scalar Q2 = 1200;
+        const scalar TnewQ =
+            moldThermalState::Tnew(C, hA, Tw, T0, hFilm, Tfilm, dt, Q2);
+        const scalar lhsQ = C*(TnewQ - T0);
+        const scalar rhsQ =
+            dt*(hFilm*(Tfilm - TnewQ) + hA*(Tw - TnewQ) + Q2);
+
+        checkBool
+        (
+            "moldThermalState: discrete energy balance holds with a source",
+            relDiff(lhsQ, rhsQ) < 1e-12
+        );
+    }
+
+    // Steady state: repeated updates converge to the conductance-weighted
+    // mean of the casting-side and water-side driving temperatures
+    {
+        const scalar Teq = (hFilm*Tfilm + hA*Tw)/(hFilm + hA);
+
+        scalar T = T0;
+        for (label i = 0; i < 50; ++i)
+        {
+            T = moldThermalState::Tnew(C, hA, Tw, T, hFilm, Tfilm, dt);
+        }
+
+        Info<< "    steady T = " << T << " (expected " << Teq << ")" << endl;
+
+        checkBool
+        (
+            "moldThermalState: steady state is the weighted mean",
+            relDiff(T, Teq) < 1e-12
+        );
+    }
+
+    // Unconditionally stable and non-overshooting: a time step far longer
+    // than the coupling time constant lands exactly at the equilibrium
+    {
+        const scalar Teq = (hFilm*Tfilm + hA*Tw)/(hFilm + hA);
+        const scalar T = moldThermalState::Tnew(C, hA, Tw, T0, hFilm, Tfilm, 1e6);
+
+        checkBool
+        (
+            "moldThermalState: large dt lands at the equilibrium",
+            relDiff(T, Teq) < 1e-12
+        );
+    }
+
+    // dt -> 0 returns the previous temperature
+    {
+        const scalar T =
+            moldThermalState::Tnew(C, hA, Tw, T0, hFilm, Tfilm, 1e-15);
+
+        checkBool
+        (
+            "moldThermalState: dt -> 0 returns the previous temperature",
+            relDiff(T, T0) < 1e-12
+        );
+    }
+
+    // No coupling: the temperature must not change
+    {
+        const scalar T = moldThermalState::Tnew(C, 0, Tw, T0, 0, Tfilm, dt);
+
+        checkBool
+        (
+            "moldThermalState: uncoupled mass keeps its temperature",
+            relDiff(T, T0) < 1e-14
         );
     }
 }
@@ -544,6 +672,7 @@ int main()
 
     taitTests();
     latentHeatTests();
+    moldThermalTests();
     crossWlfTests();
 
     if (nFailed)

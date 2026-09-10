@@ -26,21 +26,30 @@ InClass
     Foam::hMeltThermo
 
 Description
-    Constant heat capacity thermodynamics with an apparent-Cp latent-heat
+    Constant sensible heat capacity thermodynamics with a latent-heat
     peak at the solidification temperature of the Tait equation of state.
 
-    The specific heat capacity is
+    The sensible enthalpy is
 
     \verbatim
-        Cp = Cp + latentHeat*d(meltWeight)/dT
+        hs = Cp*(T - Tref) + latentHeat*(meltWeight(T) - meltWeight(Tref))
     \endverbatim
 
     where \c meltWeight is the C1 smoothstep melt weight of the Tait
-    blend, which peaks across the transition band and has unit integral,
-    so integrating Cp across the band releases exactly \c latentHeat.
-    The sensible enthalpy consequently develops the physically correct
-    plateau while crossing the solidification temperature, which is what
-    bounds the cooling rate of stage M3.
+    blend, which runs from 0 to 1 across the transition band and has
+    unit-integral derivative, so crossing the band releases exactly
+    \c latentHeat. The sensible enthalpy consequently develops the
+    physically correct plateau while crossing the solidification
+    temperature, which is what bounds the cooling rate of stage M3.
+
+    The latent-heat peak (d(hs)/dT - Cp) is exposed through
+    \c latentCp(p, T) and is folded into the apparent \c Cv(p, T)
+    used by the energy equation, while \c Cp(p, T) keeps only the
+    sensible value. This split is deliberate: the thermal conductivity
+    of constTransport is \c kappa = Cp*mu/Pr, and feeding the narrow
+    latent peak into \c Cp would make kappa spike by two orders of
+    magnitude across the 1 K transition band, wrecking the energy
+    predictor.
 
     The latent-heat peak is derived from the equation of state itself,
     so this class is only instantiable with Foam::Tait (the default
@@ -173,8 +182,15 @@ public:
         //- Limit the temperature (no limiting)
         inline scalar limit(const scalar T) const;
 
-        //- Return heat capacity at constant pressure [J/kg/K]
+        //- Return the sensible heat capacity at constant pressure
+        //  [J/kg/K]; excludes the latent-heat peak so that transport
+        //  properties (kappa = Cp*mu/Pr) stay smooth
         inline scalar Cp(const scalar p, const scalar T) const;
+
+        //- Return the latent-heat contribution to the apparent heat
+        //  capacity [J/kg/K]: d(hs)/dT - Cp, a peaked, non-negative
+        //  function of unit integral across the transition band
+        inline scalar latentCp(const scalar p, const scalar T) const;
 
         //- Return sensible enthalpy [J/kg]
         inline scalar hs(const scalar p, const scalar T) const;
@@ -191,7 +207,9 @@ public:
         //- Return absolute internal energy [J/kg]
         inline scalar ea(const scalar p, const scalar T) const;
 
-        //- Return heat capacity at constant volume [J/kg/K]
+        //- Return the apparent heat capacity at constant volume
+        //  [J/kg/K]: base Cp + latentCp - CpMCv, the energy-equation
+        //  coefficient (positive across the transition band)
         inline scalar Cv(const scalar p, const scalar T) const;
 
         //- Return entropy [J/kg/K]; the latent contribution is treated

@@ -11,6 +11,7 @@ EXE_INC = \
     -I$(FOAM_MODULES)/basicFluidSolver/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I../src \
+    -I../src/moldingFoam \
     -I../src/equationOfStates/Tait \
     -I../src/thermo \
     -I../src/viscosityModels/CrossWlf

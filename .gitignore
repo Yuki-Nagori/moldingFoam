@@ -28,3 +28,11 @@ validation/*/dynamicCode/
 validation/*/processor*/
 validation/*/0.[0-9]*/
 validation/*/[1-9]*
+
+# OpenFOAM runtime artifacts of the solver feature cases
+tests/cases/*/constant/polyMesh/
+tests/cases/*/postProcessing/
+tests/cases/*/dynamicCode/
+tests/cases/*/processor*/
+tests/cases/*/0.[0-9]*/
+tests/cases/*/[1-9]*

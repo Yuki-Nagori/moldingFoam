@@ -167,6 +167,31 @@ target("test")
     end)
 target_end()
 
+target("test-solver")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the fast solver feature cases")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-solver-tests.sh")
+            .. " tests/cases")
+        if ok ~= 0 then
+            os.raise("solver feature cases failed")
+        end
+    end)
+target_end()
+
 target("case-contract")
     set_kind("phony")
     add_deps("moldingFoam")

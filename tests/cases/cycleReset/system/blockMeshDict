@@ -1,0 +1,78 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Couette shear-heating validation: a 1 mm gap between a fixed lower
+    wall and a moving upper wall (U = 1 m/s), adiabatic walls. The melt is
+    initially at rest at 480 K. The steady plane-Couette shear rate is
+    gammaDot = U/h = 1000 1/s, so once the profile is established the
+    viscous dissipation is uniform, Phi = eta*gammaDot^2, and the
+    adiabatic temperature rise rate is Phi/(rho*Cv).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+vertices
+(
+    (0     0     0)     // 0
+    (0.02  0     0)     // 1
+    (0.02  0.001 0)     // 2
+    (0     0.001 0)     // 3
+    (0     0     0.01)  // 4
+    (0.02  0     0.01)  // 5
+    (0.02  0.001 0.01)  // 6
+    (0     0.001 0.01)  // 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (4 20 1) simpleGrading (1 1 1)
+);
+
+defaultPatch
+{
+    type empty;
+}
+
+boundary
+(
+    bottom
+    {
+        type wall;
+        faces ((0 1 5 4));
+    }
+
+    top
+    {
+        type wall;
+        faces ((3 2 6 7));
+    }
+
+    left
+    {
+        type            cyclic;
+        neighbourPatch  right;
+        faces           ((0 3 7 4));
+    }
+
+    right
+    {
+        type            cyclic;
+        neighbourPatch  left;
+        faces           ((1 2 6 5));
+    }
+);
+
+// ************************************************************************* //

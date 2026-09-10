@@ -1,0 +1,8 @@
+# Fast solver feature test: cycle reset
+#
+# The ejection temperature (500 K) is above the initial melt temperature
+# (480 K) so the ejection criterion is met on the first check; with
+# nCycles = 2 the run must reset the flow fields once and then stop after
+# the second cycle.
+cycle 1 complete; starting cycle 2/2
+ejection criterion met: .*\(cycle 2/2\)

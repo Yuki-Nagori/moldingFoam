@@ -342,6 +342,19 @@ $ xmake run test
 
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
 
+### 快速求解器特性用例（`xmake run test-solver`）
+
+`tests/cases/*` 是秒级的小 case，用于在完整契约回归（约 6.5 分钟）
+之前快速验证求解器特性：每个 case 运行后按
+`system/expectedPatterns` 中的正则逐条检查 `log.foamRun`。现有用例：
+
+| 用例 | 检查 |
+|------|------|
+| `cycleReset` | 顶出后按 `nCycles` 重置流场并进入第 2 周期（并行/串行均可） |
+
+新增特性时优先补一个 `tests/cases/<name>` 小 case，把契约 case 留给
+集成级回归。
+
 ---
 
 ## 6. 求解器模型

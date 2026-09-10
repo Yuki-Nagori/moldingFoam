@@ -20,3 +20,11 @@ case-contract/dynamicCode/
 case-contract/processor*/
 case-contract/0.[0-9]*/
 case-contract/[1-9]*
+
+# OpenFOAM runtime artifacts of the validation cases
+validation/*/constant/polyMesh/
+validation/*/postProcessing/
+validation/*/dynamicCode/
+validation/*/processor*/
+validation/*/0.[0-9]*/
+validation/*/[1-9]*

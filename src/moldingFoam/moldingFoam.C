@@ -65,6 +65,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     switchPressure_(great),
     gateSealTime_(great),
     ventSealAlpha_(0.5),
+    viscousDissipation_(false),
+    dissipationCoeffs_(),
     vTot_(gSum(mesh.V().primitiveField())),
     moldingDictModTime_(0)
 {
@@ -129,11 +131,22 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar ventSealAlpha =
             moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5);
 
+        // Optional viscous-dissipation (shear heating) source in the
+        // energy equation; default false to preserve existing cases
+        const bool viscousDissipation =
+            moldingDict.lookupOrDefault<Switch>("viscousDissipation", false);
+
         ejectionTemperature_ = ejectionTemperature;
         releasePressure_ = releasePressure;
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
         ventSealAlpha_ = ventSealAlpha;
+        viscousDissipation_ = viscousDissipation;
+
+        if (viscousDissipation_)
+        {
+            readDissipationCoeffs();
+        }
 
         // The stage object registers itself on the mesh and is shared with
         // the molding boundary conditions
@@ -152,7 +165,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "    cooling:" << nl
             << "        ejectionTemperature = " << ejectionTemperature << nl
             << "        releasePressure     = " << releasePressure << nl
-            << "    ventSealAlpha           = " << ventSealAlpha
+            << "    ventSealAlpha           = " << ventSealAlpha << nl
+            << "    viscousDissipation      = " << viscousDissipation
             << endl;
     }
 
@@ -249,6 +263,11 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5)
     );
 
+    const bool newViscousDissipation
+    (
+        moldingDict.lookupOrDefault<Switch>("viscousDissipation", false)
+    );
+
     bool controlsChanged
     (
         newEjectionTemperature != ejectionTemperature_
@@ -256,6 +275,7 @@ void Foam::solvers::moldingFoam::readMoldingDict()
      || newSwitchPressure != switchPressure_
      || newGateSealTime != gateSealTime_
      || newVentSealAlpha != ventSealAlpha_
+     || newViscousDissipation != viscousDissipation_
     );
 
     if (controlsChanged)
@@ -270,13 +290,21 @@ void Foam::solvers::moldingFoam::readMoldingDict()
             << ", gateSealTime " << gateSealTime_
             << " -> " << newGateSealTime
             << ", ventSealAlpha " << ventSealAlpha_
-            << " -> " << newVentSealAlpha << endl;
+            << " -> " << newVentSealAlpha
+            << ", viscousDissipation " << viscousDissipation_
+            << " -> " << newViscousDissipation << endl;
 
         ejectionTemperature_ = newEjectionTemperature;
         releasePressure_ = newReleasePressure;
         switchPressure_ = newSwitchPressure;
         gateSealTime_ = newGateSealTime;
         ventSealAlpha_ = newVentSealAlpha;
+
+        if (newViscousDissipation && !viscousDissipation_)
+        {
+            readDissipationCoeffs();
+        }
+        viscousDissipation_ = newViscousDissipation;
     }
 
     if (mesh.foundObject<moldingStage>(moldingStage::typeName))
@@ -312,6 +340,124 @@ Foam::scalar Foam::solvers::moldingFoam::gatePressure() const
     }
 
     return area > small ? numer/area : 0;
+}
+
+
+void Foam::solvers::moldingFoam::readDissipationCoeffs()
+{
+    const fileName path(runTime.constant()/fileName("momentumTransport"));
+
+    IFstream is(path);
+
+    if (!is.good())
+    {
+        FatalIOErrorInFunction(path)
+            << "Cannot open " << path << " for the viscous-dissipation "
+            << "source" << exit(FatalIOError);
+    }
+
+    dictionary dict(is);
+
+    const word simulationType(dict.lookup("simulationType"));
+
+    if (simulationType != "laminar")
+    {
+        FatalErrorInFunction
+            << "The viscous-dissipation source requires simulationType "
+            << "laminar, but " << simulationType << " is selected"
+            << exit(FatalError);
+    }
+
+    const dictionary& laminarDict(dict.subDict("laminar"));
+
+    const word model(laminarDict.lookup<word>("model"));
+
+    if (model != "generalisedNewtonian")
+    {
+        FatalErrorInFunction
+            << "The viscous-dissipation source requires model "
+            << "generalisedNewtonian, but " << model << " is selected"
+            << exit(FatalError);
+    }
+
+    const word viscosityModel(laminarDict.lookup<word>("viscosityModel"));
+
+    if (viscosityModel != "CrossWlf")
+    {
+        FatalErrorInFunction
+            << "The viscous-dissipation source requires viscosityModel "
+            << "CrossWlf, but " << viscosityModel << " is selected"
+            << exit(FatalError);
+    }
+
+    dissipationCoeffs_ =
+        laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+        readCoeffs(laminarDict.subDict("CrossWlfCoeffs"));
+
+    Info<< "moldingFoam: viscous dissipation enabled, using the CrossWlf "
+        << "coefficients from " << path << endl;
+}
+
+
+Foam::tmp<Foam::volScalarField>
+Foam::solvers::moldingFoam::viscousDissipationSource() const
+{
+    // Viscous dissipation Phi = tau : grad(U), with the same symmetric
+    // stress as the momentum equation,
+    //   tau = 2*eta*dev(symm(grad(U)))
+    // and the CrossWlf eta evaluated at the same strain rate as the
+    // generalisedNewtonian momentum model: sqrt(2)*mag(symm(grad(U)))
+    const volTensorField gradU(fvc::grad(U));
+    const volSymmTensorField S(symm(gradU));
+    const volScalarField gammaDot(sqrt(2.0)*mag(S));
+
+    tmp<volScalarField> teta
+    (
+        volScalarField::New
+        (
+            "etaDissipation",
+            mesh,
+            dimensionedScalar(dimDynamicViscosity, 0)
+        )
+    );
+    volScalarField& eta = teta.ref();
+
+    const volScalarField& T(mixture_.T());
+    const volScalarField& p(mixture_.p());
+
+    {
+        scalarField& etac = eta.primitiveFieldRef();
+        const scalarField& Tc = T.primitiveField();
+        const scalarField& pc = p.primitiveField();
+        const scalarField& gc = gammaDot.primitiveField();
+
+        forAll(etac, i)
+        {
+            etac[i] =
+                laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+                eta(dissipationCoeffs_, pc[i], Tc[i], gc[i]);
+        }
+    }
+
+    volScalarField::Boundary& etaBf = eta.boundaryFieldRef();
+    forAll(etaBf, patchi)
+    {
+        scalarField& etap = etaBf[patchi];
+        const scalarField& Tp = T.boundaryField()[patchi];
+        const scalarField& pp = p.boundaryField()[patchi];
+        const scalarField& gp = gammaDot.boundaryField()[patchi];
+
+        forAll(etap, i)
+        {
+            etap[i] =
+                laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+                eta(dissipationCoeffs_, pp[i], Tp[i], gp[i]);
+        }
+    }
+
+    // tau : grad(U) = 2*eta*dev(S) : grad(U); dev(S) and grad(U) share
+    // the same double-dot form as the turbulence production term
+    return teta*(2.0*(dev(S) && gradU));
 }
 
 
@@ -378,6 +524,23 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         (e1Source&e1)
       + (e2Source&e2)
     );
+
+    // Explicit viscous-dissipation (shear heating) source. It is added
+    // to the integrated source directly, so the positive sign is
+    // unambiguous (Phi always heats the fluid)
+    if (viscousDissipation_)
+    {
+        const tmp<volScalarField> tDiss(viscousDissipationSource());
+        const volScalarField& diss = tDiss();
+
+        TEqn.source() += mesh.V()*diss.primitiveField();
+
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            Info<< "moldingFoam: viscous dissipation: max Phi = "
+                << gMax(diss.primitiveField()) << " W/m^3" << endl;
+        }
+    }
 
     TEqn.relax();
 

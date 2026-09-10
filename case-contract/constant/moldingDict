@@ -71,6 +71,9 @@ packing
 // (the vent passes air but not polymer)
 ventSealAlpha   0.9;
 
+// Viscous-dissipation (shear heating) source in the energy equation
+viscousDissipation true;
+
 cooling
 {
     // Stage M3: average melt temperature below which the part can be

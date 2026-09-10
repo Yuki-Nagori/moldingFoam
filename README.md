@@ -313,9 +313,9 @@ $ MOLDINGFOAM_PARALLEL=4 xmake run case-contract       # 4 子域并行 + 验收
   流出）的相对误差 **< 1e-3**（控制字典中的 `inletMassFlow`、
   `ventMassFlow`、`polymerMass` 函数对象）。
 
-实测（8 核 ARM64 虚拟机，热流道保温 1.3 MPa、排气/浇口密封生效）：
-4 子域并行质量守恒误差 **9.31e-04**（阈值 1e-3），全周期 8834 步约
-11.5 分钟，全部通过。
+实测（8 核 ARM64 虚拟机，热流道保温 1.3 MPa、排气/浇口密封、黏性生热
+生效）：4 子域并行质量守恒误差 **9.38e-04**（阈值 1e-3），全周期
+7692 步约 6.5 分钟，全部通过。
 
 日志与结果保留在 `case-contract/`（`log.foamRun`、`postProcessing/`、
 各时间步目录）。
@@ -335,6 +335,7 @@ $ xmake run test
 | Tait | `p=0` 时两个分支均满足 `v̂ = v0(T)`；解析 `psi` 与 `∂ρ/∂T` 与中心差分对拍（rtol 1e-6，覆盖熔体/固体/平滑过渡带）；HDPE 牌号 PVT 数据点复现 |
 | hMelt | 潜热 Cp 峰在带宽边缘连续为零；峰中心值解析对拍（rtol 1e-12）；跨带积分恰为 `latentHeat`；`d(hs)/dT = Cp + latentCp` 与中心差分对拍（rtol 1e-8）；`latentHeat 0` 退化到常 Cp |
 | moldThermalState | 后向 Euler 离散能量守恒恒等式对拍（rtol 1e-12，含功率源）；稳态 = 导热加权平均；超大时间步落在平衡点；`dt→0` 返回原温；无耦合不变 |
+| 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
@@ -416,6 +417,28 @@ walls
     value            uniform 353;
 }
 ```
+
+### 黏性生热（`viscousDissipation`，任务 007）
+
+`constant/moldingDict` 可选 `viscousDissipation`（bool，缺省 `false`）。
+开启后在能量方程中加入显式体积源
+
+```
+Φ = τ : ∇u = 2·η·dev(symm(∇u)) : ∇u
+```
+
+- `η` 由与动量方程**同一** CrossWlf 模型、同一应变率定义
+  `γ̇ = √2·mag(symm(∇u))` 逐单元求值（走
+  `CrossWlf::eta(coeffs, ...)` 重载，避免逐单元重读字典）；
+- 应力取对称形式，与动量方程的 `∇u + (∇u)ᵀ − (2/3)tr(∇u)I` 一致。
+  注意**不能**直接用 `dev2(T(∇u))` 与 `∇u` 做双点积：该表达式在简单
+  剪切下恒为零（曾被解析 Couette 验证捕获）；
+- 源恒正，显式加入能量方程；缺省关闭保证既有 case 回归。开启要求
+  `simulationType laminar` + `model generalisedNewtonian` +
+  `viscosityModel CrossWlf`，否则致命错误；
+- 解析验证：`xmake run couette`（`validation/couette/`）——线性
+  Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
+  **4.1e-4**。
 
 ### 注塑周期状态（moldingStage）与排气/闸口密封
 
@@ -514,12 +537,12 @@ thermoType
 
 ## 7. 性能与数值控制
 
-- 全周期（填充+保压+冷却+顶出）约 8834 步、4 子域并行约 11.5 分钟
-  （8 核 ARM64 VM）；
+- 全周期（填充+保压+冷却+顶出）约 7692 步、4 子域并行约 6.5 分钟
+  （8 核 ARM64 VM，黏性生热开启）；
 - 保压期的可压缩界面输运是质量守恒的主要误差源：契约 case 的
-  `maxCo 0.5 / maxAlphaCo 0.05 / nSubCycles 12 / MULESCorr no` 是
-  1.3 MPa 保压下满足 1e-3 容差的实测组合；放宽到 `maxAlphaCo 0.1 /
-  nSubCycles 6` 会使误差升至 1.5–2.6e-3；
+  `maxCo 0.5 / maxAlphaCo 0.03 / nSubCycles 16 / MULESCorr no` 是
+  1.3 MPa 保压 + 黏性生热下满足 1e-3 容差的实测组合；放宽到
+  `maxAlphaCo 0.1 / nSubCycles 6` 会使误差升至 1.5–2.6e-3；
 - 更高的保压压力（如 40–100 MPa）物理上完全支持，但时间步会按库朗数
   成比例缩小，请相应评估时长预算；
 - `CrossWlf::nu` 逐单元求值（内部场+边界场单一代码路径），与
@@ -542,9 +565,20 @@ thermoType
 | `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
-| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha` |
+| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation` |
 
 ### 契约变更日志
+
+**v1.5**（黏性生热）：
+
+- `constant/moldingDict`：新增可选 `viscousDissipation`（bool，缺省
+  `false`；契约 case 开启）。开启后能量方程加入与动量方程同源的剪切
+  耗散源（见第 6 节）；
+- `system/controlDict` / `system/fvSolution`：黏性生热改变充填热历史
+  后，为守住 1e-3 质量守恒，界面控制收紧为 `maxAlphaCo 0.03` /
+  `nSubCycles 16`。
+
+未改名、未删除任何关键字；不开启时行为与 v1.4 一致。
 
 **v1.4**（注塑周期物理完备化：排气封堵 / 压力切换 / 闸口封冻）：
 
@@ -634,8 +668,10 @@ moldingFoam/
 │   ├── thermo/hMeltThermo.C             潜热热力学组合 hMelt
 │   └── moldingFoamThermos.C             Tait 热物理组合注册
 ├── case-contract/           契约 case（见第 8 节）
+├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
 ├── tests/                   modelTests（可重复数值测试）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
+                             run-couette.sh、verify-couette.py
 ```
 
 ---

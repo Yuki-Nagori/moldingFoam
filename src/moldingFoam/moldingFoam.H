@@ -54,6 +54,7 @@ SourceFiles
 #define moldingFoam_H
 
 #include "compressibleVoF.H"
+#include "CrossWlf.H"
 #include <ctime>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -98,6 +99,15 @@ class moldingFoam
         //  is sealed (polymer must not escape through the vent)
         scalar ventSealAlpha_;
 
+        //- Enable the explicit viscous-dissipation (shear heating) source
+        //  in the energy equation; read from constant/moldingDict,
+        //  default false
+        bool viscousDissipation_;
+
+        //- CrossWlf coefficients used by the dissipation source
+        laminarModels::generalisedNewtonianViscosityModels::CrossWlf::coeffs
+            dissipationCoeffs_;
+
         //- Total mesh volume [m^3], computed once in the constructor;
         //  the mould cavity mesh is static
         scalar vTot_;
@@ -119,6 +129,16 @@ class moldingFoam
         //- Area-averaged gate pressure [Pa] over the moldingPrghPressure
         //  patches; zero when there is no such patch
         scalar gatePressure() const;
+
+        //- Read the CrossWlf coefficients for the dissipation source
+        //  from constant/momentumTransport
+        void readDissipationCoeffs();
+
+        //- Explicit viscous-dissipation source [W/m^3] for the energy
+        //  equation: 2*eta*dev(symm(grad(U))) && grad(U), with eta from
+        //  the same CrossWlf model and strain rate as the momentum
+        //  equation
+        tmp<volScalarField> viscousDissipationSource() const;
 
 
 public:

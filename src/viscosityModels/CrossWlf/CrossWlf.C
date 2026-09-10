@@ -189,6 +189,19 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
 }
 
 
+Foam::scalar
+Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
+(
+    const coeffs& c,
+    scalar p,
+    scalar T,
+    scalar gammaDot
+)
+{
+    return etaValue(c, p, T, gammaDot);
+}
+
+
 Foam::tmp<Foam::volScalarField>
 Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
 (

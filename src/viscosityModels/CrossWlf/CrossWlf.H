@@ -209,11 +209,25 @@ public:
             const volScalarField& strainRate
         ) const;
 
+        //- Read the coefficients from a CrossWlfCoeffs-like dictionary
+        static coeffs readCoeffs(const dictionary& coeffsDict);
+
         //- Return the dynamic viscosity [Pa s] computed from a
         //  coefficients dictionary; used by the model tests
         static scalar eta
         (
             const dictionary& coeffsDict,
+            scalar p,
+            scalar T,
+            scalar gammaDot
+        );
+
+        //- Return the dynamic viscosity [Pa s] from pre-read
+        //  coefficients; used by the solver's viscous-dissipation source
+        //  so the coefficients are not re-parsed per cell
+        static scalar eta
+        (
+            const coeffs& c,
             scalar p,
             scalar T,
             scalar gammaDot
@@ -235,9 +249,6 @@ private:
 
 
     // Private Member Functions
-
-        //- Read the coefficients from a CrossWlfCoeffs-like dictionary
-        static coeffs readCoeffs(const dictionary& coeffsDict);
 
         //- Return the dynamic viscosity [Pa s]; implements all the
         //  numerical safeguards in a single place

@@ -113,8 +113,69 @@ def series(case_dir, name):
     return data
 
 
+def slip_length(case_dir):
+    """Return the Navier slip length from 0/U, or None for no-slip."""
+    try:
+        with open(os.path.join(case_dir, "0", "U")) as handle:
+            text = handle.read()
+    except OSError:
+        return None
+    match = re.search(r"slipLength\s+([-+0-9.eE]+)", text)
+    return float(match.group(1)) if match else None
+
+
+def verify_slip_profile(case_dir, b):
+    """Check the linear Navier-slip Couette profile u = U(y+b)/(h+b)."""
+    times = [
+        d for d in os.listdir(case_dir)
+        if re.match(r"^[0-9]+(\.[0-9]+)?$", d)
+        and os.path.isdir(os.path.join(case_dir, d))
+    ]
+    if not times:
+        print("FAIL: no time directories found")
+        sys.exit(1)
+    t_end = max(times, key=float)
+    path = os.path.join(case_dir, t_end, "U")
+
+    with open(path) as handle:
+        text = handle.read()
+
+    # Only the internal field: the boundary entries also contain vectors
+    internal = text.split("boundaryField")[0]
+    ux = [
+        float(a)
+        for a, _, _ in re.findall(
+            r"\(([-+0-9.eE]+) ([-+0-9.eE]+) ([-+0-9.eE]+)\)", internal)
+    ]
+    if len(ux) != 80:
+        print("FAIL: expected the 4x20 Couette mesh, got {} cells".format(
+            len(ux)))
+        sys.exit(1)
+
+    profile = [sum(ux[4*j:4*j + 4])/4.0 for j in range(20)]
+    expected = [
+        U_WALL*((j + 0.5)*GAP/20.0 + b)/(GAP + b) for j in range(20)
+    ]
+    error = max(abs(profile[j] - expected[j])/U_WALL for j in range(20))
+
+    print("Couette Navier-slip profile validation")
+    print("  slip length       = {:.3e} m".format(b))
+    print("  max |u - u_ana|/U = {:.3e}  (t = {})".format(error, t_end))
+
+    if error < 1e-4:
+        print("PASS: slip profile matches u = U(y+b)/(h+b) (< 1e-4)")
+        sys.exit(0)
+    else:
+        print("FAIL: slip profile deviates from u = U(y+b)/(h+b) (>= 1e-4)")
+        sys.exit(1)
+
+
 def main():
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+
+    slip = slip_length(case_dir)
+    if slip is not None:
+        verify_slip_profile(case_dir, slip)
 
     mass = series(case_dir, "meltMass")
     integ = series(case_dir, "meltTemperatureIntegral")

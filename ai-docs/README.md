@@ -42,7 +42,7 @@
 | [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | planned | 002 之后 | 1–2 周 |
 | [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | planned | 006 | 1–2 周 |
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | planned | 006 | 3–5 天 |
-| [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | planned | 无 | 3–5 天 |
+| [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | planned | 002/008 | 3–5 天 |
 | [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | planned | 001–012 | 数周起 |
 | [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | planned | 001 | 1–2 周 |

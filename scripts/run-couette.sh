@@ -32,7 +32,7 @@ blockMesh > log.blockMesh 2>&1
 foamRun 2>&1 | tee log.foamRun
 
 echo "=============================================================="
-echo "moldingFoam Couette shear-heating validation, verifying ..."
+echo "moldingFoam Couette validation, verifying ..."
 echo "=============================================================="
 
 python3 "$(dirname "$0")/verify-couette.py" "$caseDir"

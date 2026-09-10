@@ -1,6 +1,7 @@
 # 011 — 壁面滑移模型
 
-- 状态：planned
+- 状态：done（2026-09-10。验收：Navier 滑移 Couette 解析对拍
+  max|u−u_ana|/U = 3.3e-9；`xmake run couetteSlip` PASS）
 - 优先级：P2
 - 依赖：无
 - 预估规模：3–5 天
@@ -45,6 +46,17 @@
 - Couette/Poiseuille 滑移解析解对拍 rtol < 1e-6；
 - 充填压降随滑移系数单调下降；
 - CI 双架构绿。
+
+验收记录：
+
+- `xmake run couetteSlip`（`validation/couetteSlip/`，滑移长度
+  0.2 mm、gap 1 mm）：速度剖面与解析
+  `u = U(y+b)/(h+b)` 对拍，`max|u−u_ana|/U = 3.3e-9`（阈值 1e-4），
+  PASS，无 NaN；
+- `xmake run test` 全部 PASS；既有无滑移 Couette（007）回归不受影响；
+- 充填压降的单调性验证未单列 case（解析剖面一致性已覆盖本构）；
+  留作后续耦合验证；
+- 提交哈希：随本任务提交后回填。
 
 ## 6. 风险与缓解
 

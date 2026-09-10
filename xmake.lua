@@ -223,6 +223,32 @@ target("couette")
     end)
 target_end()
 
+target("couetteSlip")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the Couette Navier-slip validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-couette.sh")
+            .. " validation/couetteSlip")
+        if ok ~= 0 then
+            os.raise("Couette slip validation failed; see "
+                .. "validation/couetteSlip/log.foamRun")
+        end
+    end)
+target_end()
+
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
 -- dirs, compressed into build/moldingFoam-openfoam14-<WM_OPTIONS>-<date>.tar.xz.

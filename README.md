@@ -336,6 +336,7 @@ $ xmake run test
 | hMelt | 潜热 Cp 峰在带宽边缘连续为零；峰中心值解析对拍（rtol 1e-12）；跨带积分恰为 `latentHeat`；`d(hs)/dT = Cp + latentCp` 与中心差分对拍（rtol 1e-8）；`latentHeat 0` 退化到常 Cp |
 | moldThermalState | 后向 Euler 离散能量守恒恒等式对拍（rtol 1e-12，含功率源）；稳态 = 导热加权平均；超大时间步落在平衡点；`dt→0` 返回原温；无耦合不变 |
 | ventOrifice | 零流恢复环境压力；背压与质量流量二次律（rtol 1e-12）；方向符号；手算点；`CdA=0` 无阻力 |
+| 壁面滑移（`xmake run couetteSlip`） | Navier 滑移 Couette（滑移长度 0.2 mm）：速度剖面与 `u = U(y+b)/(h+b)` 对拍，实测 `max|u−u_ana|/U = 3.3e-9`（阈值 1e-4） |
 | 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
@@ -440,6 +441,19 @@ walls
 - 解析验证：`xmake run couette`（`validation/couette/`）——线性
   Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
   **4.1e-4**。
+
+### 壁面滑移（`moldingSlipVelocity`，任务 011）
+
+`U` 的壁面可选 `moldingSlipVelocity`（自注册，`partialSlip` 派生）：
+
+```
+u_w = b · ∂u_t/∂n,   valueFraction = 1/(1 + b·deltaCoeffs)
+```
+
+- `slipLength b` [m] 为直接物理输入，`b = 0` 退化为无滑移；
+- 只作用于切向分量；验证 `xmake run couetteSlip`
+  （`validation/couetteSlip/`）：滑移 Couette 剖面与
+  `u = U(y+b)/(h+b)` 对拍 `max|u−u_ana|/U = 3.3e-9`。
 
 ### 排气反压（`moldingVentPressure.CdA`，任务 003 选项 A）
 
@@ -584,6 +598,11 @@ thermoType
 
 ### 契约变更日志
 
+**v1.7**（壁面滑移，任务 011）：
+
+- `0/U` 壁面新增可选类型 `moldingSlipVelocity`（自注册，`slipLength`
+  [m]，缺省不写 = 无滑移）。不写该类型的旧 case 行为与 v1.6 一致。
+
 **v1.6**（排气反压，任务 003 选项 A）：
 
 - `0/p_rgh` 的 `moldingVentPressure` 新增可选 `CdA`（有效流通面积
@@ -690,6 +709,7 @@ moldingFoam/
 │   └── moldingFoamThermos.C             Tait 热物理组合注册
 ├── case-contract/           契约 case（见第 8 节）
 ├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
+├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
 ├── tests/                   modelTests（可重复数值测试）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
                              run-couette.sh、verify-couette.py

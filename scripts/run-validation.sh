@@ -8,10 +8,12 @@
 # option) any later version. See the COPYING file for details.
 #******************************************************************************
 #******************************************************************************
-# Run a validation case with the moldingFoam solver: clean, blockMesh,
-# foamRun and verification.
+# Run an analytic validation case and its verifier.
 #
-# Usage: run-couette.sh <caseDir>
+# The case's system/verifier file names the python verifier to run after
+# the solve; the verifier receives the case directory as its argument.
+#
+# Usage: run-validation.sh <caseDir>
 #
 # Must be invoked inside the OpenFOAM etc/bashrc environment.
 #******************************************************************************
@@ -21,9 +23,21 @@ set -euo pipefail
 caseDir=$(cd "$1" && pwd)
 cd "$caseDir"
 
-: "${WM_PROJECT_DIR:?run-couette.sh must be invoked inside the OpenFOAM environment}"
+: "${WM_PROJECT_DIR:?run-validation.sh must be invoked inside the OpenFOAM environment}"
 
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+[ -f system/verifier ] || {
+    echo "error: $caseDir/system/verifier is missing" >&2
+    exit 1
+}
+
+verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' system/verifier | head -1)
+
+[ -n "$verifier" ] || {
+    echo "error: $caseDir/system/verifier is empty" >&2
+    exit 1
+}
 
 rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
 
@@ -32,7 +46,7 @@ blockMesh > log.blockMesh 2>&1
 foamRun 2>&1 | tee log.foamRun
 
 echo "=============================================================="
-echo "moldingFoam Couette validation, verifying ..."
+echo "moldingFoam validation case $(basename "$caseDir"), verifying ..."
 echo "=============================================================="
 
-python3 "$(dirname "$0")/verify-couette.py" "$caseDir"
+python3 "$(dirname "$0")/$verifier" "$caseDir"

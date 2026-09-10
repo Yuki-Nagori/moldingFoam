@@ -337,6 +337,7 @@ $ xmake run test
 | moldThermalState | 后向 Euler 离散能量守恒恒等式对拍（rtol 1e-12，含功率源）；稳态 = 导热加权平均；超大时间步落在平衡点；`dt→0` 返回原温；无耦合不变 |
 | ventOrifice | 零流恢复环境压力；背压与质量流量二次律（rtol 1e-12）；方向符号；手算点；`CdA=0` 无阻力 |
 | 壁面滑移（`xmake run couetteSlip`） | Navier 滑移 Couette（滑移长度 0.2 mm）：速度剖面与 `u = U(y+b)/(h+b)` 对拍，实测 `max|u−u_ana|/U = 3.3e-9`（阈值 1e-4） |
+| 凝固（`xmake run stefan`） | 一维 Stefan 问题（等相物性，隔离传导+潜热）：凝固前沿与 Neumann 解对拍，t≥60 s 最大相对误差 **1.55%**（阈值 5%），t=100 s 达 0.19%；固相温度剖面误差 ≤0.84 K |
 | 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
@@ -758,9 +759,11 @@ moldingFoam/
 ├── case-contract/           契约 case（见第 8 节）
 ├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
 ├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
-├── tests/                   modelTests（可重复数值测试）
+├── validation/stefan/       解析验证 case（凝固/潜热，`xmake run stefan`）
+├── tests/                   modelTests + cases/（快速求解器特性用例）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
-                             run-couette.sh、verify-couette.py
+                             run-validation.sh、run-solver-tests.sh
+                             verify-couette.py、verify-stefan.py
 ```
 
 ---

@@ -1,0 +1,73 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    One-dimensional solidification benchmark (Stefan problem): a 20 mm slab
+    of melt cooled from the bottom wall. The melt starts just above the Tait
+    solidification temperature, so the liquid is nearly isothermal and the
+    freeze front position follows the one-phase Neumann solution
+    X(t) = 2*lambda*sqrt(alpha_s*t).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+vertices
+(
+    (0     0     0)      // 0
+    (0.004 0     0)      // 1
+    (0.004 0.02  0)      // 2
+    (0     0.02  0)      // 3
+    (0     0     0.004)  // 4
+    (0.004 0     0.004)  // 5
+    (0.004 0.02  0.004)  // 6
+    (0     0.02  0.004)  // 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (4 100 1) simpleGrading (1 1 1)
+);
+
+defaultPatch
+{
+    type empty;
+}
+
+boundary
+(
+    coldWall
+    {
+        type wall;
+        faces ((0 1 5 4));
+    }
+
+    hotEnd
+    {
+        type wall;
+        faces ((3 2 6 7));
+    }
+
+    sides
+    {
+        type wall;
+        faces
+        (
+            (0 3 7 4)
+            (1 2 6 5)
+        );
+    }
+);
+
+// ************************************************************************* //

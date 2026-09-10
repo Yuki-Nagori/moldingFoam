@@ -239,7 +239,7 @@ target("couette")
         print("[moldingFoam] running the Couette shear-heating validation")
         local ok = in_of_env(envdir,
             "cd " .. projectdir .. " && "
-            .. path.join(projectdir, "scripts", "run-couette.sh")
+            .. path.join(projectdir, "scripts", "run-validation.sh")
             .. " validation/couette")
         if ok ~= 0 then
             os.raise("Couette validation failed; see "
@@ -265,11 +265,37 @@ target("couetteSlip")
         print("[moldingFoam] running the Couette Navier-slip validation")
         local ok = in_of_env(envdir,
             "cd " .. projectdir .. " && "
-            .. path.join(projectdir, "scripts", "run-couette.sh")
+            .. path.join(projectdir, "scripts", "run-validation.sh")
             .. " validation/couetteSlip")
         if ok ~= 0 then
             os.raise("Couette slip validation failed; see "
                 .. "validation/couetteSlip/log.foamRun")
+        end
+    end)
+target_end()
+
+target("stefan")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the Stefan solidification validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-validation.sh")
+            .. " validation/stefan")
+        if ok ~= 0 then
+            os.raise("Stefan validation failed; see "
+                .. "validation/stefan/log.foamRun")
         end
     end)
 target_end()

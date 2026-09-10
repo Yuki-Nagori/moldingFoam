@@ -1,0 +1,81 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Physical properties of the polymer melt phase (HDPE-like): Tait
+    equation of state registered by libmoldingFoam.so with the hMelt
+    thermodynamics (base Cp plus the apparent-Cp latent-heat peak at the
+    Tait solidification temperature) and constant transport reference
+    values.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      physicalProperties.melt;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+thermoType
+{
+    type            heRhoThermo;
+    mixture         pureMixture;
+    transport       const;
+    thermo          hMelt;
+    equationOfState Tait;
+    specie          specie;
+    energy          sensibleInternalEnergy;
+}
+
+mixture
+{
+    specie
+    {
+        molWeight   1;
+    }
+
+    equationOfState
+    {
+        // Tait PVT coefficients, SI units (HDPE-like grade)
+        b1m         1.2495299e-03;  // [m^3/kg]
+        b2m         1.026e-06;      // [m^3/kg/K]
+        // Equal-phase-properties Stefan benchmark: the solid branch uses
+        // the same PVT parameters as the melt so the solidification
+        // shrinkage/pressure coupling is removed and the benchmark
+        // isolates conduction + latent heat. b3s/b4s default to b3/b4.
+        b1s         1.2495299e-03;  // [m^3/kg] (benchmark: = b1m)
+        b2s         1.026e-06;      // [m^3/kg/K] (benchmark: = b2m)
+        b3          1.042149833644e08; // [Pa]
+        b4          0.004941;       // [1/K]
+        b5          390.65;         // [K]
+        b6          1.543e-07;      // [K/Pa]
+        C           0.0894;         // [-]
+        smoothBand  0.5;            // [K]
+    }
+
+    thermodynamics
+    {
+        Cp          2400;   // [J/kg/K] base value; the apparent-Cp
+                            // latent-heat peak across the Tait
+                            // transition band is added on top
+        latentHeat  2e5;    // [J/kg] heat of solidification (HDPE-like);
+                            // carried by the hMelt apparent-Cp peak in
+                            // the energy predictor (Tait::CpMCv
+                            // neglects the b6 front coupling - see
+                            // README section 6)
+        hf          0;      // [J/kg]
+    }
+
+    transport
+    {
+        mu          100;    // [Pa s] zero-shear reference (no flow here)
+        kappa       0.25;   // [W/m/K] physical HDPE-like conductivity
+    }
+}
+
+// ************************************************************************* //

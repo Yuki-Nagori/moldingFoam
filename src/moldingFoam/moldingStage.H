@@ -169,6 +169,16 @@ public:
             ventSealed_ = true;
         }
 
+        //- Reset for the next moulding cycle: back to the filling stage
+        //  with the seal flags cleared; the packing parameters are kept
+        void resetCycle()
+        {
+            stage_ = stage::filling;
+            switchTime_ = -1;
+            gateSealed_ = false;
+            ventSealed_ = false;
+        }
+
         //- Return the packing pressure target at time t [Pa]; zero before
         //  the switch
         scalar pressure(scalar t) const;

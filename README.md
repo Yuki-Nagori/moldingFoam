@@ -442,6 +442,14 @@ walls
   Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
   **4.1e-4**。
 
+### 多周期运行（`nCycles`，任务 012）
+
+`constant/moldingDict` 可选 `nCycles`（label，缺省 1）。设为 N > 1 时，
+每次满足顶出判据即把流场（`alpha.melt`、`U`、`T`、`p`、`p_rgh` 及其
+边界、面通量与动能）重置到初始状态并返回 filling 阶段（清除排气/闸口
+密封），**保留模温状态**，自动进入下一周期；最后一个周期按原逻辑停机。
+缺省 1 与单周期行为一致。
+
 ### 壁面滑移（`moldingSlipVelocity`，任务 011）
 
 `U` 的壁面可选 `moldingSlipVelocity`（自注册，`partialSlip` 派生）：
@@ -594,9 +602,15 @@ thermoType
 | `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
-| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation` |
+| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation`、`nCycles` |
 
 ### 契约变更日志
+
+**v1.8**（多周期运行，任务 012 周期循环部分）：
+
+- `constant/moldingDict`：新增可选 `nCycles`（label，缺省 1）。设为
+  N > 1 时自动运行 N 个注塑周期，周期之间重置流场、保留模温状态；
+  缺省 1 与单周期行为一致。
 
 **v1.7**（壁面滑移，任务 011）：
 

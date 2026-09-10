@@ -108,6 +108,24 @@ class moldingFoam
         laminarModels::generalisedNewtonianViscosityModels::CrossWlf::coeffs
             dissipationCoeffs_;
 
+        //- Number of moulding cycles to run [-]; each ejection criterion
+        //  met resets the flow fields and starts the next cycle, keeping
+        //  the mould thermal state
+        label nCycles_;
+
+        //- Current cycle number (1-based)
+        label cycle_;
+
+        //- Initial time step [s], restored at each cycle reset
+        scalar deltaTInitial_;
+
+        //- Initial fields for the cycle reset
+        autoPtr<volScalarField> alpha1Initial_;
+        autoPtr<volVectorField> UInitial_;
+        autoPtr<volScalarField> TInitial_;
+        autoPtr<volScalarField> pInitial_;
+        autoPtr<volScalarField> p_rghInitial_;
+
         //- Total mesh volume [m^3], computed once in the constructor;
         //  the mould cavity mesh is static
         scalar vTot_;
@@ -139,6 +157,10 @@ class moldingFoam
         //  the same CrossWlf model and strain rate as the momentum
         //  equation
         tmp<volScalarField> viscousDissipationSource() const;
+
+        //- Reset the flow fields for the next moulding cycle; the mould
+        //  thermal state and the packing parameters are kept
+        void resetCycle();
 
 
 public:

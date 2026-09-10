@@ -67,6 +67,14 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     ventSealAlpha_(0.5),
     viscousDissipation_(false),
     dissipationCoeffs_(),
+    nCycles_(1),
+    cycle_(1),
+    deltaTInitial_(runTime.deltaTValue()),
+    alpha1Initial_(),
+    UInitial_(),
+    TInitial_(),
+    pInitial_(),
+    p_rghInitial_(),
     vTot_(gSum(mesh.V().primitiveField())),
     moldingDictModTime_(0)
 {
@@ -136,12 +144,25 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const bool viscousDissipation =
             moldingDict.lookupOrDefault<Switch>("viscousDissipation", false);
 
+        // Optional number of moulding cycles; each ejection criterion met
+        // resets the flow fields and starts the next cycle, keeping the
+        // mould thermal state
+        const label nCycles = moldingDict.lookupOrDefault<label>("nCycles", 1);
+
+        if (nCycles < 1)
+        {
+            FatalIOErrorInFunction(moldingDict)
+                << "The number of moulding cycles must be at least 1: "
+                << "nCycles = " << nCycles << exit(FatalIOError);
+        }
+
         ejectionTemperature_ = ejectionTemperature;
         releasePressure_ = releasePressure;
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
         ventSealAlpha_ = ventSealAlpha;
         viscousDissipation_ = viscousDissipation;
+        nCycles_ = nCycles;
 
         if (viscousDissipation_)
         {
@@ -169,6 +190,88 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "    viscousDissipation      = " << viscousDissipation
             << endl;
     }
+
+    // Snapshots of the initial fields for the multi-cycle reset
+    alpha1Initial_.reset
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "alpha1Initial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            alpha1
+        )
+    );
+    UInitial_.reset
+    (
+        new volVectorField
+        (
+            IOobject
+            (
+                "UInitial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            U
+        )
+    );
+    TInitial_.reset
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "TInitial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            mixture_.T()
+        )
+    );
+    pInitial_.reset
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "pInitial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            p
+        )
+    );
+    p_rghInitial_.reset
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "p_rghInitial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            p_rgh
+        )
+    );
 
     // Baseline for the runtime reload: the constructor has just applied
     // the current dictionary contents
@@ -461,6 +564,73 @@ Foam::solvers::moldingFoam::viscousDissipationSource() const
 }
 
 
+void Foam::solvers::moldingFoam::resetCycle()
+{
+    ++cycle_;
+
+    // Restore the flow fields to their initial state. The mould thermal
+    // state (moldingMoldTemperature) is intentionally not touched, so the
+    // next cycle starts from the accumulated mould temperature
+    forAll(alpha1.boundaryFieldRef(), patchi)
+    {
+        alpha1.boundaryFieldRef()[patchi] =
+            alpha1Initial_->boundaryField()[patchi];
+        U_.boundaryFieldRef()[patchi] =
+            UInitial_->boundaryField()[patchi];
+        mixture_.T().boundaryFieldRef()[patchi] =
+            TInitial_->boundaryField()[patchi];
+        p.boundaryFieldRef()[patchi] =
+            pInitial_->boundaryField()[patchi];
+        p_rgh_.boundaryFieldRef()[patchi] =
+            p_rghInitial_->boundaryField()[patchi];
+    }
+
+    alpha1.primitiveFieldRef() = alpha1Initial_->primitiveField();
+    U_.primitiveFieldRef() = UInitial_->primitiveField();
+    mixture_.T().primitiveFieldRef() = TInitial_->primitiveField();
+    p.primitiveFieldRef() = pInitial_->primitiveField();
+    p_rgh_.primitiveFieldRef() = p_rghInitial_->primitiveField();
+
+    // Clear the surface fluxes: they belong to the finished cycle and a
+    // stale flux would corrupt the Courant-limited time step and the
+    // pressure correction of the first step of the new cycle
+    {
+        const dimensionedScalar zeroPhi("zero", phi_.dimensions(), 0);
+        const dimensionedScalar zeroRhoPhi
+        (
+            "zero",
+            alphaRhoPhi1.dimensions(),
+            0
+        );
+        phi_ == zeroPhi;
+        alphaPhi1 == zeroPhi;
+        alphaPhi2 == zeroPhi;
+        alphaRhoPhi1 == zeroRhoPhi;
+        alphaRhoPhi2 == zeroRhoPhi;
+        rhoPhi == zeroRhoPhi;
+        K == dimensionedScalar("zero", K.dimensions(), 0);
+    }
+
+    // Restart the time-step ramp from the case's initial value. The Time
+    // object is held const by the solver base, but the underlying object
+    // in the registry is mutable
+    const_cast<Time&>(runTime).setDeltaT(deltaTInitial_);
+
+    // Clear the seals and return to the filling stage
+    if (mesh.foundObject<moldingStage>(moldingStage::typeName))
+    {
+        mesh.lookupObjectRef<moldingStage>(moldingStage::typeName).resetCycle();
+    }
+
+    mixture_.correctThermo();
+    mixture_.correct();
+
+    Info<< "moldingFoam: cycle " << (cycle_ - 1) << " complete; starting"
+        << " cycle " << cycle_ << "/" << nCycles_ << " at t = "
+        << runTime.value() << " s (mould temperature kept)" << endl;
+}
+
+
 void Foam::solvers::moldingFoam::thermophysicalPredictor()
 {
     // As compressibleVoF::thermophysicalPredictor with one addition:
@@ -704,14 +874,21 @@ void Foam::solvers::moldingFoam::preSolve()
 
                 if (averageMeltTemperature <= ejectionTemperature_)
                 {
-                    ejected_ = true;
-
                     Info<< "moldingFoam: ejection criterion met: average melt"
                         << " temperature = " << averageMeltTemperature
                         << " K <= " << ejectionTemperature_
-                        << " K at t = " << runTime.value() << " s" << endl;
+                        << " K at t = " << runTime.value() << " s (cycle "
+                        << cycle_ << "/" << nCycles_ << ")" << endl;
 
-                    runTime.stopAt(Time::stopAtControl::writeNow);
+                    if (cycle_ < nCycles_)
+                    {
+                        resetCycle();
+                    }
+                    else
+                    {
+                        ejected_ = true;
+                        runTime.stopAt(Time::stopAtControl::writeNow);
+                    }
                 }
                 else if (runTime.timeIndex() % 50 == 0)
                 {

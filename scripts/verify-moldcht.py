@@ -43,7 +43,7 @@ P0 = 1e5
 T0F = 480.0         # initial cavity temperature [K]
 T0M = 353.0         # initial mould temperature [K]
 TTOP = 353.0        # mould top temperature [K]
-DT = 0.005          # time step [s]
+DT = 0.005          # time step [s] (overridden from the case controlDict)
 
 
 def boundary_value(path, patch):
@@ -174,7 +174,14 @@ def reference(nsteps, sample_steps):
 
 
 def main():
+    global DT
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+
+    # Read the time step from the case so the reference uses the same one
+    with open(os.path.join(case_dir, "system", "controlDict")) as handle:
+        m = re.search(r"\bdeltaT\s+([-+0-9.eE]+)\s*;", handle.read())
+        if m:
+            DT = float(m.group(1))
 
     times = sorted(
         int(d) for d in os.listdir(case_dir)

@@ -639,6 +639,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.10**（模壁深层热阻，任务 008 第一阶段）：
+
+- `0/T` 的 `moldingMoldTemperature` 新增可选 `wallResistance`
+  [m²K/W] 与 `deepMoldTemperature` [K]：模壁经热阻与深层模体换热，
+  在单区域框架内近似模具内温度梯度；缺省不写行为与 v1.9 一致。
+
 **v1.9**（困气诊断，任务 003 选项 B）：
 
 - `constant/moldingDict`：新增可选 `trapAirInterval`（label，缺省 0）

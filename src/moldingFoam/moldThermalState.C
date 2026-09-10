@@ -29,6 +29,25 @@ License
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
+Foam::scalar Foam::moldThermalState::Tdrv
+(
+    const scalar hA,
+    const scalar Ta,
+    const scalar hB,
+    const scalar Tb
+)
+{
+    const scalar hTot = hA + hB;
+
+    if (hTot <= 0)
+    {
+        return Ta;
+    }
+
+    return (hA*Ta + hB*Tb)/hTot;
+}
+
+
 Foam::scalar Foam::moldThermalState::Tnew
 (
     const scalar C,

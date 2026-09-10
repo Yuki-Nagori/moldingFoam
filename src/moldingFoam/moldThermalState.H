@@ -91,6 +91,16 @@ public:
 
     // Static Member Functions
 
+        //- Conductance-weighted driving temperature of two heat paths:
+        //  (hA*Ta + hB*Tb)/(hA + hB), or Ta when both conductances vanish
+        static scalar Tdrv
+        (
+            const scalar hA,    //- Conductance of path A [W/K]
+            const scalar Ta,    //- Temperature of path A [K]
+            const scalar hB,    //- Conductance of path B [W/K]
+            const scalar Tb     //- Temperature of path B [K]
+        );
+
         //- Backward-Euler update of the lumped mould temperature
         static scalar Tnew
         (

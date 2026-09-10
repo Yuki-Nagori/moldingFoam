@@ -68,6 +68,11 @@ moldingMoldTemperatureFvPatchScalarField
     waterHTC_(dict.lookupOrDefault<scalar>("waterHTC", 0)),
     wettedArea_(dict.lookupOrDefault<scalar>("wettedArea", 0)),
     Tw_(dict.lookupOrDefault<scalar>("waterTemperature", 300)),
+    wallResistance_(dict.lookupOrDefault<scalar>("wallResistance", 0)),
+    deepMoldTemperature_
+    (
+        dict.lookupOrDefault<scalar>("deepMoldTemperature", 300)
+    ),
     T_
     (
         IOobject
@@ -98,6 +103,14 @@ moldingMoldTemperatureFvPatchScalarField
             << C_ << exit(FatalIOError);
     }
 
+    if (wallResistance_ < 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The wall thermal resistance must be non-negative: "
+            << "wallResistance = " << wallResistance_
+            << exit(FatalIOError);
+    }
+
     if (waterHTC_ < 0 || wettedArea_ < 0)
     {
         FatalIOErrorInFunction(dict)
@@ -125,6 +138,8 @@ moldingMoldTemperatureFvPatchScalarField
     waterHTC_(ptf.waterHTC_),
     wettedArea_(ptf.wettedArea_),
     Tw_(ptf.Tw_),
+    wallResistance_(ptf.wallResistance_),
+    deepMoldTemperature_(ptf.deepMoldTemperature_),
     T_(ptf.T_),
     Q_(cloneQ(ptf.Q_))
 {}
@@ -142,6 +157,8 @@ moldingMoldTemperatureFvPatchScalarField
     waterHTC_(ptf.waterHTC_),
     wettedArea_(ptf.wettedArea_),
     Tw_(ptf.Tw_),
+    wallResistance_(ptf.wallResistance_),
+    deepMoldTemperature_(ptf.deepMoldTemperature_),
     T_(ptf.T_),
     Q_(cloneQ(ptf.Q_))
 {}
@@ -198,11 +215,22 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::updateCoeffs()
       : T_.value()
     );
 
+    // Cooling-water conductance and the optional deep-mould path through
+    // the wall thermal resistance; both are combined into one conductance
+    // and a conductance-weighted driving temperature
+    const scalar hWater(waterHTC_*wettedArea_);
+    const scalar hDeep
+    (
+        wallResistance_ > 0
+      ? gSum(patch().magSf())/wallResistance_
+      : scalar(0)
+    );
+
     T_.value() = moldThermalState::Tnew
     (
         C_,
-        waterHTC_*wettedArea_,
-        Tw_,
+        hWater + hDeep,
+        moldThermalState::Tdrv(hWater, Tw_, hDeep, deepMoldTemperature_),
         T_.oldTime().value(),
         hFilm,
         Tfilm,
@@ -226,6 +254,11 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::write
     writeEntry(os, "waterHTC", waterHTC_);
     writeEntry(os, "wettedArea", wettedArea_);
     writeEntry(os, "waterTemperature", Tw_);
+    if (wallResistance_ > 0)
+    {
+        writeEntry(os, "wallResistance", wallResistance_);
+        writeEntry(os, "deepMoldTemperature", deepMoldTemperature_);
+    }
     writeEntry(os, "T", T_.value());
     writeEntry(os, Q_());
     writeEntry(os, "value", *this);

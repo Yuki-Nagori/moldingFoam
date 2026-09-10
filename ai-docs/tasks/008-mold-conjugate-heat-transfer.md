@@ -1,6 +1,7 @@
 # 008 — 模具三维传热（共轭传热 CHT）
 
-- 状态：planned
+- 状态：in-progress（2026-09-10：路线 B 第一阶段——模壁热阻 + 深层
+  模温路径已落地并模型级验证；多区域 CHT 仍待做）
 - 优先级：P1
 - 依赖：002（0D 集总模温已落地）；建议在 001/006 之后
 - 预估规模：1–2 周
@@ -57,6 +58,18 @@
 - 模温空间分布合理（浇口附近高于远端）；
 - 与 002 的 0D 结果在极限参数下一致；
 - CI 双架构绿。
+
+验收记录（第一阶段：路线 B 最小版——深层模温热阻路径）：
+
+- `moldingMoldTemperature` 新增可选 `wallResistance` [m²K/W] 与
+  `deepMoldTemperature` [K]：模壁经该热阻与深层模体换热，与冷却水、
+  铸件两条路径合并为单一等效导热加权驱动温度
+  （`moldThermalState::Tdrv`）；
+- `moldThermalState::Tdrv` 单测：导热加权平均 rtol 1e-12、双零导热
+  返回 Ta；`xmake run test` 全部 PASS；
+- 每个 patch 可独立配置 `wallResistance`/`deepMoldTemperature`，
+  在边界层面近似模具内的温度梯度；
+- 多区域共轭传热（路线 A）与冷却水 1D 网络仍待做。
 
 ## 6. 风险与缓解
 

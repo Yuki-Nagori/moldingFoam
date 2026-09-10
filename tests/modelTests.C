@@ -552,6 +552,24 @@ void moldThermalTests()
             relDiff(T, T0) < 1e-14
         );
     }
+
+    // Combined conductive paths: the driving temperature is the
+    // conductance-weighted mean of the two path temperatures
+    {
+        const scalar expected = (100.0*300.0 + 300.0*400.0)/400.0;
+
+        checkBool
+        (
+            "moldThermalState: Tdrv is the conductance-weighted mean",
+            relDiff(moldThermalState::Tdrv(100, 300, 300, 400), expected)
+          < 1e-12
+        );
+        checkBool
+        (
+            "moldThermalState: Tdrv with zero conductances returns Ta",
+            moldThermalState::Tdrv(0, 350, 0, 400) == 350
+        );
+    }
 }
 
 

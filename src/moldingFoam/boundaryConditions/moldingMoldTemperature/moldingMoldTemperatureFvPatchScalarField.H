@@ -127,6 +127,13 @@ class moldingMoldTemperatureFvPatchScalarField
         //- Cooling-water temperature [K]
         scalar Tw_;
 
+        //- Wall thermal resistance to the deep mould [m^2 K/W]; zero
+        //  (default) disables the deep-mould path
+        scalar wallResistance_;
+
+        //- Deep mould temperature beyond the wall resistance [K]
+        scalar deepMoldTemperature_;
+
         //- Temperature of the mould thermal mass [K]
         UniformDimensionedField<scalar> T_;
 
@@ -215,6 +222,18 @@ public:
         scalar Tw() const
         {
             return Tw_;
+        }
+
+        //- Wall resistance to the deep mould [m^2 K/W]
+        scalar wallResistance() const
+        {
+            return wallResistance_;
+        }
+
+        //- Deep mould temperature [K]
+        scalar deepMoldTemperature() const
+        {
+            return deepMoldTemperature_;
         }
 
         //- Current mould temperature [K]

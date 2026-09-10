@@ -48,7 +48,7 @@
 | [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | planned | 001 | 1–2 周 |
 | [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | planned | 001/002 | 2–4 周 |
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | planned | 001/006 | 1–2 周 |
-| [017](tasks/017-benchmark-validation.md) | 基准验证（实验/商用软件对拍） | P1 | **in-progress**（Couette/滑移/Stefan 解析基准已入库） | 001/002/006 | 1–2 周 |
+| [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
 
 ## 背景速览（新会话必读）
 

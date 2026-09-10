@@ -27,6 +27,7 @@ License
 #include "moldingFoam.H"
 #include "moldingStage.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
+#include "moldingVentVelocityFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "Function1.H"
 #include "IFstream.H"
@@ -61,14 +62,11 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     ejected_(false),
     ejectionTemperature_(great),
     releasePressure_(great),
+    switchPressure_(great),
+    gateSealTime_(great),
+    ventSealAlpha_(0.5),
     vTot_(gSum(mesh.V().primitiveField())),
-    moldingDictModTime_(0),
-    moldOn_(false),
-    moldHeatCap_(0),
-    moldTau_(60),
-    moldCoolingRate_(0),
-    moldTw_(300),
-    moldT_(0)
+    moldingDictModTime_(0)
 {
     // The molding dictionary is the external case-generation contract. The
     // packing group drives the V/P switch and the packing pressure curve
@@ -115,8 +113,27 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar releasePressure =
             coolingDict.lookupOrDefault<scalar>("releasePressure", 1e5);
 
+        // Optional gate pressure at which the V/P switch is triggered
+        // even before the filled fraction reaches switchFraction; this
+        // avoids over-compressing the cavity after the vent seals
+        const scalar switchPressure =
+            packingDict.lookupOrDefault<scalar>("switchPressure", great);
+
+        // Time after the V/P switch at which the gate freezes off; by
+        // default the gate seals when the packing pressure is released
+        const scalar gateSealTime =
+            packingDict.lookupOrDefault<scalar>("gateSealTime", great);
+
+        // Melt volume fraction on the vent patch above which the vent is
+        // sealed (polymer must not escape through the vent)
+        const scalar ventSealAlpha =
+            moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5);
+
         ejectionTemperature_ = ejectionTemperature;
         releasePressure_ = releasePressure;
+        switchPressure_ = switchPressure;
+        gateSealTime_ = gateSealTime;
+        ventSealAlpha_ = ventSealAlpha;
 
         // The stage object registers itself on the mesh and is shared with
         // the molding boundary conditions
@@ -128,52 +145,15 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         Info<< "moldingFoam: read " << moldingDictPath << nl
             << "    packing:" << nl
             << "        switchFraction      = " << switchFraction << nl
+            << "        switchPressure      = " << switchPressure << nl
+            << "        gateSealTime        = " << gateSealTime << nl
             << "        pressure type       = "
             << packingDict.subDict("pressure").lookup<word>("type") << nl
             << "    cooling:" << nl
             << "        ejectionTemperature = " << ejectionTemperature << nl
-            << "        releasePressure     = " << releasePressure
+            << "        releasePressure     = " << releasePressure << nl
+            << "    ventSealAlpha           = " << ventSealAlpha
             << endl;
-    }
-
-    // Lumped mould thermal model (optional): when enabled, the walls
-    // patch temperature becomes a state advanced in preSolve from the
-    // heat flow of the casting and the cooling channels
-    if (isFile(moldingDictPath))
-    {
-        IFstream mis(moldingDictPath);
-
-        if (!mis.good())
-        {
-            FatalIOErrorInFunction(moldingDictPath)
-                << "Cannot open " << moldingDictPath
-                << exit(FatalIOError);
-        }
-
-        dictionary moldingDict(mis);
-        const dictionary& coolingDict(moldingDict.subDict("cooling"));
-
-        moldHeatCap_ =
-            coolingDict.lookupOrDefault<scalar>("moldHeatCapacity", 0);
-        moldOn_ = moldHeatCap_ > 0;
-
-        if (moldOn_)
-        {
-            moldCoolingRate_ =
-                coolingDict.lookupOrDefault<scalar>("moldWaterHTC", 0);
-            moldTw_ =
-                coolingDict.lookupOrDefault
-                    <scalar>("moldWaterTemperature", 300);
-            moldT_ =
-                coolingDict.lookupOrDefault
-                    <scalar>("moldInitialTemperature", 353);
-
-            Info<< "moldingFoam: lumped mould thermal model enabled:"
-                << " heatCapacity = " << moldHeatCap_ << " J/K"
-                << ", water at " << moldTw_ << " K"
-                << ", initial mould temperature = " << moldT_ << " K"
-                << endl;
-        }
     }
 
     // Baseline for the runtime reload: the constructor has just applied
@@ -246,22 +226,57 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         coolingDict.lookupOrDefault<scalar>("releasePressure", 1e5)
     );
 
-    bool coolingChanged
+    const scalar newSwitchPressure
+    (
+        moldingDict.subDict("packing").lookupOrDefault<scalar>
+        (
+            "switchPressure",
+            great
+        )
+    );
+
+    const scalar newGateSealTime
+    (
+        moldingDict.subDict("packing").lookupOrDefault<scalar>
+        (
+            "gateSealTime",
+            great
+        )
+    );
+
+    const scalar newVentSealAlpha
+    (
+        moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5)
+    );
+
+    bool controlsChanged
     (
         newEjectionTemperature != ejectionTemperature_
      || newReleasePressure != releasePressure_
+     || newSwitchPressure != switchPressure_
+     || newGateSealTime != gateSealTime_
+     || newVentSealAlpha != ventSealAlpha_
     );
 
-    if (coolingChanged)
+    if (controlsChanged)
     {
-        Info<< "moldingFoam: cooling parameters updated:"
+        Info<< "moldingFoam: process parameters updated:"
             << " ejectionTemperature " << ejectionTemperature_
             << " -> " << newEjectionTemperature
             << ", releasePressure " << releasePressure_
-            << " -> " << newReleasePressure << endl;
+            << " -> " << newReleasePressure
+            << ", switchPressure " << switchPressure_
+            << " -> " << newSwitchPressure
+            << ", gateSealTime " << gateSealTime_
+            << " -> " << newGateSealTime
+            << ", ventSealAlpha " << ventSealAlpha_
+            << " -> " << newVentSealAlpha << endl;
 
         ejectionTemperature_ = newEjectionTemperature;
         releasePressure_ = newReleasePressure;
+        switchPressure_ = newSwitchPressure;
+        gateSealTime_ = newGateSealTime;
+        ventSealAlpha_ = newVentSealAlpha;
     }
 
     if (mesh.foundObject<moldingStage>(moldingStage::typeName))
@@ -274,13 +289,40 @@ void Foam::solvers::moldingFoam::readMoldingDict()
 }
 
 
+Foam::scalar Foam::solvers::moldingFoam::gatePressure() const
+{
+    scalar numer(0);
+    scalar area(0);
+
+    forAll(p_rgh.boundaryField(), pi)
+    {
+        if
+        (
+            p_rgh.boundaryField()[pi].type()
+         == moldingPrghPressureFvPatchScalarField::typeName
+        )
+        {
+            const scalarField& prghp = p_rgh.boundaryField()[pi];
+            const tmp<vectorField> tSf(mesh.boundary()[pi].Sf());
+            const scalarField magSf(mag(tSf()));
+
+            numer += gSum(prghp*magSf);
+            area += gSum(magSf);
+        }
+    }
+
+    return area > small ? numer/area : 0;
+}
+
+
 void Foam::solvers::moldingFoam::thermophysicalPredictor()
 {
     // As compressibleVoF::thermophysicalPredictor with one addition:
     // after the linear solve the temperature is clamped to a physical
-    // range. Cells inside the Tait solidification band have an apparent
-    // Cv that approaches zero and the linear solve can overshoot there;
-    // correctThermo's Newton needs a positive starting temperature.
+    // range. The hMelt apparent Cv carries the latent-heat peak on the
+    // matrix diagonal, and the Picard linearisation of the steep plateau
+    // can overshoot; correctThermo's Newton needs a positive starting
+    // temperature.
 
     const volScalarField& rho1(mixture_.rho1());
     const volScalarField& rho2(mixture_.rho2());
@@ -343,9 +385,12 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 
     TEqn.solve();
 
-    // Clamp the solved temperature: cells inside the solidification band
-    // have a near-zero/negative apparent Cv and the linear solve can
-    // overshoot; correctThermo's Newton needs a positive starting T
+    // Safety clamp of the solved temperature: correctThermo's Newton
+    // inversion needs a finite, physical starting temperature. The
+    // energy matrix remains positive definite across the solidification
+    // band (hMeltThermo::Cv is the base Cp plus the latent peak minus
+    // the Cp - Cv coupling), so this only catches numerical overshoot
+    // from the Picard linearisation of the steep latent-heat plateau
     T = max
     (
         min(T, dimensionedScalar("TMax", dimTemperature, 3000)),
@@ -376,9 +421,38 @@ void Foam::solvers::moldingFoam::preSolve()
     moldingStage& stage =
         mesh.lookupObjectRef<moldingStage>(moldingStage::typeName);
 
-    // Stage M2: V/P switch. Once the filled cavity volume fraction
-    // reaches switchFraction the injection boundary conditions switch
-    // from flow-rate control (filling) to pressure control (packing)
+    // Seal the vent once the melt front reaches it: the vent passes air
+    // but not polymer (moldingVentPressure / moldingVentVelocity)
+    if (!stage.ventSealed())
+    {
+        forAll(U.boundaryField(), pi)
+        {
+            if
+            (
+                U.boundaryField()[pi].type()
+             == moldingVentVelocityFvPatchVectorField::typeName
+            )
+            {
+                const scalarField& a1p = alpha1.boundaryField()[pi];
+
+                if (gMax(a1p) >= ventSealAlpha_)
+                {
+                    stage.sealVent();
+
+                    Info<< "moldingFoam: vent sealed by the melt front:"
+                        << " max(alpha.melt) = " << gMax(a1p)
+                        << " >= " << ventSealAlpha_
+                        << " at t = " << runTime.value() << " s" << endl;
+                }
+            }
+        }
+    }
+
+    // Stage M2: V/P switch. The injection switches from flow-rate to
+    // pressure control once the filled cavity volume fraction reaches
+    // switchFraction, or earlier when the gate pressure reaches
+    // switchPressure, whichever happens first; the pressure criterion
+    // avoids over-compressing the cavity after the vent has sealed
     if (!stage.packing())
     {
         // vTot_ is cached: the mesh is static, so the reduction would
@@ -387,15 +461,28 @@ void Foam::solvers::moldingFoam::preSolve()
         (
             fvc::domainIntegrate(alpha1).value()/max(vTot_, small)
         );
+        const scalar pGate(gatePressure());
 
-        if (filledFraction >= stage.switchFraction())
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            Info<< "moldingFoam: filling: t = " << runTime.value()
+                << " s, filled fraction = " << filledFraction
+                << ", p_gate = " << pGate << " Pa" << endl;
+        }
+
+        if
+        (
+            filledFraction >= stage.switchFraction()
+         || pGate >= switchPressure_
+        )
         {
             stage.switchToPacking(runTime.value());
 
             Info<< "moldingFoam: V/P switch: filled fraction = "
-                << filledFraction << " >= switchFraction = "
-                << stage.switchFraction() << " at t = " << runTime.value()
-                << " s" << nl
+                << filledFraction << ", p_gate = " << pGate
+                << " Pa (switchFraction = " << stage.switchFraction()
+                << ", switchPressure = " << switchPressure_ << " Pa)"
+                << ", at t = " << runTime.value() << " s" << nl
                 << "moldingFoam: packing pressure target = "
                 << stage.pressure(runTime.value()) << " Pa" << endl;
         }
@@ -403,34 +490,32 @@ void Foam::solvers::moldingFoam::preSolve()
     else
     {
         const scalar pTarget(stage.pressure(runTime.value()));
+        const scalar pGate(gatePressure());
 
-        // Log the packing pressure target against the area-averaged gate
-        // pressure every 50 time steps
-        forAll(p_rgh.boundaryField(), pi)
+        if (runTime.timeIndex() % 50 == 0)
         {
-            if
-            (
-                p_rgh.boundaryField()[pi].type()
-             == moldingPrghPressureFvPatchScalarField::typeName
-            )
-            {
-                const scalarField& prghp = p_rgh.boundaryField()[pi];
-                const tmp<vectorField> tSf(mesh.boundary()[pi].Sf());
-                const scalar a(gSum(mag(tSf())));
+            Info<< "moldingFoam: packing: t = " << runTime.value()
+                << " s, p_gate = " << pGate
+                << " Pa, p_target = " << pTarget
+                << " Pa" << endl;
+        }
 
-                const scalar gatePressure
-                (
-                    gSum(prghp*mag(tSf()))/max(a, small)
-                );
+        // The gate freezes off at the end of packing, once the target
+        // has fallen to the release pressure: it then holds zero flow,
+        // so the part cannot drain during cooling
+        const scalar timeInPacking(runTime.value() - stage.switchTime());
 
-                if (runTime.timeIndex() % 50 == 0)
-                {
-                    Info<< "moldingFoam: packing: t = " << runTime.value()
-                        << " s, p_gate = " << gatePressure
-                        << " Pa, p_target = " << pTarget
-                        << " Pa" << endl;
-                }
-            }
+        if
+        (
+            !stage.gateSealed()
+         && (pTarget <= releasePressure_ || timeInPacking >= gateSealTime_)
+        )
+        {
+            stage.sealGate();
+
+            Info<< "moldingFoam: gate sealed at t = " << runTime.value()
+                << " s (" << timeInPacking << " s after the V/P switch,"
+                << " p_target = " << pTarget << " Pa)" << endl;
         }
 
         // Stage M3: once the packing pressure has been released (the

@@ -98,7 +98,15 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.packing())
+    if (stage.gateSealed())
+    {
+        // The gate has frozen off at the end of packing: zero normal
+        // flux, enforced together with the zero-velocity
+        // moldingInletVelocity condition
+        valueFraction() = 0.0;
+        refGrad() = 0.0;
+    }
+    else if (stage.packing())
     {
         // Packing: prescribe the packing pressure target at the gate.
         // p_rgh = p - rho*(g.h); for the thin cavities of the moldingFoam

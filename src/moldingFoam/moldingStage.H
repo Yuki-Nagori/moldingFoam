@@ -91,6 +91,12 @@ private:
         //  [Pa]
         autoPtr<Function1<scalar>> pressure_;
 
+        //- Has the gate frozen off at the end of packing?
+        bool gateSealed_;
+
+        //- Has the vent been sealed by the arriving melt front?
+        bool ventSealed_;
+
 
 public:
 
@@ -137,6 +143,30 @@ public:
         scalar switchTime() const
         {
             return switchTime_;
+        }
+
+        //- Has the gate been sealed (frozen off) at the end of packing?
+        bool gateSealed() const
+        {
+            return gateSealed_;
+        }
+
+        //- Seal the gate: no further flow through the gate
+        void sealGate()
+        {
+            gateSealed_ = true;
+        }
+
+        //- Has the vent been sealed by the arriving melt front?
+        bool ventSealed() const
+        {
+            return ventSealed_;
+        }
+
+        //- Seal the vent: no further flow through the vent
+        void sealVent()
+        {
+            ventSealed_ = true;
         }
 
         //- Return the packing pressure target at time t [Pa]; zero before

@@ -62,7 +62,9 @@ Foam::moldingStage::moldingStage
     switchFraction_(switchFraction),
     stage_(stage::filling),
     switchTime_(-1),
-    pressure_(std::move(pressure))
+    pressure_(std::move(pressure)),
+    gateSealed_(false),
+    ventSealed_(false)
 {
     if (switchFraction_ <= 0 || switchFraction_ > 1)
     {
@@ -77,22 +79,31 @@ Foam::moldingStage::moldingStage
     {
         Istream& is = readStream(typeName);
 
-        label packingFlag(0);
+        label packingFlag(0), gateFlag(0), ventFlag(0);
         is >> packingFlag >> switchTime_;
+        if (is.good())
+        {
+            // Optional seal flags (absent in pre-v1.3 restart data)
+            is >> gateFlag >> ventFlag;
+        }
 
         // Snapshot the stream state and release the stream before it is
         // used: close() destroys the stream held by readStream
-        const bool goodRead(is.good());
+        const bool goodRead(!is.bad());
         close();
 
         if (goodRead)
         {
             stage_ = packingFlag ? stage::packing : stage::filling;
+            gateSealed_ = gateFlag;
+            ventSealed_ = ventFlag;
 
             if (packing())
             {
                 Info<< "moldingStage: restart in packing stage"
                     << " (V/P switch time " << switchTime_ << " s)"
+                    << ", gateSealed = " << gateSealed_
+                    << ", ventSealed = " << ventSealed_
                     << endl;
             }
         }
@@ -122,18 +133,26 @@ void Foam::moldingStage::switchToPacking(scalar t)
 
 bool Foam::moldingStage::readData(Istream& is)
 {
-    label packingFlag(0);
+    label packingFlag(0), gateFlag(0), ventFlag(0);
     is >> packingFlag >> switchTime_;
+    if (is.good())
+    {
+        is >> gateFlag >> ventFlag;
+    }
 
     stage_ = packingFlag ? stage::packing : stage::filling;
+    gateSealed_ = gateFlag;
+    ventSealed_ = ventFlag;
 
-    return is.good();
+    return !is.bad();
 }
 
 
 bool Foam::moldingStage::writeData(Ostream& os) const
 {
-    os << label(stage_ == stage::packing) << token::SPACE << switchTime_;
+    os  << label(stage_ == stage::packing) << token::SPACE << switchTime_
+        << token::SPACE << label(gateSealed_)
+        << token::SPACE << label(ventSealed_);
 
     return os.good();
 }

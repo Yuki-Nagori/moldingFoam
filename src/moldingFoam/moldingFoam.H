@@ -85,6 +85,19 @@ class moldingFoam
         //  from constant/moldingDict
         scalar releasePressure_;
 
+        //- Gate pressure at which the V/P switch is triggered even if
+        //  the filled fraction is below switchFraction [Pa]; defaults to
+        //  great (fraction-only switching)
+        scalar switchPressure_;
+
+        //- Time after the V/P switch at which the gate freezes off [s];
+        //  defaults to great (seal when the packing pressure is released)
+        scalar gateSealTime_;
+
+        //- Melt volume fraction on the vent patch above which the vent
+        //  is sealed (polymer must not escape through the vent)
+        scalar ventSealAlpha_;
+
         //- Total mesh volume [m^3], computed once in the constructor;
         //  the mould cavity mesh is static
         scalar vTot_;
@@ -93,26 +106,7 @@ class moldingFoam
         //  reload in preSolve
         time_t moldingDictModTime_;
 
-        //- Lumped mould thermal model enabled? True when
-        //  constant/moldingDict defines a positive mould heat capacity
-        bool moldOn_;
 
-        //- Lumped mould heat capacity [J/K]
-        scalar moldHeatCap_;
-
-        //- Mould temperature relaxation time constant toward the casting
-        //  temperature [s]
-        scalar moldTau_;
-
-        //- Cooling-channel heat transfer coefficient [1/s]; zero
-        //  disables the cooling pull
-        scalar moldCoolingRate_;
-
-        //- Cooling water temperature [K]
-        scalar moldTw_;
-
-        //- Current lumped mould temperature [K]
-        scalar moldT_;
 
 
     // Private Member Functions
@@ -121,6 +115,10 @@ class moldingFoam
         //  updates the stage packing parameters and the cooling
         //  thresholds, printing old -> new for anything that changed
         void readMoldingDict();
+
+        //- Area-averaged gate pressure [Pa] over the moldingPrghPressure
+        //  patches; zero when there is no such patch
+        scalar gatePressure() const;
 
 
 public:

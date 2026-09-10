@@ -37,8 +37,8 @@ boundaryField
 
     vent
     {
-        type            prghTotalPressure;
-        p0              uniform 1e5;
+        type            moldingVentPressure;
+        p0              1e5;
         value           $internalField;
     }
 

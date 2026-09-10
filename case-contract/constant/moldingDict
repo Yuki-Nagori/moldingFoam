@@ -41,28 +41,43 @@ packing
     // control when this fraction of the cavity volume is filled [-]
     switchFraction   0.9;
 
+    // Stage M2: switch to pressure control when the gate pressure reaches
+    // this value (the holding pressure), so there is no pressure step at
+    // the V/P switch; the filled fraction is a fallback criterion [Pa]
+    switchPressure   1.3e6;
+
+    // Stage M2: time after the V/P switch at which the gate freezes off
+    // [s]; the gate then holds zero flow, so the packing-pressure release
+    // cannot drain the cavity
+    gateSealTime   0.15;
+
     // Stage M2: packing pressure profile as a function of time [s], [Pa].
-    // The profile ramps up smoothly from atmospheric to avoid a pressure
-    // step at the V/P switch; the modest hold pressure of this contract
-    // case bounds the Courant-limited time step during packing
+    // It starts at the V/P switch pressure so there is no pressure step
+    // at the switch; the modest hold pressure of this contract case
+    // bounds the Courant-limited time step during packing
     pressure
     {
         type            table;
         values
         (
-            (0    1e5)
-            (0.05 2.5e5)
-            (0.25 2.5e5)
-            (0.35 1e5)
+            (0    1.3e6)
+            (0.15 1.3e6)
+            (0.25 1e5)
         );
     }
 }
 
+// Melt volume fraction on the vent patch above which the vent is sealed
+// (the vent passes air but not polymer)
+ventSealAlpha   0.9;
+
 cooling
 {
     // Stage M3: average melt temperature below which the part can be
-    // ejected [K]
-    ejectionTemperature  393.15;
+    // ejected [K]. Below the Tait solidification temperature
+    // (Tt = 390.65 K at atmospheric pressure) so the part has released
+    // its latent heat before ejection
+    ejectionTemperature  383.15;
 
     // Stage M3: the ejection check only starts once the packing pressure
     // target has been released down to this value [Pa]

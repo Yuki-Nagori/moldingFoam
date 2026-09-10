@@ -22,7 +22,7 @@ solvers
     "alpha.melt.*"
     {
         nCorrectors     2;
-        nSubCycles      6;
+        nSubCycles      12;
         MULESCorr       no;
         solver          smoothSolver;
         smoother        symGaussSeidel;

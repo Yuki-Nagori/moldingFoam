@@ -90,7 +90,12 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.packing())
+    if (stage.gateSealed())
+    {
+        // The gate has frozen off at the end of packing: no through-flow
+        operator==(vector::zero);
+    }
+    else if (stage.packing())
     {
         // Packing: pressure controlled; the velocity follows the local
         // volumetric flux computed by the pressure equation, which is

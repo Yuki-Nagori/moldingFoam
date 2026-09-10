@@ -34,7 +34,7 @@ boundaryField
 
     vent
     {
-        type            pressureInletOutletVelocity;
+        type            moldingVentVelocity;
         value           uniform (0 0 0);
     }
 

@@ -11,17 +11,24 @@
 # Acceptance verification for the one-dimensional solidification (Stefan)
 # benchmark.
 #
-# The melt starts just above the solidification temperature Tf with a cold
-# wall at Tw. With constant properties and a sharp front, the freeze front
-# follows the one-phase Neumann solution
+# The melt starts above the solidification temperature Tf (initial
+# superheat) with a cold wall at Tw. With equal phase properties and a
+# sharp front, the freeze front follows the two-phase Neumann solution
 #
-#     X(t) = 2*lambda*sqrt(alpha_s*t),
-#     lambda e^{lambda^2} erf(lambda) = Ste/sqrt(pi),
-#     Ste = Cp*(Tf - Tw)/L,   alpha_s = kappa/(rho*Cp)
+#     X(t) = 2*lambda*sqrt(alpha*t)
+#     e^{-lambda^2} (1/erf(lambda) - r/erfc(lambda)) = sqrt(pi)*lambda/Ste
+#     r = (Ti - Tf)/(Tf - Tw),   Ste = Cp*(Tf - Tw)/L,
+#     alpha = kappa/(rho*Cp)
 #
-# This script reads the written T fields, locates the Tf isotherm by
-# interpolation and compares it with the analytic front. It also compares
-# the solid temperature profile with the erf solution.
+# with the solid and liquid profiles
+#
+#     Ts = Tw + (Tf - Tw) erf(eta)/erf(lambda)
+#     Tl = Ti - (Ti - Tf) erfc(eta)/erfc(lambda),   eta = y/(2 sqrt(alpha t))
+#
+# so the initial superheat is part of the reference solution rather than an
+# accepted error. This script reads the written T fields, locates the Tf
+# isotherm and compares it with the analytic front, and compares the solid
+# and liquid profiles with the erf/erfc solutions.
 #
 # Usage: verify-stefan.py <caseDir>        (exits non-zero on failure)
 #******************************************************************************
@@ -59,14 +66,18 @@ def tait_rho(p, T):
     return 1.0/(v0*f)
 
 
-def solve_lambda(ste):
-    """Solve lambda*exp(lambda^2)*erf(lambda) = ste/sqrt(pi)."""
-    target = ste/math.sqrt(math.pi)
-    lo, hi = 0.0, 3.0
+def solve_lambda(ste, r):
+    """Solve the two-phase Neumann equation for lambda."""
+    def f(lam):
+        return (math.exp(-lam*lam)
+                * (1.0/math.erf(lam) - r/math.erfc(lam))
+                - math.sqrt(math.pi)*lam/ste)
+
+    lo, hi = 1e-6, 3.0
+    assert f(lo) > 0 and f(hi) < 0
     for _ in range(200):
         mid = 0.5*(lo + hi)
-        f = mid*math.exp(mid*mid)*math.erf(mid)
-        if f < target:
+        if f(mid) > 0:
             lo = mid
         else:
             hi = mid
@@ -115,11 +126,12 @@ def main():
     rho = tait_rho(P0, TI)
     alpha = KAPPA/(rho*CP)
     ste = CP*(Tf - TW)/L
-    lam = solve_lambda(ste)
+    r = (TI - Tf)/(Tf - TW)
+    lam = solve_lambda(ste, r)
 
-    print("Stefan solidification benchmark")
-    print("  Tf = {:.3f} K, Ste = {:.4f}, lambda = {:.6f}".format(
-        Tf, ste, lam))
+    print("Stefan solidification benchmark (two-phase Neumann)")
+    print("  Tf = {:.3f} K, Ste = {:.4f}, r = {:.4f}, lambda = {:.6f}".format(
+        Tf, ste, r, lam))
     print("  rho = {:.1f} kg/m^3, alpha_s = {:.4e} m^2/s".format(
         rho, alpha))
 
@@ -133,11 +145,6 @@ def main():
         print("FAIL: no time directories found")
         sys.exit(1)
 
-    # The apparent-Cp band smoothing (1 K) and the small initial
-    # superheat perturb the early transient; the asymptotic front is the
-    # meaningful validation target, so only t >= tAccept is checked
-    tAccept = 60.0
-
     max_front_err = 0.0
     max_solid_err = 0.0
     for t, name in times:
@@ -150,30 +157,33 @@ def main():
         x_ana = 2.0*lam*math.sqrt(alpha*t)
         front_err = abs(x_sim - x_ana)/x_ana
 
-        # solid profile against the erf solution
-        solid_err = 0.0
+        # profiles against the two-phase erf/erfc solution
+        profile_err = 0.0
         for j in range(len(y)):
-            if y[j] >= x_ana:
-                break
-            T_ana = TW + (Tf - TW)*math.erf(
-                y[j]/(2.0*math.sqrt(alpha*t)))/math.erf(lam)
-            solid_err = max(solid_err, abs(T[j] - T_ana))
+            eta = y[j]/(2.0*math.sqrt(alpha*t))
+            if y[j] <= x_ana:
+                T_ana = TW + (Tf - TW)*math.erf(eta)/math.erf(lam)
+            else:
+                T_ana = TI - (TI - Tf)*math.erfc(eta)/math.erfc(lam)
+            profile_err = max(profile_err, abs(T[j] - T_ana))
 
         print("  t = {:>6.1f} s: X_sim = {:.4f} mm, X_ana = {:.4f} mm, "
-              "rel err = {:.3e}{}".format(
-                  t, 1e3*x_sim, 1e3*x_ana, front_err,
-                  "" if t >= tAccept else "  (transient)"))
+              "front rel err = {:.3e}, max |T-T_ana| = {:.3f} K".format(
+                  t, 1e3*x_sim, 1e3*x_ana, front_err, profile_err))
 
-        if t >= tAccept:
-            max_front_err = max(max_front_err, front_err)
-            max_solid_err = max(max_solid_err, solid_err)
+        max_front_err = max(max_front_err, front_err)
+        max_solid_err = max(max_solid_err, profile_err)
 
     print("  max front relative error  = {:.3e}".format(max_front_err))
-    print("  max solid profile error   = {:.3e} K".format(max_solid_err))
+    print("  max profile error         = {:.3e} K".format(max_solid_err))
 
-    if max_front_err < 0.05 and max_solid_err < 0.05*(Tf - TW):
-        print("PASS: freeze front and solid profile match the Neumann "
-              "solution (< 5%)")
+    # Converged thresholds: the 400-cell / 0.02 s case and its 800-cell /
+    # 0.01 s refinement agree to ~0.3% on the front, so the remaining
+    # difference is the intrinsic smoothing of the 1 K latent band, not
+    # discretisation. The checks are set just above that plateau
+    if max_front_err < 0.01 and max_solid_err < 1.0:
+        print("PASS: freeze front and profiles match the two-phase "
+              "Neumann solution (front < 1%, profile < 1 K)")
         sys.exit(0)
     else:
         print("FAIL: solidification deviates from the Neumann solution")

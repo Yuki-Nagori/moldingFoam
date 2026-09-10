@@ -43,15 +43,16 @@ mixture
     {
         // Tait PVT coefficients, SI units (HDPE-like grade)
         b1m         1.2495299e-03;  // [m^3/kg]
-        b2m         1.026e-06;      // [m^3/kg/K]
-        // Equal-phase-properties Stefan benchmark: the solid branch uses
-        // the same PVT parameters as the melt so the solidification
-        // shrinkage/pressure coupling is removed and the benchmark
-        // isolates conduction + latent heat. b3s/b4s default to b3/b4.
+        b2m         0;              // [m^3/kg/K] (benchmark: constant density)
+        // Constant-property Stefan benchmark: the PVT parameters make the
+        // density independent of temperature (constant-density EOS) and
+        // the solid branch equals the melt branch, so the benchmark
+        // isolates conduction + latent heat under the analytic
+        // (constant-property) assumptions. b3s/b4s default to b3/b4.
         b1s         1.2495299e-03;  // [m^3/kg] (benchmark: = b1m)
-        b2s         1.026e-06;      // [m^3/kg/K] (benchmark: = b2m)
+        b2s         0;              // [m^3/kg/K] (benchmark: constant density)
         b3          1.042149833644e08; // [Pa]
-        b4          0.004941;       // [1/K]
+        b4          0;              // [1/K] (benchmark: constant density)
         b5          390.65;         // [K]
         b6          1.543e-07;      // [K/Pa]
         C           0.0894;         // [-]

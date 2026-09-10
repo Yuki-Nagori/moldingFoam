@@ -7,7 +7,7 @@
 -------------------------------------------------------------------------------
 Description
     controlDict for the Stefan benchmark: 100 s of physical time at a fixed
-    0.5 s step (implicit conduction), fields written every 20 s for the
+    0.02 s step (implicit conduction), fields written every 20 s for the
     freeze-front comparison.
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -33,7 +33,7 @@ stopAt          endTime;
 
 endTime         100;
 
-deltaT          0.5;
+deltaT          0.02;
 
 writeControl    adjustableRunTime;
 

@@ -64,12 +64,21 @@ Description
     - a hand-computed point is reproduced;
     - zero effective area disables the resistance.
 
+    Coolant channel (1D plug-flow model, moldingCoolantChannel):
+    - the power-law Nusselt correlation reproduces a hand-computed point;
+    - faces at one axial position form a single well-mixed cross-section;
+    - the discrete march reproduces the hand-computed group temperatures
+      and conserves the discrete channel energy balance exactly;
+    - with many small cross-sections the march converges to the analytic
+      plug-flow exponential within 1e-3.
+
 \*---------------------------------------------------------------------------*/
 
 #include "Tait.H"
 #include "hMeltThermo.H"
 #include "CrossWlf.H"
 #include "moldThermalState.H"
+#include "moldingCoolantChannel.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -747,6 +756,138 @@ void crossWlfTests()
 }
 
 
+void coolantChannelTests()
+{
+    // Power-law Nusselt correlation and the HTC: Dittus-Boelter-like
+    // Nu = 0.023 Re^0.8 Pr^0.4 at Re = 1e4, Pr = 7 (hand value)
+    {
+        const scalar Nu =
+            moldingCoolantChannel::Nu(0.023, 0.8, 0.4, 1e4, 7.0);
+
+        Info<< "    Nu(0.023, 0.8, 0.4, 1e4, 7) = " << Nu << endl;
+
+        checkBool
+        (
+            "coolantChannel: hand-computed Nusselt number",
+            relDiff(Nu, 79.39022851754193) < 1e-10
+        );
+
+        checkBool
+        (
+            "coolantChannel: h = Nu k / D",
+            relDiff(moldingCoolantChannel::htcFromNu(100, 0.6, 0.01), 6000)
+         < 1e-12
+        );
+    }
+
+    // Faces sharing an axial position form one well-mixed cross-section
+    // whose conductances add up
+    {
+        List<scalar> magSf(4, 1.0);
+        List<scalar> proj(4);
+        proj[0] = 0;
+        proj[1] = 0;
+        proj[2] = 0.01;
+        proj[3] = 0.01;
+
+        List<scalar> groupHA;
+        labelList groupStart;
+        moldingCoolantChannel::group
+        (
+            magSf,
+            proj,
+            2.0,
+            1e-9,
+            groupHA,
+            groupStart
+        );
+
+        checkBool
+        (
+            "coolantChannel: equal positions form one cross-section",
+            groupHA.size() == 2
+         && relDiff(groupHA[0], 4.0) < 1e-14
+         && relDiff(groupHA[1], 4.0) < 1e-14
+         && groupStart[0] == 0
+         && groupStart[1] == 2
+        );
+    }
+
+    // Exact discrete march plus the hand-computed group temperatures and
+    // the channel energy balance
+    {
+        List<scalar> groupHA(3, 50.0);
+        List<scalar> groupTw(3, 350.0);
+        List<scalar> groupTc;
+
+        const scalar hATc = moldingCoolantChannel::march
+        (
+            300,
+            1000,
+            groupHA,
+            groupTw,
+            groupTc
+        );
+
+        Info<< "    group inlet temperatures = " << groupTc << endl;
+
+        checkBool
+        (
+            "coolantChannel: discrete march matches the hand solution",
+            relDiff(groupTc[0], 300.0) < 1e-14
+         && relDiff(groupTc[1], 302.5) < 1e-14
+         && relDiff(groupTc[2], 304.875) < 1e-14
+         && relDiff(hATc, 50.0*(300.0 + 302.5 + 304.875)) < 1e-14
+        );
+
+        const scalar Tout =
+            groupTc[2] + 50.0*(350.0 - groupTc[2])/1000.0;
+
+        const scalar q =
+            50.0*(350.0 - groupTc[0])
+          + 50.0*(350.0 - groupTc[1])
+          + 50.0*(350.0 - groupTc[2]);
+
+        const scalar expected = 1000.0*(Tout - 300.0);
+
+        Info<< "    channel pick-up = " << q
+            << " W (mdotCp dT = " << expected << " W)" << endl;
+
+        checkBool
+        (
+            "coolantChannel: channel energy balance holds",
+            relDiff(q, expected) < 1e-12
+        );
+    }
+
+    // Many small cross-sections converge to the analytic plug-flow
+    // exponential T(x) = Ts - (Ts - Tin) exp(-hA x/(mdot Cp))
+    {
+        const label n = 200;
+        List<scalar> groupHA(n, 1000.0/n);   // total NTU = 1
+        List<scalar> groupTw(n, 350.0);
+        List<scalar> groupTc;
+
+        moldingCoolantChannel::march(300, 1000, groupHA, groupTw, groupTc);
+
+        const scalar Tdisc =
+            groupTc[n - 1]
+          + groupHA[n - 1]*(350.0 - groupTc[n - 1])/1000.0;
+        const scalar Tanalytic = 350.0 - 50.0*std::exp(-1.0);
+
+        Info<< "    discrete outlet = " << Tdisc
+            << " K (analytic " << Tanalytic << " K)" << endl;
+
+        checkBool
+        (
+            "coolantChannel: march matches the analytic exponential "
+            "(rtol < 1e-3)",
+            relDiff(Tdisc, Tanalytic) < 1e-3
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -757,6 +898,7 @@ int main()
     taitTests();
     latentHeatTests();
     moldThermalTests();
+    coolantChannelTests();
     ventOrificeTests();
     crossWlfTests();
 

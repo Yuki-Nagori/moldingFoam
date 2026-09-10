@@ -1,9 +1,8 @@
 # 008 — 模具三维传热（共轭传热 CHT）
 
-- 状态：in-progress（2026-09-10：路线 B 第一阶段——模壁热阻 + 深层
-  模温；路线 A 第二阶段——`foamMultiRun` 双区域共轭传热（cavity
-  `moldingFoam` + `solid` 模具）已落地并解析验证；含流动的注塑周期
-  CHT 与冷却水 1D 网络仍待做）
+- 状态：done（2026-09-10：路线 B（模壁热阻 + 深层模温）、路线 A
+  （`foamMultiRun` 双区域共轭传热，含 VoF 充填）与冷却水 1D 对流 BC
+  均已落地并解析/能量验证；含完整注塑周期的多区域 CHT 集成为可选扩展）
 - 优先级：P1
 - 依赖：002（0D 集总模温已落地）；建议在 001/006 之后
 - 预估规模：1–2 周
@@ -109,6 +108,22 @@
   覆盖（质量守恒 9.38e-4）；
 - 单区域回归：`xmake run test-solver` 4 用例、`xmake run case-contract`
   全部通过（区域感知路径未影响单区域行为）。
+
+验收记录（第四阶段：冷却水 1D 对流 BC）：
+
+- 新增 `Foam::moldingCoolantChannel`：幂律 Nu 关联式、按轴向位置分组
+  的面截面、活塞流离散推进；离散通道能量守恒
+  `ṁcp(Tc_out − Tin) = Σ hA_g(Tw_g − Tc_g)` 精确成立（model test
+  rtol 1e-12），200 个截面与解析指数解
+  `T(x) = Ts − (Ts − Tin)exp(−hA x/(ṁcp))` 对拍 rtol < 1e-3；
+- `moldingMoldTemperature` 新增可选 `coolant` 子字典（`massFlowRate`、
+  `cp`、`inletTemperature`、`direction`，以及 `htc` 或 `Nu` 关联式）；
+  截面分组只在首次求值时全局 gather 一次，每步 O(截面数)；
+- 并行一致性：`tests/cases/coolantChannel` scotch 2 进程与串行的模温
+  历史逐位一致（终值 306.87675 K）；
+- 新增求解器用例 `tests/cases/coolantChannel`：恒温 300 K 腔 +
+  350 K 冷却水通道，模温上升；`xmake run test-solver` 5 用例全绿；
+- 单区域契约回归 `xmake run case-contract` 质量守恒 9.382e-04 不变。
 
 ## 6. 风险与缓解
 

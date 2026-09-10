@@ -25,6 +25,7 @@
 
 set -euo pipefail
 
+scriptDir=$(cd "$(dirname "$0")" && pwd)
 root="${1:-tests/cases}"
 root=$(cd "$root" && pwd)
 
@@ -70,7 +71,7 @@ do
             system/verifyScript | head -1)
 
         if [ -n "$verifier" ] \
-           && ! python3 "$(dirname "$0")/$verifier" "$caseDir"
+           && ! python3 "$scriptDir/$verifier" "$caseDir"
         then
             echo "FAIL: $name: $verifier"
             caseFailed=1

@@ -26,8 +26,12 @@ License
 
 #include "moldingMoldTemperatureFvPatchScalarField.H"
 #include "moldThermalState.H"
+#include "moldingCoolantChannel.H"
 #include "fieldMapper.H"
 #include "thermophysicalTransportModel.H"
+#include "Pstream.H"
+#include "ListOps.H"
+#include "dictionary.H"
 #include "ZeroConstant.H"
 #include "addToRunTimeSelectionTable.H"
 
@@ -94,7 +98,21 @@ moldingMoldTemperatureFvPatchScalarField
             dict
         )
       : autoPtr<Function1<scalar>>(new Function1s::ZeroConstant<scalar>("Q"))
-    )
+    ),
+    coolant_
+    (
+        dict.found("coolant")
+      ? autoPtr<dictionary>(new dictionary(dict.subDict("coolant")))
+      : autoPtr<dictionary>()
+    ),
+    mdot_(0),
+    cp_(0),
+    inletTemperature_(300),
+    direction_(vector::zero),
+    htc_(0),
+    groupHA_(),
+    hCoolant_(0),
+    channelReady_(false)
 {
     if (C_ <= 0)
     {
@@ -120,6 +138,79 @@ moldingMoldTemperatureFvPatchScalarField
             << exit(FatalIOError);
     }
 
+    if (coolant_.valid())
+    {
+        const dictionary& coolant = *coolant_;
+
+        mdot_ = coolant.lookup<scalar>("massFlowRate");
+        cp_ = coolant.lookup<scalar>("cp");
+        inletTemperature_ = coolant.lookup<scalar>("inletTemperature");
+        direction_ = coolant.lookup<vector>("direction");
+
+        if (mdot_ <= 0)
+        {
+            FatalIOErrorInFunction(coolant)
+                << "The coolant mass flow rate must be positive: "
+                << "massFlowRate = " << mdot_ << exit(FatalIOError);
+        }
+
+        if (cp_ <= 0)
+        {
+            FatalIOErrorInFunction(coolant)
+                << "The coolant specific heat must be positive: cp = "
+                << cp_ << exit(FatalIOError);
+        }
+
+        if (mag(direction_) <= small)
+        {
+            FatalIOErrorInFunction(coolant)
+                << "The coolant channel direction must be non-zero: "
+                << "direction = " << direction_ << exit(FatalIOError);
+        }
+
+        direction_ /= mag(direction_);
+
+        if (coolant.found("htc"))
+        {
+            htc_ = coolant.lookup<scalar>("htc");
+        }
+        else
+        {
+            const dictionary& nuDict = coolant.subDict("Nu");
+
+            const scalar C = nuDict.lookup<scalar>("C");
+            const scalar m = nuDict.lookup<scalar>("m");
+            const scalar n = nuDict.lookup<scalar>("n");
+            const scalar Re = nuDict.lookup<scalar>("Re");
+            const scalar Pr = nuDict.lookup<scalar>("Pr");
+            const scalar k = nuDict.lookup<scalar>("k");
+            const scalar D = nuDict.lookup<scalar>("D");
+
+            if (Re <= 0 || Pr <= 0 || k <= 0 || D <= 0)
+            {
+                FatalIOErrorInFunction(nuDict)
+                    << "The Nusselt correlation requires positive Re, Pr, "
+                    << "k and D: Re = " << Re << ", Pr = " << Pr
+                    << ", k = " << k << ", D = " << D
+                    << exit(FatalIOError);
+            }
+
+            htc_ = moldingCoolantChannel::htcFromNu
+            (
+                moldingCoolantChannel::Nu(C, m, n, Re, Pr),
+                k,
+                D
+            );
+        }
+
+        if (htc_ < 0)
+        {
+            FatalIOErrorInFunction(coolant)
+                << "The coolant heat transfer coefficient must be "
+                << "non-negative: htc = " << htc_ << exit(FatalIOError);
+        }
+    }
+
     fvPatchScalarField::operator=(T_.value());
 }
 
@@ -141,7 +232,21 @@ moldingMoldTemperatureFvPatchScalarField
     wallResistance_(ptf.wallResistance_),
     deepMoldTemperature_(ptf.deepMoldTemperature_),
     T_(ptf.T_),
-    Q_(cloneQ(ptf.Q_))
+    Q_(cloneQ(ptf.Q_)),
+    coolant_
+    (
+        ptf.coolant_.valid()
+      ? autoPtr<dictionary>(new dictionary(*ptf.coolant_))
+      : autoPtr<dictionary>()
+    ),
+    mdot_(ptf.mdot_),
+    cp_(ptf.cp_),
+    inletTemperature_(ptf.inletTemperature_),
+    direction_(ptf.direction_),
+    htc_(ptf.htc_),
+    groupHA_(),
+    hCoolant_(0),
+    channelReady_(false)
 {}
 
 
@@ -160,7 +265,21 @@ moldingMoldTemperatureFvPatchScalarField
     wallResistance_(ptf.wallResistance_),
     deepMoldTemperature_(ptf.deepMoldTemperature_),
     T_(ptf.T_),
-    Q_(cloneQ(ptf.Q_))
+    Q_(cloneQ(ptf.Q_)),
+    coolant_
+    (
+        ptf.coolant_.valid()
+      ? autoPtr<dictionary>(new dictionary(*ptf.coolant_))
+      : autoPtr<dictionary>()
+    ),
+    mdot_(ptf.mdot_),
+    cp_(ptf.cp_),
+    inletTemperature_(ptf.inletTemperature_),
+    direction_(ptf.direction_),
+    htc_(ptf.htc_),
+    groupHA_(ptf.groupHA_),
+    hCoolant_(ptf.hCoolant_),
+    channelReady_(ptf.channelReady_)
 {}
 
 
@@ -215,10 +334,9 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::updateCoeffs()
       : T_.value()
     );
 
-    // Cooling-water conductance and the optional deep-mould path through
-    // the wall thermal resistance; both are combined into one conductance
-    // and a conductance-weighted driving temperature
-    const scalar hWater(waterHTC_*wettedArea_);
+    // Cooling path and the optional deep-mould path through the wall
+    // thermal resistance; both are combined into one conductance and a
+    // conductance-weighted driving term
     const scalar hDeep
     (
         wallResistance_ > 0
@@ -226,11 +344,46 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::updateCoeffs()
       : scalar(0)
     );
 
+    scalar hWater = 0;
+    scalar hATw = 0;
+
+    if (coolant_.valid())
+    {
+        if (!channelReady_)
+        {
+            buildChannel();
+        }
+
+        // March the channel cross-sections from the previous mould
+        // temperature; the state update below then treats the coolant
+        // path implicitly for those section temperatures
+        const scalarField groupTw(groupHA_.size(), T_.oldTime().value());
+        List<scalar> groupTc;
+
+        hATw = moldingCoolantChannel::march
+        (
+            inletTemperature_,
+            mdot_*cp_,
+            groupHA_,
+            groupTw,
+            groupTc
+        );
+        hWater = hCoolant_;
+    }
+    else
+    {
+        hWater = waterHTC_*wettedArea_;
+        hATw = hWater*Tw_;
+    }
+
+    const scalar hA = hWater + hDeep;
+    hATw += hDeep*deepMoldTemperature_;
+
     T_.value() = moldThermalState::Tnew
     (
         C_,
-        hWater + hDeep,
-        moldThermalState::Tdrv(hWater, Tw_, hDeep, deepMoldTemperature_),
+        hA,
+        hA > small ? hATw/hA : T_.value(),
         T_.oldTime().value(),
         hFilm,
         Tfilm,
@@ -244,6 +397,76 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::updateCoeffs()
 }
 
 
+void Foam::moldingMoldTemperatureFvPatchScalarField::buildChannel()
+{
+    // Gather the patch faces of every processor (rank order) so that the
+    // channel can be sorted and grouped globally; the geometry and the
+    // HTC are constant, so this runs once per patch
+    const label nProcs = Pstream::nProcs();
+    const label myProc = Pstream::myProcNo();
+
+    List<List<scalar>> procMagSf(nProcs);
+    List<List<scalar>> procProj(nProcs);
+
+    procMagSf[myProc] = patch().magSf();
+    procProj[myProc].setSize(patch().size());
+
+    forAll(procProj[myProc], i)
+    {
+        procProj[myProc][i] = patch().Cf()[i] & direction_;
+    }
+
+    Pstream::gatherList(procMagSf);
+    Pstream::scatterList(procMagSf);
+    Pstream::gatherList(procProj);
+    Pstream::scatterList(procProj);
+
+    List<scalar> allMagSf;
+    List<scalar> allProj;
+
+    forAll(procMagSf, r)
+    {
+        allMagSf.append(procMagSf[r]);
+        allProj.append(procProj[r]);
+    }
+
+    labelList order;
+    sortedOrder(allProj, order);
+
+    List<scalar> sMagSf(order.size());
+    List<scalar> sProj(order.size());
+
+    forAll(order, k)
+    {
+        sMagSf[k] = allMagSf[order[k]];
+        sProj[k] = allProj[order[k]];
+    }
+
+    const scalar span = gMax(allProj) - gMin(allProj);
+    const scalar tol = 1e-8*max(span, small);
+
+    labelList groupStart;
+    moldingCoolantChannel::group
+    (
+        sMagSf,
+        sProj,
+        htc_,
+        tol,
+        groupHA_,
+        groupStart
+    );
+
+    hCoolant_ = 0;
+
+    forAll(groupHA_, g)
+    {
+        hCoolant_ += groupHA_[g];
+    }
+
+    channelReady_ = true;
+}
+
+
 void Foam::moldingMoldTemperatureFvPatchScalarField::write
 (
     Ostream& os
@@ -254,6 +477,10 @@ void Foam::moldingMoldTemperatureFvPatchScalarField::write
     writeEntry(os, "waterHTC", waterHTC_);
     writeEntry(os, "wettedArea", wettedArea_);
     writeEntry(os, "waterTemperature", Tw_);
+    if (coolant_.valid())
+    {
+        writeEntry(os, "coolant", *coolant_);
+    }
     if (wallResistance_ > 0)
     {
         writeEntry(os, "wallResistance", wallResistance_);

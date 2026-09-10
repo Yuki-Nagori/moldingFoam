@@ -355,6 +355,7 @@ $ xmake run test
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
+| `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -425,6 +426,32 @@ T^{n+1} = (C/dt·T^n + Σ h_f T_cell + h_A T_water + Q)/(C/dt + Σ h_f + h_A)
 - 温度状态经 `UniformDimensionedField` 随场写出、重启续读（与上游
   `lumpedMassTemperature` 同模式），比求解器侧显式耦合精度高得多；
 - 每个 patch 独立一个集总量；`fixedValue` 模壁（缺省）行为不变。
+
+可选 `coolant` 子字典把 patch 建模为**一维活塞流冷却通道**：
+
+```
+coolant
+{
+    massFlowRate     1e-4;     // [kg/s]
+    cp               4182;     // [J/kg/K]
+    inletTemperature 350;      // [K]
+    direction        (1 0 0);  // 通道轴向
+    htc              5000;     // [W/m^2/K]，或
+    Nu { C 0.023; m 0.8; n 0.4; Re 1e4; Pr 7; k 0.6; D 0.008; }
+}
+```
+
+- patch 面按轴向位置分组为截面，组内视为充分混合：截面入口水温
+  `Tc` 以离散活塞流推进
+  `Tc_out = Tc_in + Σ_f htc·A_f·(T_wall,f − Tc_in)/(ṁ·cp)`，离散通道
+  能量守恒精确成立；含 `Nu` 子字典时按幂律关联式
+  `h = C·Re^m·Pr^n·k/D` 求 HTC；
+- 截面分组只在首次求值时做一次**全局 gather + 排序**（几何与 HTC
+  时不变），每个时间步只按截面数推进，开销可忽略；scotch 2 进程与
+  串行的模温结果逐位一致；
+- 验证：`xmake run test`（`moldingCoolantChannel`：手算 Nusselt/离散
+  推进/能量守恒 rtol 1e-12、200 截面与解析指数解 rtol<1e-3）与
+  `tests/cases/coolantChannel`（350 K 水加热 300 K 模温）。
 
 用法示例：
 
@@ -671,6 +698,14 @@ thermoType
 
 ### 契约变更日志
 
+**v1.12**（冷却水 1D 通道，任务 008）：
+
+- `0/T` 的 `moldingMoldTemperature` 新增可选 `coolant` 子字典
+  （`massFlowRate`/`cp`/`inletTemperature`/`direction` 及 `htc` 或
+  `Nu` 幂律关联式）：把 patch 视为一维活塞流冷却通道，沿程推进水温并
+  参与模体热平衡。缺省不写时行为与 v1.11 完全一致（均匀
+  `waterHTC`/`wettedArea`/`waterTemperature` 路径）。
+
 **v1.11**（闸口温度型封冻，任务 010）：
 
 - `constant/moldingDict`：新增可选 `gateFreezeTemperature` [K]：保压
@@ -816,6 +851,7 @@ moldingFoam/
                              run-validation.sh、run-solver-tests.sh
                              run-moldcht.sh、verify-couette.py
                              verify-stefan.py、verify-moldcht.py
+                             verify-coolant-channel.py
 ```
 
 ---

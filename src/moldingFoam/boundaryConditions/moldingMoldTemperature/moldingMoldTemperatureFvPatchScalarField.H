@@ -56,6 +56,16 @@ Description
     within each outer iteration and always advances from \c T_old, so it
     refines the coupling without over-integrating the state).
 
+    Instead of a single well-mixed water temperature, the optional
+    \c coolant sub-dictionary models the patch as a one-dimensional
+    plug-flow channel: its wetted faces are grouped into cross-sections
+    along \c direction and the coolant bulk temperature is marched from
+    the inlet, exchanging heat with the mould. See
+    Foam::moldingCoolantChannel for the discretisation and its exact
+    discrete energy balance. When \c coolant is present the
+    \c waterHTC / \c wettedArea / \c waterTemperature entries are
+    ignored; the deep-mould path remains additive.
+
     The temperature persists across restarts through the written \c T
     entry, mirroring the upstream \c lumpedMassTemperature condition.
 
@@ -66,6 +76,7 @@ Usage
         waterHTC          | Cooling-water HTC [W/m^2/K]          | no     | 0
         wettedArea        | Wetted cooling area [m^2]            | no     | 0
         waterTemperature  | Cooling-water temperature [K]        | no     | 300
+        coolant           | 1D coolant channel sub-dict          | no     |
         Q                 | Power source [W]                     | no     | 0
         T                 | Initial mould temperature [K]        | yes    |
         value             | Initial patch temperature [K]        | yes    |
@@ -81,6 +92,41 @@ Usage
         wettedArea       2.7e-3;   // [m^2]
         waterTemperature 300;      // [K]
         T                353;      // [K] initial mould temperature
+        value            uniform 353;
+    }
+    \endverbatim
+
+    Example with a 1D channel along x (either \c htc directly or a
+    power-law Nusselt correlation):
+
+    \verbatim
+    walls
+    {
+        type             moldingMoldTemperature;
+        heatCapacity     500;
+        coolant
+        {
+            massFlowRate     0.02;     // [kg/s]
+            cp               4182;     // [J/kg/K]
+            inletTemperature 300;      // [K]
+            direction        (1 0 0);  // channel axis
+
+            // Either the HTC [W/m^2/K] directly
+            htc              2500;
+
+            // or a Nusselt correlation h = C Re^m Pr^n k/D
+            Nu
+            {
+                C    0.023;
+                m    0.8;
+                n    0.4;
+                Re   1e4;
+                Pr   7;
+                k    0.6;      // [W/m/K]
+                D    0.008;    // [m]
+            }
+        }
+        T                353;
         value            uniform 353;
     }
     \endverbatim
@@ -139,6 +185,41 @@ class moldingMoldTemperatureFvPatchScalarField
 
         //- Power source [W]
         autoPtr<Function1<scalar>> Q_;
+
+        //- Optional 1D coolant channel dictionary (kept for writing)
+        autoPtr<dictionary> coolant_;
+
+        //- Coolant mass flow rate [kg/s]
+        scalar mdot_;
+
+        //- Coolant specific heat [J/kg/K]
+        scalar cp_;
+
+        //- Coolant inlet temperature [K]
+        scalar inletTemperature_;
+
+        //- Channel axis direction
+        vector direction_;
+
+        //- Coolant heat transfer coefficient [W/m^2/K]
+        scalar htc_;
+
+        //- Per-cross-section channel conductances [W/K], built on the
+        //  first evaluation from the globally gathered patch faces
+        List<scalar> groupHA_;
+
+        //- Total channel conductance [W/K]
+        scalar hCoolant_;
+
+        //- Channel cross-sections built
+        bool channelReady_;
+
+
+    // Private Member Functions
+
+        //- Build the channel cross-sections from the globally gathered
+        //  patch faces
+        void buildChannel();
 
 
 public:
@@ -240,6 +321,25 @@ public:
         scalar T() const
         {
             return T_.value();
+        }
+
+        //- Is the 1D coolant channel active?
+        bool coolantActive() const
+        {
+            return coolant_.valid();
+        }
+
+        //- Coolant heat transfer coefficient [W/m^2/K]
+        scalar htc() const
+        {
+            return htc_;
+        }
+
+        //- Total channel conductance [W/K] (zero before the first
+        //  evaluation builds the cross-sections)
+        scalar hCoolant() const
+        {
+            return hCoolant_;
         }
 
 

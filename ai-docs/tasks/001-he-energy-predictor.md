@@ -1,178 +1,191 @@
-# 001 — he 型能量预报器（启用潜热）
+# 001 — he 型能量预报器（启用潜热）——完整研发提示词
 
-- 状态：in-progress（2026-09-10：覆写机制 + 半隐式潜热线性化已落地，
-  latentHeat 缺省 0；he 型矩阵重设计未完成，见第 2 节实验记录）
-- 优先级：P0（功能完整注塑求解器的核心缺口）
-- 依赖：无
-- 预估规模：1–2 周（含验证）
+> **给 AI 开发会话的完整上下文与执行指令**。按本文档逐步实现，
+> 不要跳步，不要发明文档未描述的额外功能。
 
-## 1. 背景与现状
+---
 
-潜热物理已在热力学层完成：`hMeltThermo`（`src/thermo/hMeltThermo.*`）
-在常 Cp 上叠加表观 Cp 潜热峰——`Cp_app = Cp0 + latentHeat·dw/dT`，其中
-`w` 是 Tait 混合的 C1 平滑熔体权重（跨带单位积分），`hs` 相应含
-`L·(w(T) − w(Tref))` 平台。热力学层由 modelTests 5 项测试覆盖。
+## 1. 一句话目标
 
-**未被启用的原因**：`compressibleVoF::thermophysicalPredictor()`
-（`/opt/openfoam14/applications/modules/compressibleVoF/thermophysicalPredictor.C`）
-按 **T 矩阵**求解能量方程：
+在 moldingFoam 求解器模块内覆写 `thermophysicalPredictor()`，
+将能量方程从 **T 矩阵**（温度为隐式变量，Cv 作对角系数）改为
+**he 矩阵**（显能为隐式变量，对角 = α·ρ/dt 恒正），从而使
+hMeltThermo 的表观 Cp 潜热峰（`latentHeat` 关键字）可以在
+`compressibleVoF` 框架内**稳定运行**。
 
-```
-correction( Cv1·T-transport + Cv2·T-transport )   ← 隐式修正项
-+ fvc::ddt(αiρi, ei) + fvc::div(αρφi, ei) − contErri·ei   ← 显式 e 输运
-− fvm::laplacian(κeff, T)
-+ totalInternalEnergy 压力功/体积功项
-```
+## 2. 背景：为什么 T 矩阵 + 潜热会发散
 
-Tait EOS 的 `Tt(p) = b5 + b6·p` 使固化前沿随压力移动，带内
-`CpMCv = T·α²/ψ` 被 `wp·(vm − vs)/ψ` 项主导（量级 1e5–1e6），于是
+### 2.1 发散机理（已实验确证）
 
-```
-Cv = Cp − CpMCv < 0   （带内深部）
-```
+`compressibleVoF::thermophysicalPredictor()` 构造的能量矩阵对角
+系数 = 每相的 `Cv = Cp − CpMCv`。Tait EOS 的 `CpMCv = T·α²/ψ`
+在凝固带（`Tt(p) ± 0.5 K`）内：
 
-负 Cv 同时污染 T 矩阵对角与 `Te` Newton 斜率，T 解出发散
-（实测：latentHeat=2e5 时 T 解出 −155173 K / −32188 K，
-`thermoI.H:212` "Negative initial temperature T0"）。
+- `α`（热膨胀系数）含前沿扫掠项 `wt·(vm − vs)/v`
+- `ψ`（等温压缩率）含前沿扫掠项 `wp·(vm − vs)/v`
+- 比值 `α²/ψ ∝ wt²·Δv/(wp·v)` — 因为 `wt/wp = 1/b6` 且 b6 极小
+  (1.543e-7 K/Pa)，此比值可达 1e5–1e6
 
-## 2. 已否决方案与实验记录（勿重复尝试）
+导致 `Cv = Cp_app − CpMCv ≈ 3e5 − 6e5 = −3e5` < 0（带内深部）。
+T 矩阵不定 → smoothSolver 输出发散解 → `correctThermo` 的 Newton
+得到负 T → FatalError。
 
-| 方案 | 结果 | 原因 |
-|------|------|------|
-| 修正项系数取 `max(Cv, Cp)` | 解仍发散（−32188 K，0.147 填充分数） | 破坏 `correction()` 拆分的雅可比一致性：修正项隐式系数（Cp）与被替换的显式项系数（Cv）不一致，等式不再是能量方程 |
-| `latentHeat` 保持 0（现状） | 稳定但不含潜热 | 当前默认；本任务的终点是解除它 |
+### 2.2 已否决的修复尝试
 
-### 2026-09-10 补充实验（半隐式潜热容量线性化 + limitTemperature）
+| 方案 | 失败原因 |
+|------|----------|
+| 修正项系数取 `max(Cv, Cp)` | 破坏 `correction()` 拆分的雅可比一致性（隐式系数 Cp ≠ 显式系数 Cv → 求解的是错误方程），解仍发散 |
+| `SuSp(ρ·latentCp/dt, T)` 追加对角 | 带内深部 `CpMCv` 的负贡献 ≈ −6e5 超过潜热峰 +3e5，对角仍负 |
+| `limitTemperature` fvConstraint | 与 compressibleVoF 的双 thermo 结构不兼容：`phase melt` 使约束绑定不存在的 `T.melt` 字段；不设 phase 则查找不存在的 `physicalProperties` thermo |
+| 潜热 = 0（当前状态） | 稳定但不含潜热物理 |
 
-在 moldingFoam 覆写的能量预报器（上游 T 矩阵体 + `SuSp` 追加项）上：
+### 2.3 物理本质
 
-1. **`SuSp(α1ρ1·latentCpW/dt, T)`**（有效热容法：带内潜热储存率的
-   隐式欧拉离散，对角抬升项）——单独使用不足以稳定：带内深部
-   `CpMCv ≈ 6e5` 超过潜热峰 `latentCp ≈ 3e5`（两者都来自前沿项），
-   对角仍为负；
-2. **`limitTemperature` fvConstraint**（min/max 钳制 + 矩阵条件化）
-   —— 与 compressibleVoF 的双 thermo 结构不兼容：`phase melt` 使
-   约束绑定 `T.melt` 字段（不存在，钳制永不生效，日志
-   "Constraint limitT defined for field T.melt but never used"），
-   不设 phase 则查找 `physicalProperties`（不存在，FatalError）。
+带内等容响应 `Cv < 0` 是**真实的物理**：固定体积的单元升温 → 熔化
+→ 比容跳升 → 压力剧增 → `Tt(p)` 上升 → 前沿回退 → 有效温度反而
+下降。但注塑成型的腔体**不是等容的**（有排气和自由边界），等容
+假设在这里不成立。问题出在 EOS 的等容恒等式与求解器的 T 变量
+不匹配，而不是物理错误。
 
-当前结论：T 矩阵形式的能量方程与"压力相关 Tt + 潜热"存在根本性
-冲突（带内等容响应 `Cv` 本征为负，物理真实而非数值错误）。下一步
-应实现真正的 he 变量能量预报器（对角 = α·ρ/dt 恒正），传导项显式
-（扩散数估算见 4.1，无约束）、压力功显式搬运，`Te` Newton 反演注意
-带内斜率符号。覆写机制与半隐式线性化代码已保留（`latentHeat 0` 时
-完全惰性），作为该研发的起点。
+## 3. 解决方案：he 型能量预报器
 
-结论：**必须更换隐式变量**——以 he（每相显能/焓）为矩阵变量，对角
-系数为 ρ（恒正），Cv 不再出现在对角中。
+### 3.1 核心思路
 
-## 3. 目标与非目标
+用**每相显能 `ei` 作为隐式变量**替代 T。矩阵对角 = `α·ρ/dt`
+（恒正），潜热完全包含在 `he(T)` 的非线性中（通过 hMeltThermo
+的表观 Cp），不存在负对角问题。
 
-### 目标
-1. `moldingFoam` 内覆写 `thermophysicalPredictor()`，以每相 he 为
-   隐式变量（`fvm::ddt(αi, ρi, hei) + fvm::div(αρφi, hei) − Sp`），
-   对角恒正；
-2. `latentHeat = 2e5` 下契约 case 全项验收通过，且**顶出时刻明显
-   变长**（潜热生效的物理证据）；
-3. 显式传导的时间步限制对当前与可预见网格不构成约束（见 5.1 估算）；
-4. README 第 6 节限制警告解除，契约变更日志记录。
-
-### 非目标
-- 不实现模具共轭传热（任务 002）；
-- 不引入上游 patch；
-- 不改变 M1/M2 的流-压-黏度耦合结构；
-- 不追求 he 矩阵下的通用多相适用性（只服务 moldingFoam 的两相 + 共享 T）。
-
-## 4. 技术方案
-
-### 4.1 变量与方程
+### 3.2 方程
 
 对每相 i ∈ {1(melt), 2(air)}：
 
 ```
-fvm::ddt(αi, ρi, hei) + fvm::div(αρφi, hei) − fvm::Sp(contErri, hei)
-= 显式项：传导 + 压力功/体积功 + fvModels 源
+fvm::ddt(αi, ρi, ei) + fvm::div(αρφi, ei) − fvm::Sp(contErri, ei)
+− fvm::laplacian(κeff/Cpi_eff, ei)        ← 传导（用 αEff = κ/Cp 形式）
++ pressure-work / KE 项                    ← 从上游搬运
+== fvModels 源项
 ```
 
-- `hei = mixture_.thermoi().he()`（已有注册场，含边界条件，直接作为
-  隐式变量）；
-- 传导项：`−fvc::laplacian(κeff, T)` 显式（T 用上一迭代值）。显式
-  扩散数估算：聚合物带内 `α_T = κ/(ρ·Cp_app) ≥ 0.25/(950×3e5) ≈
-  8.8e-10 m²/s`，契约网格 `dx ≈ 2.5–5e-4 m` → `dt_max = dx²/(2α_T)
-  ≈ 35–140 s`，比求解 dt（~1e-3 s）大两个数量级以上，**无约束**；
-- 压力功/体积功/动能项：整体搬运上游 `totalInternalEnergy` 显式块
-  （它本来就是 fvc 显式形式，含 `totalInternalEnergy()` 开关分支）；
-- `κeff`：来自 `thermophysicalTransport.kappaEff()`（上游同款）。
+其中 `Cpi_eff = thermo_i.Cp()`（**表观 Cp 含潜热峰**，恒正）。
+传导项写作 `κ/Cp × ∇e` 的近似（OpenFOAM 标准做法，如
+rhoPimpleFoam 的 `−fvm::laplacian(alphaEff, he)`）。
 
-### 4.2 两相共享 T 的处理
+### 3.3 T 恢复
 
-两相仍共享单一 T 场（VoF 混合物假设，与上游一致）。求解后由
-`mixture_.correctThermo()` 内部的 `TE(he, p, T)` Newton 反演更新 T：
+矩阵求解后，T 由 `species::thermo::Th(he, p, T0)` Newton 反演：
+`de/dT = Cv_eff`。**关键**：hMeltThermo 必须覆写 `Cv` 为
+**正的表观值** `Cp_app − small`（而非热力学恒等式 `Cp − CpMCv`
+的负值），使 Newton 斜率恒正。
 
-- hMelt 的 `e(T) = hs(T) − p·vhat(T)` 带内单调递增（`Cp_app ≥ 2400`
-  恒正，`p·vT` 项在契约压力下 ≈ 260 J/kg/K，不改变符号）→ Newton
-  有唯一根；
-- **风险点**：Newton 斜率参数是 `Cv = Cp − CpMCv`（带内可为负或过
-  零），收敛路径可能在带边缘 |Cv|≈0 的 ~mK 级薄区内变慢。缓解：
-  `T0` 取上一时间步收敛值（默认行为），必要时在 hMeltThermo 增加
-  `limit(T)` 带内限幅或实现二分回退（OpenFOAM `thermo` Newton 已有
-  maxIter，失败会 FatalError——先观察再处理，不预防性实现）。
+## 4. 实现步骤（按顺序执行，每步编译验证）
 
-### 4.3 与上游的代码关系
+### 步骤 1：hMeltThermo 添加稳定 Cv
 
-- 仅覆写 `virtual void thermophysicalPredictor()`（moldingFoam.H/.C），
-  不修改 compressibleVoF；
-- 需要的 protected 成员全部可访问：`mixture_`、`alpha1/2`、
-  `alphaRhoPhi1/2`、`contErr1/2`、`K`、`p`、`phi`、`U`、`rho`、
-  `thermophysicalTransport`（与既覆写实验相同，编译已验证）；
-- 已知类型细节：`thermo1().Cv()()` 返回
-  `volScalarField::Internal`（不是 volScalarField）；he-form 中不再
-  需要（无 Cv 对角），但压力功块里 `rhoPhi`、`contErr` 等的用法照抄
-  上游。
+文件：`src/thermo/hMeltThermoI.H`
 
-### 4.4 稳定性与守恒论证（写入代码注释）
+在类中添加（或修改已有的）：
 
-- 对角 = Σ αiρi/dt·V（恒正），无条件优于 Cv 对角；
-- he 为守恒输运变量：ddt+div 隐式离散保质量-能量一致；
-- 传导与压力功显式 → 时间步条件（见 5.1 估算，约束远宽于 Courant）；
-- 潜热经 `he(T)` 完全进入瞬项与对流项，无双重计入（hMelt 的 Cp 峰
-  与 hs 平台互为积分关系，离散上正确性由 4.6 的 FD/积分测试保证）。
+```cpp
+//- Return heat capacity at constant volume [J/kg/K]
+//  Uses the apparent Cp (positive everywhere including the
+//  latent-heat peak) rather than the thermodynamic identity
+//  Cp - T*alpha^2/psi (which gives negative Cv inside the band)
+inline scalar Cv(scalar p, scalar T) const
+{
+    return Cp(p, T);  // Cv ≈ Cp for condensed phases
+}
+```
 
-## 5. 工作拆解
+如果 `hMeltThermoI.H` 中已有 `Cv()`（检查：搜索 `Cv(p, T)`），
+修改为返回 `Cp(p, T)`。
 
-1. **设计笔记定稿**：本文件 4.x 段补齐实测数字（α_T、dt_max 用实际
-   网格 spacing 复算）；
-2. **moldingFoam.H**：声明 `virtual void thermophysicalPredictor();`
-   （含设计注释）；
-3. **moldingFoam.C**：实现 heEqn（含 includes
-   fvcMeshPhi/fvcDdt/fvmDiv/fvmSup/fvmLaplacian，参照上游
-   thermophysicalPredictor.C 的 include 列表）；
-4. **冒烟验证**：`latentHeat 2e5`，契约 case 临时 `endTime 0.1`
-   （纯填充段）跑通，检查 T 场有界、无 Newton Fatal；
-5. **全周期验证**：`endTime 3` 全周期 + verify-case 全项验收，记录
-   顶出时刻与质量守恒（预期顶出晚于 latentHeat=0 基线）；
-6. **modelTests 补充评估**：he–T 反演一致性属于 specie/thermo 上游
-   Newton，若步骤 5 出现带内 Newton 慢收敛，补充 hMelt 的
-   `Te` 收敛性专项测试；否则不新增；
-7. **文档**：README 第 6 节解除限制警告并描述 he 预报器；第 8 节
-   契约变更日志 v1.3（无新键，latentHeat 语义激活）；本文件状态改
-   done 并附验收记录。
+### 步骤 2：moldingFoam 覆写 thermophysicalPredictor
 
-## 6. 验收标准（DoD）
+文件：`src/moldingFoam/moldingFoam.C`
 
-- `MOLDINGFOAM_PARALLEL=4 xmake run case-contract`
-  （`latentHeat 2e5`）全项 PASS；
-- 顶出时刻相对 `latentHeat 0` 基线变长 ≥ 5%（物理证据）；
-- 质量守恒 < 1e-3；
-- `xmake run test` 14 项全 PASS；
-- CI 双架构绿（amd64 + arm64）；
-- README/契约日志同步。
+在 `preSolve()` 之后添加：
 
-## 7. 风险与缓解
+```cpp
+void Foam::solvers::moldingFoam::thermophysicalPredictor()
+{
+    // he 型能量预报器：以每相显能为隐式变量（对角恒正），
+    // 传导用 alphaEff·∇e 形式（近似 κ∇T），压力功/KE 显式
+    const volScalarField& rho1(mixture_.rho1());
+    const volScalarField& rho2(mixture_.rho2());
+    const volScalarField& e1(mixture_.thermo1().he());
+    const volScalarField& e2(mixture_.thermo2().he());
 
-| 风险 | 缓解 |
+    const fvScalarMatrix e1Source(fvModels().source(alpha1, rho1, e1));
+    const fvScalarMatrix e2Source(fvModels().source(alpha2, rho2, e2));
+
+    volScalarField& T = mixture_.T();
+
+    // 表观 Cp（含潜热峰）用于 alphaEff = kappaEff/Cp
+    const volScalarField Cp1(mixture_.thermo1().Cp());
+    const volScalarField Cp2(mixture_.thermo2().Cp());
+
+    // 传导系数 α = κ/Cp（边界场）
+    const volScalarField::Boundary& kappaBf =
+        thermophysicalTransport.kappaEff()().boundaryField();
+    // ...
+
+    fvScalarMatrix e1Eqn(
+        fvm::ddt(alpha1, rho1, e1) + fvm::div(alphaRhoPhi1, e1)
+      - fvm::Sp(contErr1(), e1)
+      - fvm::laplacian(kappaEff/Cp1_interp, e1)
+      + pressure work terms...
+      == fvModels source
+    );
+    // 同理 e2Eqn
+}
+```
+
+**关键**：`fvm::laplacian` 的系数是 `kappaEff/Cp`（surfaceField），
+`e1` 是被输运的场。Conduction 项写成 `−laplacian(κ/Cp, e)` 而非
+`−laplacian(κ, T)`，与 rhoPimpleFoam 的做法一致。
+
+### 步骤 3：编译 + 模型测试
+
+```bash
+cd ~/moldingFoam-build && xmake && xmake run test
+```
+
+### 步骤 4：契约 case（latentHeat 2e5）
+
+```bash
+# case-contract/constant/physicalProperties.melt 设 latentHeat 2e5
+MOLDINGFOAM_PARALLEL=4 xmake run case-contract
+```
+
+### 步骤 5：物理验证
+
+- 顶出时刻比 `latentHeat 0` 基线**晚** ≥ 5%（潜热生效的证据）
+- 质量守恒 < 1e-3
+- 带内 T 场连续无跳变
+
+## 5. 已知陷阱（所有都在本轮实测踩过）
+
+1. **不要用 correction(Cv·...) + max(Cv,Cp)**：破坏雅可比一致性
+2. **不要用 SuSp(ρ·latentCp/dt, T)**：对角抬升不足（CpMCv 的
+   前沿项 6e5 > 潜热峰 3e5）
+3. **不要用 limitTemperature fvConstraint**：与双 thermo 不兼容
+   （`phase melt` 绑定不存在的 `T.melt`；不设 phase 则查找
+   不存在的 `physicalProperties`）
+4. **hMeltThermo 的 CpMCv**：如果不覆写，继承 Tait::CpMCv
+   的前沿项值（≈6e5），导致 Cv 负。**必须覆写**（返回 0 或
+   正的小值）
+5. **wmake rules 的 `-mcpu=native`**：在 Arm64 上会被 shim
+   剥离（见 moldingFoam.C 的 on_build），防止 CI runner
+   CPU 特性编入产物
+6. **根作用域闭包**：xmake.lua 中根作用域闭包无 execv/raise，
+   必须放在 target 回调体内
+
+## 6. 文件清单
+
+| 文件 | 改动 |
 |------|------|
-| 传导显式导致带内 T 振荡 | 当前 dt/dx 比下扩散数 ≪1（4.1 估算）；若加密网格触发，加 he 子迭代（每步 2–3 次 heEqn.solve + correctThermo 循环） |
-| Te Newton 在带边缘慢收敛 | T0 用上一时刻值；必要时 hMeltThermo::limit(T) 限幅或二分回退 |
-| 两相 he 方程经共享 T 隐式耦合不足 | 与上游 T-form 相同的耦合水平（κ∇T 显式），不引入新耦合缺陷 |
-| 包缓存/CI 时长增加 | 无（he-form 不增加上游依赖；矩阵规模不变） |
+| `src/moldingFoam/moldingFoam.C` | thermophysicalPredictor() 覆写 |
+| `src/moldingFoam/moldingFoam.H` | 声明 |
+| `src/thermo/hMeltThermoI.H` | Cv() 返回正的表观值 |
+| `case-contract/constant/physicalProperties.melt` | latentHeat 2e5 |
+| README §6 | 潜热描述更新 |

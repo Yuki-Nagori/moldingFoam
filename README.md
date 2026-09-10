@@ -442,6 +442,21 @@ walls
   Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
   **4.1e-4**。
 
+### 困气诊断（`trapAirInterval`，任务 003 选项 B）
+
+`constant/moldingDict` 可选 `trapAirInterval`（时间步间隔，缺省 0 =
+关闭）与 `trapAirAlpha`（熔体体积分数阈值，缺省 0.5）。每隔 N 步执行
+只读诊断：
+
+- 以 `alpha.melt <= trapAirAlpha` 标记空气单元；
+- 从**开放排气口**（未密封的 `moldingVentVelocity` patch）的空气单元
+  出发做连通域洪水填充，跨处理器界面交换连通标记直到全局收敛；
+- 未与开放排气口连通的空气单元即困气，报告单元数、体积、空气质量、
+  质量加权平均压力/温度、最高温度与体积加权质心；
+- 排气口密封后，全部残余空气按困气计。
+
+诊断不修改求解、每 N 步一次（BFS 只遍历空气单元），性能开销可忽略。
+
 ### 多周期运行（`nCycles`，任务 012）
 
 `constant/moldingDict` 可选 `nCycles`（label，缺省 1）。设为 N > 1 时，
@@ -602,9 +617,15 @@ thermoType
 | `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
-| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation`、`nCycles` |
+| `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation`、`nCycles`、`trapAirInterval`、`trapAirAlpha` |
 
 ### 契约变更日志
+
+**v1.9**（困气诊断，任务 003 选项 B）：
+
+- `constant/moldingDict`：新增可选 `trapAirInterval`（label，缺省 0）
+  与 `trapAirAlpha`（scalar，缺省 0.5）。开启后每 N 步输出困气区
+  规模/压力/温度/位置；不写这两个键的旧 case 行为不变。
 
 **v1.8**（多周期运行，任务 012 周期循环部分）：
 

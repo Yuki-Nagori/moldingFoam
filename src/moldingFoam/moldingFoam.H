@@ -99,6 +99,13 @@ class moldingFoam
         //  is sealed (polymer must not escape through the vent)
         scalar ventSealAlpha_;
 
+        //- Trapped-air diagnostic interval [time steps]; zero disables it
+        label trapAirInterval_;
+
+        //- Melt volume fraction at or below which a cell counts as air in
+        //  the trapped-air diagnostic
+        scalar trapAirAlpha_;
+
         //- Enable the explicit viscous-dissipation (shear heating) source
         //  in the energy equation; read from constant/moldingDict,
         //  default false
@@ -161,6 +168,11 @@ class moldingFoam
         //- Reset the flow fields for the next moulding cycle; the mould
         //  thermal state and the packing parameters are kept
         void resetCycle();
+
+        //- Detect and report air regions that are not connected to the
+        //  open vent (trapped air): cells, volume, mass, mean pressure,
+        //  maximum temperature and centroid; parallel-safe
+        void reportTrappedAir();
 
 
 public:

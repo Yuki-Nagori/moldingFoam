@@ -71,6 +71,9 @@ packing
 // (the vent passes air but not polymer)
 ventSealAlpha   0.9;
 
+// Trapped-air diagnostic interval [time steps] (0 disables it)
+trapAirInterval 200;
+
 // Viscous-dissipation (shear heating) source in the energy equation
 viscousDissipation true;
 

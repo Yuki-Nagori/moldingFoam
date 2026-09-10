@@ -40,6 +40,10 @@ License
 #include "fvmSup.H"
 #include "fvmLaplacian.H"
 #include "fixedValueFvPatchFields.H"
+#include "syncTools.H"
+#include "processorFvPatch.H"
+#include "Pstream.H"
+#include "boolList.H"
 
 // * * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -65,6 +69,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     switchPressure_(great),
     gateSealTime_(great),
     ventSealAlpha_(0.5),
+    trapAirInterval_(0),
+    trapAirAlpha_(0.5),
     viscousDissipation_(false),
     dissipationCoeffs_(),
     nCycles_(1),
@@ -139,6 +145,13 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar ventSealAlpha =
             moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5);
 
+        // Optional trapped-air diagnostic (see reportTrappedAir)
+        const label trapAirInterval =
+            moldingDict.lookupOrDefault<label>("trapAirInterval", 0);
+
+        const scalar trapAirAlpha =
+            moldingDict.lookupOrDefault<scalar>("trapAirAlpha", 0.5);
+
         // Optional viscous-dissipation (shear heating) source in the
         // energy equation; default false to preserve existing cases
         const bool viscousDissipation =
@@ -161,6 +174,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
         ventSealAlpha_ = ventSealAlpha;
+        trapAirInterval_ = trapAirInterval;
+        trapAirAlpha_ = trapAirAlpha;
         viscousDissipation_ = viscousDissipation;
         nCycles_ = nCycles;
 
@@ -187,6 +202,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        ejectionTemperature = " << ejectionTemperature << nl
             << "        releasePressure     = " << releasePressure << nl
             << "    ventSealAlpha           = " << ventSealAlpha << nl
+            << "    trapAirInterval         = " << trapAirInterval << nl
             << "    viscousDissipation      = " << viscousDissipation
             << endl;
     }
@@ -366,6 +382,16 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5)
     );
 
+    const label newTrapAirInterval
+    (
+        moldingDict.lookupOrDefault<label>("trapAirInterval", 0)
+    );
+
+    const scalar newTrapAirAlpha
+    (
+        moldingDict.lookupOrDefault<scalar>("trapAirAlpha", 0.5)
+    );
+
     const bool newViscousDissipation
     (
         moldingDict.lookupOrDefault<Switch>("viscousDissipation", false)
@@ -378,6 +404,8 @@ void Foam::solvers::moldingFoam::readMoldingDict()
      || newSwitchPressure != switchPressure_
      || newGateSealTime != gateSealTime_
      || newVentSealAlpha != ventSealAlpha_
+     || newTrapAirInterval != trapAirInterval_
+     || newTrapAirAlpha != trapAirAlpha_
      || newViscousDissipation != viscousDissipation_
     );
 
@@ -394,6 +422,10 @@ void Foam::solvers::moldingFoam::readMoldingDict()
             << " -> " << newGateSealTime
             << ", ventSealAlpha " << ventSealAlpha_
             << " -> " << newVentSealAlpha
+            << ", trapAirInterval " << trapAirInterval_
+            << " -> " << newTrapAirInterval
+            << ", trapAirAlpha " << trapAirAlpha_
+            << " -> " << newTrapAirAlpha
             << ", viscousDissipation " << viscousDissipation_
             << " -> " << newViscousDissipation << endl;
 
@@ -402,6 +434,8 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         switchPressure_ = newSwitchPressure;
         gateSealTime_ = newGateSealTime;
         ventSealAlpha_ = newVentSealAlpha;
+        trapAirInterval_ = newTrapAirInterval;
+        trapAirAlpha_ = newTrapAirAlpha;
 
         if (newViscousDissipation && !viscousDissipation_)
         {
@@ -631,6 +665,194 @@ void Foam::solvers::moldingFoam::resetCycle()
 }
 
 
+
+void Foam::solvers::moldingFoam::reportTrappedAir()
+{
+    const label nCells = mesh.nCells();
+    const scalarField& alpha(alpha1.primitiveField());
+    const scalarField& pc(mixture_.p().primitiveField());
+    const scalarField& Tc(mixture_.T().primitiveField());
+    const scalarField& Vc(mesh.V().primitiveField());
+    const scalarField& rho2c(mixture_.thermo2().rho().primitiveField());
+
+    boolList air(nCells, false);
+    label nAir = 0;
+    forAll(alpha, i)
+    {
+        air[i] = alpha[i] <= trapAirAlpha_;
+        if (air[i])
+        {
+            ++nAir;
+        }
+    }
+
+    if (nAir == 0)
+    {
+        if (Pstream::master())
+        {
+            Info<< "moldingFoam: trapped air: none (no air cells)" << endl;
+        }
+        return;
+    }
+
+    // Seed from the open vent faces. A sealed vent cannot vent anything,
+    // so every air cell counts as trapped then
+    const bool ventSealed =
+        mesh.foundObject<moldingStage>(moldingStage::typeName)
+     && mesh.lookupObject<moldingStage>(moldingStage::typeName).ventSealed();
+
+    boolList connected(nCells, false);
+    DynamicList<label> stack;
+
+    if (!ventSealed)
+    {
+        const volVectorField::Boundary& UBf = U_.boundaryField();
+
+        forAll(UBf, patchi)
+        {
+            if
+            (
+                UBf[patchi].type()
+             == moldingVentVelocityFvPatchVectorField::typeName
+            )
+            {
+                const labelUList& faceCells =
+                    mesh.boundary()[patchi].faceCells();
+
+                forAll(faceCells, i)
+                {
+                    const label c = faceCells[i];
+
+                    if (air[c] && !connected[c])
+                    {
+                        connected[c] = true;
+                        stack.append(c);
+                    }
+                }
+            }
+        }
+    }
+
+    // Flood fill locally, then exchange the connected flags across the
+    // processor patches and repeat until nothing new is reached
+    const labelListList& cc = mesh.cellCells();
+
+    while (true)
+    {
+        while (stack.size())
+        {
+            const label c = stack.remove();
+
+            forAll(cc[c], j)
+            {
+                const label n = cc[c][j];
+
+                if (air[n] && !connected[n])
+                {
+                    connected[n] = true;
+                    stack.append(n);
+                }
+            }
+        }
+
+        scalarField connS(nCells, 0);
+        forAll(connected, i)
+        {
+            connS[i] = connected[i] ? 1 : 0;
+        }
+
+        List<scalar> nbConn;
+        syncTools::swapBoundaryCellList(mesh, connS, nbConn);
+
+        bool changed = false;
+
+        forAll(mesh.boundary(), patchi)
+        {
+            const fvPatch& fvp = mesh.boundary()[patchi];
+
+            if (isA<processorFvPatch>(fvp))
+            {
+                const labelUList& faceCells = fvp.faceCells();
+
+                forAll(faceCells, i)
+                {
+                    const label bFacei =
+                        fvp.start() + i - mesh.nInternalFaces();
+                    const label c = faceCells[i];
+
+                    if (nbConn[bFacei] > 0.5 && air[c] && !connected[c])
+                    {
+                        connected[c] = true;
+                        stack.append(c);
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        if (!returnReduce(changed, orOp<bool>()))
+        {
+            break;
+        }
+    }
+
+    // Collect the trapped cells
+    scalar vol = 0;
+    scalar mass = 0;
+    scalar mP = 0;
+    scalar mT = 0;
+    scalar Tmax = -great;
+    label nTrap = 0;
+    vector centroid(Zero);
+
+    const vectorField& Cc = mesh.C().primitiveField();
+
+    forAll(air, i)
+    {
+        if (air[i] && !connected[i])
+        {
+            const scalar m = (1 - alpha[i])*rho2c[i]*Vc[i];
+
+            ++nTrap;
+            vol += Vc[i];
+            mass += m;
+            mP += m*pc[i];
+            mT += m*Tc[i];
+            Tmax = max(Tmax, Tc[i]);
+            centroid += Vc[i]*Cc[i];
+        }
+    }
+
+    reduce(vol, sumOp<scalar>());
+    reduce(mass, sumOp<scalar>());
+    reduce(mP, sumOp<scalar>());
+    reduce(mT, sumOp<scalar>());
+    reduce(Tmax, maxOp<scalar>());
+    reduce(nTrap, sumOp<label>());
+    reduce(centroid, sumOp<vector>());
+
+    if (Pstream::master())
+    {
+        Info<< "moldingFoam: trapped air: cells = " << nTrap
+            << ", volume = " << vol << " m^3"
+            << ", mass = " << mass << " kg";
+
+        if (mass > small)
+        {
+            Info<< ", <p> = " << mP/mass << " Pa, <T> = " << mT/mass
+                << " K";
+        }
+
+        if (nTrap > 0)
+        {
+            Info<< ", max(T) = " << Tmax
+                << ", centroid = " << centroid/max(vol, small) << " m";
+        }
+
+        Info<< endl;
+    }
+}
+
 void Foam::solvers::moldingFoam::thermophysicalPredictor()
 {
     // As compressibleVoF::thermophysicalPredictor with one addition:
@@ -745,6 +967,16 @@ void Foam::solvers::moldingFoam::preSolve()
     // mechanism only monitors controlDict, so the moulding dictionary is
     // polled explicitly every step
     readMoldingDict();
+
+    // Optional trapped-air diagnostic
+    if
+    (
+        trapAirInterval_ > 0
+     && runTime.timeIndex() % trapAirInterval_ == 0
+    )
+    {
+        reportTrappedAir();
+    }
 
     if (!mesh.foundObject<moldingStage>(moldingStage::typeName))
     {

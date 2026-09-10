@@ -355,6 +355,7 @@ $ xmake run test
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
+| 多区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：界面温度与一维两层参考对拍 0.19%，腔体平均 1.33% |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
 `system/expectedPatterns` 正则检查之后运行）。
@@ -779,10 +780,12 @@ moldingFoam/
 ├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
 ├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
 ├── validation/stefan/       解析验证 case（凝固/潜热，`xmake run stefan`）
+├── validation/moldCHT/      双区域共轭传热（`xmake run moldCHT`）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
                              run-validation.sh、run-solver-tests.sh
-                             verify-couette.py、verify-stefan.py
+                             run-moldcht.sh、verify-couette.py
+                             verify-stefan.py、verify-moldcht.py
 ```
 
 ---
@@ -830,8 +833,9 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 求解器特性用例、解析验证与契约 case 在 PR 级 CI 上太慢（每个
 `xmake run <case>` 都要重建库并跑 case），由**每夜定时任务**
 （UTC 22:00）在 amd64 runner 上运行：`test-solver`、`couette`、
-`couetteSlip`、`stefan` 与完整契约验收，失败时自动开/评论 issue 并
-上传日志 artifact；也可在 Actions 页手动触发。
+`couetteSlip`、`stefan`、`moldCHT`（双区域共轭传热）与完整契约
+验收，失败时自动开/评论 issue 并上传日志 artifact；也可在 Actions
+页手动触发。
 
 ### CD（手动触发，写入 tag）
 

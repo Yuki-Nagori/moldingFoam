@@ -23,6 +23,8 @@ case-contract/[1-9]*
 
 # OpenFOAM runtime artifacts of the validation cases
 validation/*/constant/polyMesh/
+validation/*/constant/*/polyMesh/
+validation/*/constant/cellToRegion
 validation/*/postProcessing/
 validation/*/dynamicCode/
 validation/*/processor*/

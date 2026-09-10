@@ -1,0 +1,52 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Mould temperature: initially 353 K; the bottom face is the conjugate
+    interface to the cavity, the top face is held at the cooling water
+    temperature and the sides are adiabatic.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0/mold";
+    object      T;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   uniform 353;
+
+boundaryField
+{
+    moldSides
+    {
+        type            zeroGradient;
+    }
+
+    moldTop
+    {
+        type            fixedValue;
+        value           uniform 353;
+    }
+
+    mold_to_cavity
+    {
+        type            coupledTemperature;
+        Tnbr            T;
+        value           $internalField;
+    }
+
+    defaultFaces
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

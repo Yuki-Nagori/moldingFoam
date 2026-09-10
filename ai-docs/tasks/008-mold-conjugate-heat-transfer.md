@@ -1,7 +1,9 @@
 # 008 — 模具三维传热（共轭传热 CHT）
 
 - 状态：in-progress（2026-09-10：路线 B 第一阶段——模壁热阻 + 深层
-  模温路径已落地并模型级验证；多区域 CHT 仍待做）
+  模温；路线 A 第二阶段——`foamMultiRun` 双区域共轭传热（cavity
+  `moldingFoam` + `solid` 模具）已落地并解析验证；含流动的注塑周期
+  CHT 与冷却水 1D 网络仍待做）
 - 优先级：P1
 - 依赖：002（0D 集总模温已落地）；建议在 001/006 之后
 - 预估规模：1–2 周
@@ -70,6 +72,21 @@
 - 每个 patch 可独立配置 `wallResistance`/`deepMoldTemperature`，
   在边界层面近似模具内的温度梯度；
 - 多区域共轭传热（路线 A）与冷却水 1D 网络仍待做。
+
+验收记录（第二阶段：路线 A——`foamMultiRun` 双区域 CHT）：
+
+- 无需任何新求解器代码：`moldingFoam` 通过 `regionSolvers` 作为流体
+  区域求解器加载（`solver::load("moldingFoam")` 命中本库的
+  `libmoldingFoamSolver.so`），模具区域用上游 `solid` 模块，
+  `cavity_to_mold`/`mold_to_cavity` 采用 `coupledTemperature`；
+- `validation/moldCHT`：20x2 mm 熔体腔（常密度 EOS 以隔离界面物理）
+  + 20x5 mm 钢模具，腔体 480 K、模具 353 K、模具顶面恒温 353 K、
+  其余绝热；`xmake run moldCHT` 全流程（blockMesh → topoSet →
+  splitMeshRegions → foamMultiRun → 验证）；
+- 独立一维两层隐式有限差分参考（Tait ρ(T)、Cv(T)）：界面温度最大
+  相对误差 **0.19%**、腔体平均温度 **1.33%**（阈值 1%/3%），界面两侧
+  温度连续误差 0；5 s 物理时间约 1 s；
+- 含 VoF 流动的成型周期 CHT、冷却水对流网络仍待做。
 
 ## 6. 风险与缓解
 

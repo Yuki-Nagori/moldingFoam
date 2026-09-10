@@ -57,12 +57,20 @@ Description
     - dt -> 0 returns the previous temperature;
     - with no coupling the temperature does not change.
 
+    Vent orifice (restricted-vent back-pressure):
+    - zero flow recovers the ambient pressure;
+    - the back-pressure is quadratic in the mass flow and follows its
+      direction;
+    - a hand-computed point is reproduced;
+    - zero effective area disables the resistance.
+
 \*---------------------------------------------------------------------------*/
 
 #include "Tait.H"
 #include "hMeltThermo.H"
 #include "CrossWlf.H"
 #include "moldThermalState.H"
+#include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
 #include "IOstreams.H"
@@ -547,6 +555,64 @@ void moldThermalTests()
 }
 
 
+void ventOrificeTests()
+{
+    const scalar p0 = 1e5;   // Pa
+    const scalar rho = 1.2;  // kg/m^3
+    const scalar CdA = 1e-6; // m^2
+
+    // Zero flow recovers the ambient pressure
+    checkBool
+    (
+        "ventOrifice: zero flow gives the ambient pressure",
+        ventOrifice::pVent(p0, rho, 0, CdA) == p0
+    );
+
+    // Quadratic in the mass flow, with the excess following the flow
+    // direction (outward positive, inward negative)
+    {
+        const scalar m = 1e-4;
+        const scalar dp1 = ventOrifice::pVent(p0, rho, m, CdA) - p0;
+        const scalar dp2 = ventOrifice::pVent(p0, rho, 2*m, CdA) - p0;
+        const scalar dpm = ventOrifice::pVent(p0, rho, -m, CdA) - p0;
+
+        checkBool
+        (
+            "ventOrifice: back-pressure quadratic in the mass flow",
+            relDiff(dp2, 4*dp1) < 1e-12
+        );
+        checkBool
+        (
+            "ventOrifice: pressure excess follows the flow direction",
+            dp1 > 0 && dpm < 0 && relDiff(dpm, -dp1) < 1e-12
+        );
+    }
+
+    // Hand value: dp = m^2/(2*rho*CdA^2)
+    {
+        const scalar m = 1e-4;
+        const scalar expected = p0 + m*m/(2*rho*CdA*CdA);
+
+        Info<< "    pVent(m=1e-4) = "
+            << ventOrifice::pVent(p0, rho, m, CdA)
+            << " (expected " << expected << ")" << endl;
+
+        checkBool
+        (
+            "ventOrifice: hand-computed back-pressure",
+            relDiff(ventOrifice::pVent(p0, rho, m, CdA), expected) < 1e-12
+        );
+    }
+
+    // Zero area disables the resistance (fully open vent)
+    checkBool
+    (
+        "ventOrifice: zero CdA leaves the pressure at p0",
+        ventOrifice::pVent(p0, rho, 1e-3, 0) == p0
+    );
+}
+
+
 void crossWlfTests()
 {
     IStringStream is(crossWlfDictString);
@@ -673,6 +739,7 @@ int main()
     taitTests();
     latentHeatTests();
     moldThermalTests();
+    ventOrificeTests();
     crossWlfTests();
 
     if (nFailed)

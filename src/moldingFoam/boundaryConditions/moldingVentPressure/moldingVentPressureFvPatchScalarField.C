@@ -26,7 +26,10 @@ License
 
 #include "moldingVentPressureFvPatchScalarField.H"
 #include "moldingStage.H"
+#include "ventOrifice.H"
 #include "addToRunTimeSelectionTable.H"
+#include "surfaceFields.H"
+#include "volFields.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -39,8 +42,16 @@ moldingVentPressureFvPatchScalarField
 )
 :
     mixedFvPatchScalarField(p, iF, dict, false),
-    p0_(dict.lookup<scalar>("p0"))
+    p0_(dict.lookup<scalar>("p0")),
+    CdA_(dict.lookupOrDefault<scalar>("CdA", 0))
 {
+    if (CdA_ < 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The vent effective discharge area must be non-negative: "
+            << "CdA = " << CdA_ << exit(FatalIOError);
+    }
+
     refValue() = p0_;
     refGrad() = 0;
     valueFraction() = 1;
@@ -69,7 +80,8 @@ moldingVentPressureFvPatchScalarField
 )
 :
     mixedFvPatchScalarField(ptf, p, iF, mapper),
-    p0_(ptf.p0_)
+    p0_(ptf.p0_),
+    CdA_(ptf.CdA_)
 {}
 
 
@@ -81,7 +93,8 @@ moldingVentPressureFvPatchScalarField
 )
 :
     mixedFvPatchScalarField(ptf, iF),
-    p0_(ptf.p0_)
+    p0_(ptf.p0_),
+    CdA_(ptf.CdA_)
 {}
 
 
@@ -108,10 +121,42 @@ void Foam::moldingVentPressureFvPatchScalarField::updateCoeffs()
     }
     else
     {
-        // Open vent: fixed atmospheric pressure
+        // Open vent: ambient pressure plus, for a restricted vent (CdA>0),
+        // the orifice back-pressure driven by the current escaping mass
+        // flow. The flow is taken from the previous pressure-solver
+        // iteration, so the coupling is explicit but converges within the
+        // PIMPLE correctors
         valueFraction() = 1;
-        refValue() = p0_;
         refGrad() = 0;
+
+        if (CdA_ > 0)
+        {
+            const label patchi = patch().index();
+
+            const fvsPatchField<scalar>& phip =
+                patch().lookupPatchField<surfaceScalarField, scalar>
+                (
+                    "phi"
+                );
+
+            const volScalarField& rho =
+                db().lookupObject<volScalarField>("rho");
+
+            const scalarField& rhop = rho.boundaryField()[patchi];
+            const scalarField magSf(patch().magSf());
+
+            const scalar mDot(gSum(rhop*phip));
+            const scalar rhoMean
+            (
+                gSum(rhop*magSf)/max(gSum(magSf), small)
+            );
+
+            refValue() = ventOrifice::pVent(p0_, rhoMean, mDot, CdA_);
+        }
+        else
+        {
+            refValue() = p0_;
+        }
     }
 
     mixedFvPatchScalarField::updateCoeffs();
@@ -125,6 +170,7 @@ void Foam::moldingVentPressureFvPatchScalarField::write
 {
     mixedFvPatchScalarField::write(os);
     writeEntry(os, "p0", p0_);
+    writeEntry(os, "CdA", CdA_);
     writeEntry(os, "value", *this);
 }
 

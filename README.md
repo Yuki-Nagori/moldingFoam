@@ -335,6 +335,7 @@ $ xmake run test
 | Tait | `p=0` 时两个分支均满足 `v̂ = v0(T)`；解析 `psi` 与 `∂ρ/∂T` 与中心差分对拍（rtol 1e-6，覆盖熔体/固体/平滑过渡带）；HDPE 牌号 PVT 数据点复现 |
 | hMelt | 潜热 Cp 峰在带宽边缘连续为零；峰中心值解析对拍（rtol 1e-12）；跨带积分恰为 `latentHeat`；`d(hs)/dT = Cp + latentCp` 与中心差分对拍（rtol 1e-8）；`latentHeat 0` 退化到常 Cp |
 | moldThermalState | 后向 Euler 离散能量守恒恒等式对拍（rtol 1e-12，含功率源）；稳态 = 导热加权平均；超大时间步落在平衡点；`dt→0` 返回原温；无耦合不变 |
+| ventOrifice | 零流恢复环境压力；背压与质量流量二次律（rtol 1e-12）；方向符号；手算点；`CdA=0` 无阻力 |
 | 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
@@ -439,6 +440,20 @@ walls
 - 解析验证：`xmake run couette`（`validation/couette/`）——线性
   Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
   **4.1e-4**。
+
+### 排气反压（`moldingVentPressure.CdA`，任务 003 选项 A）
+
+`0/p_rgh` 的 `moldingVentPressure` 可选 `CdA`（有效流通面积
+`Cd·A_vent` [m²]，缺省 0 = 全开无背压）。受限排气按准稳态孔口关系
+
+```
+p_vent = p0 + sign(ṁ)·ṁ²/(2·ρ·CdA²)
+```
+
+给出边界压力，其中 `ṁ` 为当前 patch 质量通量（显式耦合，在 PIMPLE
+校正中迭代）。受限排气时型腔背压随排出流量上升、熔体前沿到达后照常
+密封；缺省不写 `CdA` 与既有 case 完全一致（回归）。可压缩/阻塞孔口
+与困气连通域诊断（选项 B）见 `ai-docs/tasks/003`。
 
 ### 注塑周期状态（moldingStage）与排气/闸口密封
 
@@ -560,7 +575,7 @@ thermoType
 | `system/controlDict` | `application foamRun`、`solver moldingFoam`、`libs ("libmoldingFoam.so")`、时间控制、验收函数对象 |
 | `system/blockMeshDict` | 矩形板腔 + 底面浇口（`inlet`）+ 顶部排气（`vent`），2 mm 厚 |
 | `system/fvSchemes`、`system/fvSolution`、`system/decomposeParDict` | 数值格式与分解 |
-| `0/alpha.melt`、`0/U`、`0/p`、`0/p_rgh`、`0/T` | 场；熔体经 `inlet` 注入；`vent` 用 `moldingVentVelocity` + `moldingVentPressure`（只透气、遇熔体密封）；模壁默认 `fixedValue` 恒温，可选 `moldingMoldTemperature` 集总模温边界（均为本库自注册，见第 6 节） |
+| `0/alpha.melt`、`0/U`、`0/p`、`0/p_rgh`、`0/T` | 场；熔体经 `inlet` 注入；`vent` 用 `moldingVentVelocity` + `moldingVentPressure`（只透气、遇熔体密封，可选 `CdA` 排气反压）；模壁默认 `fixedValue` 恒温，可选 `moldingMoldTemperature` 集总模温边界（均为本库自注册，见第 6 节） |
 | `constant/phaseProperties` | `phases (melt air)` + 表面张力 |
 | `constant/physicalProperties.melt` | 熔体相：`thermo hMelt`（潜热）、`equationOfState Tait` |
 | `constant/physicalProperties.air` | 空气相（perfectGas） |
@@ -568,6 +583,12 @@ thermoType
 | `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation` |
 
 ### 契约变更日志
+
+**v1.6**（排气反压，任务 003 选项 A）：
+
+- `0/p_rgh` 的 `moldingVentPressure` 新增可选 `CdA`（有效流通面积
+  [m²]，缺省 0 = 全开）。受限排气按孔口关系给边界背压；不写该键的
+  旧 case 行为与 v1.5 一致。
 
 **v1.5**（黏性生热）：
 

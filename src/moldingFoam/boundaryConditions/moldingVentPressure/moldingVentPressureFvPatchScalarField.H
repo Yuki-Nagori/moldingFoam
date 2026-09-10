@@ -29,7 +29,10 @@ Description
     Vent pressure boundary condition for \c p_rgh that passes air but not
     polymer, modelling the real venting behaviour of a mould:
 
-    - while the vent is open (air): fixed pressure \c p0;
+    - while the vent is open (air): pressure \c p0, plus an orifice
+      back-pressure when an effective discharge area \c CdA is given
+      (a restricted vent raises the cavity back-pressure with the escaping
+      gas flow, see Foam::ventOrifice);
     - once the melt front reaches the vent (\c moldingStage::ventSealed),
       zero normal flux, imposed together with the zero-velocity
       moldingVentVelocity condition, so no polymer escapes and the
@@ -80,6 +83,10 @@ class moldingVentPressureFvPatchScalarField
 
         //- Vent (atmospheric) pressure [Pa]
         scalar p0_;
+
+        //- Effective discharge area of the vent [m^2]; zero (default)
+        //  models a fully open vent with no back-pressure
+        scalar CdA_;
 
 
 public:
@@ -139,6 +146,12 @@ public:
         scalar p0() const
         {
             return p0_;
+        }
+
+        //- Effective discharge area [m^2]
+        scalar CdA() const
+        {
+            return CdA_;
         }
 
         //- Update the coefficients associated with the boundary field

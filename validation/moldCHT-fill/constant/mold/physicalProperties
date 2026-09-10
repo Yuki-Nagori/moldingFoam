@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Mould (solid) region thermo: steel-like constant properties.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant/mold";
+    object      physicalProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+thermoType          constSolidThermo;
+
+rho
+{
+    type        uniform;
+    value       7800;   // [kg/m^3]
+}
+
+Cv
+{
+    type        uniform;
+    value       500;    // [J/kg/K]
+}
+
+kappa
+{
+    type        uniform;
+    value       50;     // [W/m/K]
+}
+
+// ************************************************************************* //

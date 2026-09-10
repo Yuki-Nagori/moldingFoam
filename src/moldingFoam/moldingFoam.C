@@ -26,6 +26,7 @@ License
 
 #include "moldingFoam.H"
 #include "moldingStage.H"
+#include "IOobject.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
 #include "moldingVentVelocityFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
@@ -60,6 +61,33 @@ namespace solvers
 
 // * * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
+namespace
+{
+
+//- Path of a constant dictionary that is region aware: in a multi-region
+//  case the mesh registry's dbDir carries the region name, so the
+//  dictionary is read from constant/<region>/<name>; for a single-region
+//  case the dbDir is empty and the path is constant/<name>
+Foam::fileName constantDictPath
+(
+    const Foam::objectRegistry& obr,
+    const Foam::word& name
+)
+{
+    return Foam::IOobject
+    (
+        name,
+        obr.time().constant(),
+        obr,
+        Foam::IOobject::NO_READ,
+        Foam::IOobject::NO_WRITE,
+        false
+    ).filePath(false);
+}
+
+} // End anonymous namespace
+
+
 Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
 :
     compressibleVoF(mesh),
@@ -89,7 +117,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     // packing group drives the V/P switch and the packing pressure curve
     // (stage M2); the cooling group drives the ejection criterion (stage
     // M3).
-    const fileName moldingDictPath(runTime.constant()/fileName("moldingDict"));
+    const fileName moldingDictPath(constantDictPath(mesh, "moldingDict"));
 
     if (isFile(moldingDictPath))
     {
@@ -332,10 +360,7 @@ bool Foam::solvers::moldingFoam::read()
 
 void Foam::solvers::moldingFoam::readMoldingDict()
 {
-    const fileName moldingDictPath
-    (
-        runTime.constant()/fileName("moldingDict")
-    );
+    const fileName moldingDictPath(constantDictPath(mesh, "moldingDict"));
 
     if (!isFile(moldingDictPath))
     {
@@ -552,7 +577,7 @@ Foam::scalar Foam::solvers::moldingFoam::gateTemperature() const
 
 void Foam::solvers::moldingFoam::readDissipationCoeffs()
 {
-    const fileName path(runTime.constant()/fileName("momentumTransport"));
+    const fileName path(constantDictPath(mesh, "momentumTransport"));
 
     IFstream is(path);
 

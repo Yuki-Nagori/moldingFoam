@@ -1,0 +1,34 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Mixture momentum transport: constant-viscosity Newtonian melt. The
+    filling CHT benchmark isolates the VoF + conjugate heat transfer
+    physics, so the strongly shear-thinning CrossWlf grade of the contract
+    case (1e5 Pa s at the gate) is replaced by a constant mu of 100 Pa s;
+    this keeps the gate over-pressure, and with it the e = h - p/rho
+    pressure-work contribution to the energy balance, negligible.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      momentumTransport;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+simulationType  laminar;
+
+laminar
+{
+    model           generalisedNewtonian;
+
+    viscosityModel  Newtonian;
+}
+
+// ************************************************************************* //

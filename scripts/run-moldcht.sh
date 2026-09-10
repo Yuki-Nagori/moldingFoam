@@ -8,9 +8,9 @@
 # option) any later version. See the COPYING file for details.
 #******************************************************************************
 #******************************************************************************
-# Run the two-region conjugate heat transfer validation case: build the
+# Run a two-region conjugate heat transfer validation case: build the
 # mesh, split it into the cavity and mould regions, run foamMultiRun and
-# verify against the one-dimensional two-layer reference.
+# hand over to the python verifier named by the case's system/verifier.
 #
 # Usage: run-moldcht.sh <caseDir>
 #
@@ -19,8 +19,21 @@
 
 set -euo pipefail
 
+scriptDir=$(cd "$(dirname "$0")" && pwd)
 caseDir=$(cd "$1" && pwd)
 cd "$caseDir"
+
+[ -f system/verifier ] || {
+    echo "error: $caseDir/system/verifier is missing" >&2
+    exit 1
+}
+
+verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' system/verifier | head -1)
+
+[ -n "$verifier" ] || {
+    echo "error: $caseDir/system/verifier is empty" >&2
+    exit 1
+}
 
 : "${WM_PROJECT_DIR:?run-moldcht.sh must be invoked inside the OpenFOAM environment}"
 
@@ -42,4 +55,4 @@ echo "=============================================================="
 echo "moldingFoam CHT validation, verifying ..."
 echo "=============================================================="
 
-python3 "$(dirname "$0")/verify-moldcht.py" "$caseDir"
+python3 "$scriptDir/$verifier" "$caseDir"

@@ -71,7 +71,7 @@
   返回 Ta；`xmake run test` 全部 PASS；
 - 每个 patch 可独立配置 `wallResistance`/`deepMoldTemperature`，
   在边界层面近似模具内的温度梯度；
-- 多区域共轭传热（路线 A）与冷却水 1D 网络仍待做。
+- 多区域共轭传热（路线 A，含流动）与冷却水 1D 网络仍待做。
 
 验收记录（第二阶段：路线 A——`foamMultiRun` 双区域 CHT）：
 
@@ -87,6 +87,28 @@
   相对误差 **0.19%**、腔体平均温度 **1.33%**（阈值 1%/3%），界面两侧
   温度连续误差 0；5 s 物理时间约 1 s；
 - 含 VoF 流动的成型周期 CHT、冷却水对流网络仍待做。
+
+验收记录（第三阶段：路线 A + VoF 流动充填 CHT）：
+
+- 求解器支持多区域布局：`constant/moldingDict`、
+  `constant/momentumTransport` 的读取改为区域感知（`IOobject` 的
+  `dbDir`：多区域 `constant/<region>/…`，单区域 `constant/…` 不变），
+  `moldingStage` 在流体区域注册后 `moldingInletVelocity` 等边界可用；
+- `validation/moldCHT-fill`：60x2 mm 通道 + 顶部 60x5 mm 模具，
+  熔体经左侧浇口以 1e-7 m^3/s 充填（VoF，初始空气 300 K、熔体
+  480 K），模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的封闭
+  系统；`xmake run moldCHT` 依次跑导热与充填两个基准；
+- 基准在熔体突破排气口前截止（2 s），避免出口两相簿记偏差：
+  - 全局能量平衡（熔体+模具储能变化 = 入口焓 − 出口焓，出口按质量
+    差 dm_out = ṁ_in dt − dm_stored 计）实测 **0.24%**（阈值 2%）；
+  - 注入体积 Q·t 与 ΣαV 偏差 **0.43%**（阈值 1%）；
+  - 界面两侧温度连续误差 **0**；
+- 为隔离物理，充填基准用常黏度（100 Pa·s）与零重力（CrossWlf 强
+  剪切变稀在浇口产生 ~1e8 Pa 过压，`e = h − p/ρ` 表示会把流动功
+  转成温度而破坏能量闭合）；CrossWlf 本身由 contract case 回归
+  覆盖（质量守恒 9.38e-4）；
+- 单区域回归：`xmake run test-solver` 4 用例、`xmake run case-contract`
+  全部通过（区域感知路径未影响单区域行为）。
 
 ## 6. 风险与缓解
 

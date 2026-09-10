@@ -288,13 +288,17 @@ target("moldCHT")
         if envdir == nil then
             os.raise(err)
         end
-        print("[moldingFoam] running the two-region CHT validation")
-        local ok = in_of_env(envdir,
-            "cd " .. projectdir .. " && "
-            .. path.join(projectdir, "scripts", "run-moldcht.sh")
-            .. " validation/moldCHT")
-        if ok ~= 0 then
-            os.raise("CHT validation failed; see validation/moldCHT/log.foamRun")
+        for _, case in ipairs({"moldCHT", "moldCHT-fill"}) do
+            print("[moldingFoam] running the two-region CHT validation: "
+                .. case)
+            local ok = in_of_env(envdir,
+                "cd " .. projectdir .. " && "
+                .. path.join(projectdir, "scripts", "run-moldcht.sh")
+                .. " validation/" .. case)
+            if ok ~= 0 then
+                os.raise("CHT validation failed; see validation/" .. case
+                    .. "/log.foamRun")
+            end
         end
     end)
 target_end()

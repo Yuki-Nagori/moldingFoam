@@ -355,7 +355,7 @@ $ xmake run test
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
-| 多区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：界面温度与一维两层参考对拍 0.19%，腔体平均 1.33% |
+| 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
 `system/expectedPatterns` 正则检查之后运行）。
@@ -440,6 +440,35 @@ walls
     value            uniform 353;
 }
 ```
+
+### 多区域共轭传热（`foamMultiRun`，任务 008 路线 A）
+
+求解器**无需新增代码**即可作为多区域 CHT 的流体区域求解器运行：
+`foamMultiRun` 的 `regionSolvers` 把 `cavity` 映射到 `moldingFoam`、
+模具区域映射到上游 `solid` 模块，两侧共享面用
+`coupledTemperature`（`Tnbr T`）耦合。为支持该布局，求解器的
+`constant/moldingDict` 与 `constant/momentumTransport` 读取路径改为
+**区域感知**（经 `IOobject` 的 `dbDir`：多区域读
+`constant/<region>/…`，单区域读 `constant/…`），`moldingStage` 因此
+在流体区域注册，`moldingInletVelocity` 等边界正常工作。
+
+```c++
+regionSolvers
+{
+    cavity          moldingFoam;
+    mold            solid;
+}
+```
+
+验证分两级（`xmake run moldCHT` 依次运行）：
+
+- `validation/moldCHT`：静止熔体 + 钢模具的瞬态导热，界面温度与独立
+  一维两层隐式 FD（Tait ρ(T)、Cv(T)）对拍 **0.19%**、腔体平均
+  **1.33%**（时间步细化到 dt/2 不变，已时间收敛）；
+- `validation/moldCHT-fill`：60×2 mm 通道被熔体充填（VoF）并同时向
+  顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
+  封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
+  体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
 
 ### 黏性生热（`viscousDissipation`，任务 007）
 
@@ -780,7 +809,8 @@ moldingFoam/
 ├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
 ├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
 ├── validation/stefan/       解析验证 case（凝固/潜热，`xmake run stefan`）
-├── validation/moldCHT/      双区域共轭传热（`xmake run moldCHT`）
+├── validation/moldCHT/      双区域共轭传热导热基准（`xmake run moldCHT`）
+├── validation/moldCHT-fill/ 双区域共轭传热充填基准（同上目标）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
                              run-validation.sh、run-solver-tests.sh

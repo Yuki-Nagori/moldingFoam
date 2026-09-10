@@ -13,6 +13,9 @@ lnInclude/
 *.swp
 .DS_Store
 
+__pycache__/
+*.pyc
+
 # OpenFOAM runtime artifacts of the contract case
 case-contract/constant/polyMesh/
 case-contract/postProcessing/

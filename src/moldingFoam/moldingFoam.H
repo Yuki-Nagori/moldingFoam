@@ -10,9 +10,9 @@ License
     for OpenFOAM.
 
     moldingFoam is free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
 
     moldingFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,7 +32,7 @@ Description
     with the polymer modelled by the CrossWlf generalised Newtonian
     viscosity model and the Tait equation of state.
 
-    Later stages (roadmap):
+    Later stages:
     - M2: packing; V/P switch at a filled-volume fraction with a
       pressure-time profile, read from \c constant/moldingDict;
     - M3: cooling; mould wall temperature boundaries and an ejection
@@ -44,13 +44,6 @@ Description
         solver          moldingFoam;
         libs            ("libmoldingFoam.so");
     \endverbatim
-
-    The case dictionary layout, including \c constant/moldingDict, is the
-    external case-generation contract of the moldingFoam project; keyword
-    names are frozen and changes are documented in the project README.
-
-See also
-    Foam::solvers::compressibleVoF
 
 SourceFiles
     moldingFoam.C
@@ -100,6 +93,27 @@ class moldingFoam
         //  reload in preSolve
         time_t moldingDictModTime_;
 
+        //- Lumped mould thermal model enabled? True when
+        //  constant/moldingDict defines a positive mould heat capacity
+        bool moldOn_;
+
+        //- Lumped mould heat capacity [J/K]
+        scalar moldHeatCap_;
+
+        //- Mould temperature relaxation time constant toward the casting
+        //  temperature [s]
+        scalar moldTau_;
+
+        //- Cooling-channel heat transfer coefficient [1/s]; zero
+        //  disables the cooling pull
+        scalar moldCoolingRate_;
+
+        //- Cooling water temperature [K]
+        scalar moldTw_;
+
+        //- Current lumped mould temperature [K]
+        scalar moldT_;
+
 
     // Private Member Functions
 
@@ -107,25 +121,6 @@ class moldingFoam
         //  updates the stage packing parameters and the cooling
         //  thresholds, printing old -> new for anything that changed
         void readMoldingDict();
-
-        //- Latent-heat linearisation enabled? True when the melt phase
-        //  selects the hMelt thermodynamics with non-zero latentHeat
-        //  and a non-degenerate transition band
-        bool latentOn_;
-
-        //- Solidification temperature at atmospheric pressure [K]
-        //  (hMelt/Tait coefficient b5)
-        scalar latentTt0_;
-
-        //- Pressure sensitivity of the solidification temperature
-        //  [K/Pa] (hMelt/Tait coefficient b6)
-        scalar latentB6_;
-
-        //- Half-width of the solidification band [K]
-        scalar latentBand_;
-
-        //- Latent heat of solidification [J/kg]
-        scalar latentHeat_;
 
 
 public:
@@ -156,14 +151,8 @@ public:
         //  before the PIMPLE loop
         virtual void preSolve();
 
-        //- Solve the energy equation. As compressibleVoF, plus a
-        //  semi-implicit latent-heat linearisation: when the melt phase
-        //  uses the hMelt thermodynamics, the T-matrix diagonal gets
-        //  an additional alpha1*rho1*latentCp/dt term (the implicit-Euler
-        //  discretisation of the latent storage rate rho*L*dw/dT*dT/dt).
-        //  This compensates the negative apparent Cv of the Tait blend
-        //  inside the solidification band, where the pressure-shifted
-        //  front term of CpMCv = T*alphav^2/psi dominates
+        //- Solve the energy equation; clamps the solved temperature to
+        //  a physical range after the linear solve
         virtual void thermophysicalPredictor();
 };
 

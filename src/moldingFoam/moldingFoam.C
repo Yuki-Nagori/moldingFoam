@@ -10,9 +10,9 @@ License
     for OpenFOAM.
 
     moldingFoam is free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
 
     moldingFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -38,9 +38,9 @@ License
 #include "fvmDiv.H"
 #include "fvmSup.H"
 #include "fvmLaplacian.H"
-#include "dimensionedScalar.H"
+#include "fixedValueFvPatchFields.H"
 
-// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
 {
@@ -53,7 +53,7 @@ namespace solvers
 }
 
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
 :
@@ -61,13 +61,14 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     ejected_(false),
     ejectionTemperature_(great),
     releasePressure_(great),
-    latentOn_(false),
-    latentTt0_(0),
-    latentB6_(0),
-    latentBand_(0),
-    latentHeat_(0),
     vTot_(gSum(mesh.V().primitiveField())),
-    moldingDictModTime_(0)
+    moldingDictModTime_(0),
+    moldOn_(false),
+    moldHeatCap_(0),
+    moldTau_(60),
+    moldCoolingRate_(0),
+    moldTw_(300),
+    moldT_(0)
 {
     // The molding dictionary is the external case-generation contract. The
     // packing group drives the V/P switch and the packing pressure curve
@@ -135,68 +136,44 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << endl;
     }
 
-    // Latent-heat linearisation parameters: read from the melt phase
-    // physical properties so the energy predictor (see
-    // thermophysicalPredictor) can add the apparent-Cp diagonal when
-    // the hMelt thermodynamics with non-zero latentHeat are selected.
-    // The Tait coefficients are intentionally duplicated from the phase
-    // dictionary: the abstract thermo interface does not expose them.
-    const fileName meltPropsPath
-    (
-        runTime.constant()/fileName("physicalProperties.melt")
-    );
-
-    if (isFile(meltPropsPath))
+    // Lumped mould thermal model (optional): when enabled, the walls
+    // patch temperature becomes a state advanced in preSolve from the
+    // heat flow of the casting and the cooling channels
+    if (isFile(moldingDictPath))
     {
-        IFstream is(meltPropsPath);
+        IFstream mis(moldingDictPath);
 
-        if (!is.good())
+        if (!mis.good())
         {
-            FatalIOErrorInFunction(meltPropsPath)
-                << "Cannot open " << meltPropsPath
+            FatalIOErrorInFunction(moldingDictPath)
+                << "Cannot open " << moldingDictPath
                 << exit(FatalIOError);
         }
 
-        dictionary meltDict(is);
+        dictionary moldingDict(mis);
+        const dictionary& coolingDict(moldingDict.subDict("cooling"));
 
-        latentOn_ =
-            meltDict.subDict("thermoType").lookup<word>("thermo")
-         == "hMelt";
+        moldHeatCap_ =
+            coolingDict.lookupOrDefault<scalar>("moldHeatCapacity", 0);
+        moldOn_ = moldHeatCap_ > 0;
 
-        if (latentOn_)
+        if (moldOn_)
         {
-            const dictionary& eqnDict
-            (
-                meltDict.subDict("mixture").subDict("equationOfState")
-            );
-            const dictionary& thermoDict
-            (
-                meltDict.subDict("mixture").subDict("thermodynamics")
-            );
+            moldCoolingRate_ =
+                coolingDict.lookupOrDefault<scalar>("moldWaterHTC", 0);
+            moldTw_ =
+                coolingDict.lookupOrDefault
+                    <scalar>("moldWaterTemperature", 300);
+            moldT_ =
+                coolingDict.lookupOrDefault
+                    <scalar>("moldInitialTemperature", 353);
 
-            latentTt0_ = eqnDict.lookup<scalar>("b5");
-            latentB6_ = eqnDict.lookup<scalar>("b6");
-            latentBand_ = eqnDict.lookupOrDefault<scalar>("smoothBand", 0);
-            latentHeat_ =
-                thermoDict.lookupOrDefault<scalar>("latentHeat", 0);
-
-            latentOn_ = latentHeat_ > 0 && latentBand_ > 0;
-
-            if (latentOn_)
-            {
-                Info<< "moldingFoam: latent-heat linearisation enabled:"
-                    << " latentHeat = " << latentHeat_
-                    << " J/kg, Tt0 = " << latentTt0_
-                    << " K, band = " << latentBand_ << " K" << endl;
-            }
+            Info<< "moldingFoam: lumped mould thermal model enabled:"
+                << " heatCapacity = " << moldHeatCap_ << " J/K"
+                << ", water at " << moldTw_ << " K"
+                << ", initial mould temperature = " << moldT_ << " K"
+                << endl;
         }
-    }
-    else
-    {
-        WarningInFunction
-            << "No " << moldingDictPath << " found."
-            << " The molding contract dictionary is optional in stage M1"
-            << " and becomes mandatory in stages M2/M3." << endl;
     }
 
     // Baseline for the runtime reload: the constructor has just applied
@@ -269,11 +246,13 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         coolingDict.lookupOrDefault<scalar>("releasePressure", 1e5)
     );
 
-    if
+    bool coolingChanged
     (
         newEjectionTemperature != ejectionTemperature_
      || newReleasePressure != releasePressure_
-    )
+    );
+
+    if (coolingChanged)
     {
         Info<< "moldingFoam: cooling parameters updated:"
             << " ejectionTemperature " << ejectionTemperature_
@@ -291,24 +270,17 @@ void Foam::solvers::moldingFoam::readMoldingDict()
             .read(moldingDict);
     }
 
-    moldingDictModTime_ = modTime;
+    moldingDictModTime_ = lastModified(moldingDictPath);
 }
 
 
 void Foam::solvers::moldingFoam::thermophysicalPredictor()
 {
-    // Reproduces compressibleVoF::thermophysicalPredictor, plus a
-    // semi-implicit latent-heat linearisation when the melt phase uses
-    // the hMelt thermodynamics. Inside the Tait solidification band the
-    // apparent Cv = Cp - CpMCv goes negative (the pressure-shifted front
-    // term of CpMCv = T*alphav^2/psi dominates), which the T matrix
-    // cannot tolerate. The extra SuSp term adds rho1*alpha1*latentCp/dt
-    // to the diagonal: the implicit-Euler discretisation of the latent
-    // storage rate rho*latentHeat*dw/dT*dT/dt (the standard effective
-    // capacity treatment). It vanishes at steady state, so the converged
-    // equation and its conservation properties are unchanged. Combined
-    // with a limitTemperature fvConstraint (case side) the solved T
-    // stays bounded while crossing the band.
+    // As compressibleVoF::thermophysicalPredictor with one addition:
+    // after the linear solve the temperature is clamped to a physical
+    // range. Cells inside the Tait solidification band have an apparent
+    // Cv that approaches zero and the linear solve can overshoot there;
+    // correctThermo's Newton needs a positive starting temperature.
 
     const volScalarField& rho1(mixture_.rho1());
     const volScalarField& rho2(mixture_.rho2());
@@ -320,14 +292,11 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 
     volScalarField& T = mixture_.T();
 
-    const volScalarField::Internal& Cv1 = mixture_.thermo1().Cv()();
-    const volScalarField::Internal& Cv2 = mixture_.thermo2().Cv()();
-
     fvScalarMatrix TEqn
     (
         correction
         (
-            Cv1
+            mixture_.thermo1().Cv()()
            *(
                 fvm::ddt(alpha1, rho1, T) + fvm::div(alphaRhoPhi1, T)
               - (
@@ -336,7 +305,7 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
                   : fvm::Sp(contErr1(), T)
                 )
             )
-          + Cv2
+          + mixture_.thermo2().Cv()()
            *(
                 fvm::ddt(alpha2, rho2, T) + fvm::div(alphaRhoPhi2, T)
               - (
@@ -367,59 +336,6 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         (e1Source&e1)
       + (e2Source&e2)
     );
-
-    if (latentOn_)
-    {
-        // Peak of the apparent-Cp latent term of the melt phase:
-        // latentHeat*1.5/(2*band) [J/kg/K] at the band centre
-        const dimensionedScalar latentCpPeak
-        (
-            "latentCpPeak",
-            (dimEnergy/dimMass)/dimTemperature,
-            latentHeat_*1.5/(2*latentBand_)
-        );
-
-        volScalarField::Internal latentCpW
-        (
-            IOobject
-            (
-                "latentCpW",
-                T.instance(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            latentCpPeak
-        );
-
-        const volScalarField::Internal& Ti = T();
-        const volScalarField::Internal& pi = p();
-
-        forAll(latentCpW, i)
-        {
-            const scalar Tt(latentTt0_ + latentB6_*pi[i]);
-            const scalar x
-            (
-                min
-                (
-                    max((Ti[i] - Tt + latentBand_)/(2*latentBand_), 0),
-                    1
-                )
-            );
-            latentCpW[i] *= 6*x*(1 - x);   // normalised shape, peak 1
-        }
-
-        // Semi-implicit latent storage: at convergence (T = T.oldTime())
-        // the term vanishes, so the solved equation remains the exact
-        // energy equation
-        TEqn +=
-            fvm::SuSp
-            (
-                alpha1()*rho1()*latentCpW/runTime.deltaT(),
-                T
-            );
-    }
 
     TEqn.relax();
 

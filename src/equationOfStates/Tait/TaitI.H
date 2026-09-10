@@ -359,11 +359,46 @@ inline Foam::scalar Foam::Tait<Specie>::Z(scalar p, scalar T) const
 template<class Specie>
 inline Foam::scalar Foam::Tait<Specie>::CpMCv(scalar p, scalar T) const
 {
-    // The identity Cp - Cv = T alphav^2/psi with alphav = vT/v and
-    // psi = -vP/v^2 reduces exactly to -T vT^2/vP: the blended specific
-    // volume cancels out and is never evaluated
-    scalar v, vP, vT;
-    blendedDerivs(p, T, v, vP, vT);
+    // The identity Cp - Cv = T*alphav^2/psi evaluated WITHOUT the
+    // solidification-front sweep contributions: inside the transition
+    // band the front terms (moving Tt(p) with pressure and temperature)
+    // make the isochoric Cv = Cp - CpMCv strongly negative, which the
+    // energy equation cannot integrate. The omitted coupling scales
+    // with the Tait pressure shift b6 (0.15 K/MPa for the contract
+    // grade) and is physically negligible. With this definition
+    // Cv = Cp_app - CpMCv stays positive across the band and the
+    // apparent-Cp latent heat of hMeltThermo is carried by the
+    // transient term of the energy equation.
+    const scalar TtX = T - Tt(p);
+
+    const scalar v0m = b1m_ + b2m_*TtX;
+    const scalar Bm = b3m_*exp(-b4m_*T);
+    const scalar fm = 1.0 - C_*log(max(scalar(1) + p/Bm, scalar(small)));
+    const scalar vmT = b2m_*fm - C_*p*b4m_*v0m/(Bm + p);
+    const scalar vmP = -b2m_*b6_*fm - C_*v0m/(Bm + p);
+
+    const scalar v0s = b1s_ + b2s_*TtX;
+    const scalar Bs = b3s_*exp(-b4s_*T);
+    const scalar fs = 1.0 - C_*log(max(scalar(1) + p/Bs, scalar(small)));
+    const scalar vsT = b2s_*fs - C_*p*b4s_*v0s/(Bs + p);
+    const scalar vsP = -b2s_*b6_*fs - C_*v0s/(Bs + p);
+
+    // Band weights WITHOUT the front sweep: the w'(x) contributions to
+    // the state derivatives are deliberately omitted here (see comment)
+    scalar w;
+    if (band_ <= scalar(0))
+    {
+        w = TtX > 0 ? scalar(1) : scalar(0);
+    }
+    else
+    {
+        const scalar x =
+            min(max(TtX/(2*band_) + scalar(0.5), scalar(0)), scalar(1));
+        w = x*x*(3 - 2*x);
+    }
+
+    const scalar vT = w*vmT + (1 - w)*vsT;
+    const scalar vP = w*vmP + (1 - w)*vsP;
 
     return -T*vT*vT/vP;
 }

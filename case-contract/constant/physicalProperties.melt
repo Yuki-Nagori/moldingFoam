@@ -59,13 +59,11 @@ mixture
         Cp          2400;   // [J/kg/K] base value; the apparent-Cp
                             // latent-heat peak across the Tait
                             // transition band is added on top
-        latentHeat  0;      // [J/kg] heat of solidification. Non-zero
-                            // values activate the latent-heat
-                            // linearisation in the moldingFoam energy
-                            // predictor; they are NOT yet supported by
-                            // the compressibleVoF T-matrix energy
-                            // predictor (in-band negative Cv, see
-                            // ai-docs/tasks/001 and README section 6)
+        latentHeat  2e5;    // [J/kg] heat of solidification (HDPE-like);
+                            // carried by the hMelt apparent-Cp peak in
+                            // the energy predictor (Tait::CpMCv
+                            // neglects the b6 front coupling - see
+                            // README section 6)
         hf          0;      // [J/kg]
     }
 

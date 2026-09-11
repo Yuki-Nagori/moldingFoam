@@ -8,7 +8,7 @@ dimensions      [1 -1 -2 0 0 0 0];
 internalField   uniform 1e5;
 boundaryField
 {
-    inlet1
+    inlet
     {
         type            moldingPrghPressure;
         refValue        uniform 1e5;
@@ -16,7 +16,6 @@ boundaryField
         valueFraction   uniform 0;
         value           uniform 1e5;
     }
-    inlet2  { type fixedFluxPressure; value $internalField; }
     vent
     {
         type            moldingVentPressure;

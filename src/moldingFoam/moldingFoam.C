@@ -100,6 +100,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     switchPressure_(great),
     gateSealTime_(great),
     gateSealRamp_(0),
+    forcedSwitchTime_(great),
     gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
     trapAirInterval_(0),
@@ -192,6 +193,10 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar gateSealRamp =
             packingDict.lookupOrDefault<scalar>("gateSealRamp", 0);
 
+        // Optional time-based V/P switch criterion
+        const scalar forcedSwitchTime =
+            packingDict.lookupOrDefault<scalar>("switchTime", great);
+
         // Optional gate melt temperature at or below which the gate
         // freezes off; disabled by default (time / pressure release only)
         const scalar gateFreezeTemperature =
@@ -235,6 +240,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
         gateSealRamp_ = gateSealRamp;
+        forcedSwitchTime_ = forcedSwitchTime;
         gateFreezeTemperature_ = gateFreezeTemperature;
         ventSealAlpha_ = ventSealAlpha;
         trapAirInterval_ = trapAirInterval;
@@ -1521,6 +1527,7 @@ void Foam::solvers::moldingFoam::preSolve()
         (
             filledFraction >= stage.switchFraction()
          || pGate >= switchPressure_
+         || runTime.value() >= forcedSwitchTime_
         )
         {
             stage.switchToPacking(runTime.value());

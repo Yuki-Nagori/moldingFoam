@@ -103,6 +103,10 @@ class moldingFoam
         //- Gate seal ramp duration [s]; zero seals instantaneously
         scalar gateSealRamp_;
 
+        //- Optional time at which to switch to packing regardless of the
+        //  fraction/pressure criteria [s]
+        scalar forcedSwitchTime_;
+
         //- Gate mass-weighted average melt temperature at or below which
         //  the gate freezes off [K]; defaults to -great (disabled)
         scalar gateFreezeTemperature_;

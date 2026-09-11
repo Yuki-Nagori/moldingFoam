@@ -1,0 +1,29 @@
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform (0 0 0);
+boundaryField
+{
+    inlet
+    {
+        type            moldingInletVelocity;
+        volumetricFlowRateProfile
+        {
+            type            table;
+            values
+            (
+                (0    1e-07)
+                (0.3  1e-07)
+                (0.31 3e-07)
+                (0.6  3e-07)
+            );
+        }
+        value           uniform (0 0 0);
+    }
+    vent    { type moldingVentVelocity; value uniform (0 0 0); }
+    walls   { type noSlip; }
+}

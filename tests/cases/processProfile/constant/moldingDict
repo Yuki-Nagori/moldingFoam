@@ -12,6 +12,9 @@ packing
 {
     switchFraction   1;
     switchPressure   1e9;
+
+    // Time-based V/P switch criterion
+    switchTime       0.4;
     pressure
     {
         type            constant;
@@ -24,8 +27,3 @@ cooling
     releasePressure      1e5;
 }
 viscousDissipation  false;
-
-// Weld-line prediction: record the fill time of every cell and the
-// trapped-air field
-writeFillTime     true;
-trapAirInterval   100;

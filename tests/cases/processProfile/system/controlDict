@@ -10,10 +10,11 @@ libs            ("libmoldingFoam.so");
 startFrom       startTime;
 startTime       0;
 stopAt          endTime;
-endTime         4;
+endTime         0.5;
 deltaT          1e-05;
 writeControl    adjustableRunTime;
-writeInterval   1;
+writeInterval   0.5;
+writeFields     false;
 purgeWrite      0;
 writeFormat     ascii;
 writePrecision  8;
@@ -28,16 +29,16 @@ maxDeltaT       0.01;
 
 functions
 {
-    trappedAir
+    inletMassFlow
     {
-        type            volFieldValue;
+        type            surfaceFieldValue;
         libs            ("libfieldFunctionObjects.so");
         writeControl    timeStep;
         writeInterval   1;
         writeFields     no;
         log             yes;
-        cellZone        all;
+        patch           inlet;
         operation       sum;
-        fields          (airTrap);
+        fields          (alphaRhoPhi.melt);
     }
 }

@@ -1,9 +1,21 @@
 # 030 — 多级注射/保压工艺曲线与过程控制（补充）
 
-- 状态：planned
+- 状态：done（2026-09-10：入口流量 Function1 曲线 + 时间型 V/P 切换已落地并验证；阀浇口时序为后续扩展）
 - 优先级：P1
 - 依赖：006/016
 - 预估规模：1–2 周
+
+验收记录：
+
+- `moldingInletVelocity` 新增可选 `volumetricFlowRateProfile`（Function1，
+  时间表曲线），填充阶段流量 `Q(t)` 由曲线给出；缺省仍用常数
+  `volumetricFlowRate`，行为不变；
+- `moldingDict.packing` 新增可选 `switchTime`（时间型 V/P 切换准则，
+  与填充分数/压力准则并列）；
+- 集成用例 `tests/cases/processProfile`：两段流量（1e-7 → 3e-7 m³/s）
+  的入口质量流与 ρQ 一致（0.72% / 2.33%），时间型切换在 0.4005 s 触发
+  （误差 0.13%）；`xmake run test-solver` 11 用例全绿；
+- 阀浇口时序（与 016 衔接）与位置型切换为后续扩展。
 
 ## 1. 背景与现状
 

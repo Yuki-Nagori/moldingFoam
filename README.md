@@ -361,6 +361,7 @@ $ xmake run test
 | `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
 | `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
+| `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -501,6 +502,17 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 多级工艺曲线（`volumetricFlowRateProfile`/`switchTime`，任务 030）
+
+`0/U` 的 `moldingInletVelocity` 新增可选 `volumetricFlowRateProfile`
+（`Function1`，时间表曲线）：填充阶段流量 `Q(t)` 由曲线给出，缺省仍用
+常数 `volumetricFlowRate`；`constant/moldingDict` 的 `packing` 新增可选
+`switchTime`（时间型 V/P 切换准则，与填充分数/压力准则并列）。
+
+- 集成用例 `tests/cases/processProfile`：两段流量（1e-7 → 3e-7 m³/s）
+  入口质量流与 ρQ 一致（0.72%/2.33%），时间型切换在 0.4005 s 触发；
+- 缺省不写时行为不变；阀浇口时序为后续扩展。
 
 ### 熔接痕与气穴（`writeFillTime`，任务 021）
 
@@ -804,6 +816,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.18**（多级工艺曲线，任务 030）：
+
+- `0/U` 的 `moldingInletVelocity` 新增可选 `volumetricFlowRateProfile`
+  （Function1 时间曲线）；`packing` 新增可选 `switchTime`（时间型 V/P
+  切换）。缺省不写时行为与 v1.17 一致。
+
 **v1.17**（熔接痕/气穴，任务 021）：
 
 - `constant/moldingDict` 新增可选 `writeFillTime`（bool，缺省 false）：
@@ -995,6 +1013,7 @@ moldingFoam/
                              verify-fiber-orientation.py
                              verify-shrinkage.py
                              verify-weld-line.py
+                             verify-process-profile.py
 ```
 
 ---

@@ -35,9 +35,11 @@ Description
 
     - filling: the velocity is volumetric-flow-rate controlled, i.e. the
       gate injects with a constant volumetric flow rate, either given
-      directly (\c volumetricFlowRate) or, for a multi-gate runner, taken
-      from the equal-pressure-drop split of an optional 1D runner network
-      (\c runner sub-dictionary, \c gate name and \c totalFlowRate);
+      directly (\c volumetricFlowRate), as a time-dependent profile
+      (\c volumetricFlowRateProfile, a Function1), or, for a multi-gate
+      runner, taken from the equal-pressure-drop split of an optional 1D
+      runner network (\c runner sub-dictionary, \c gate name and
+      \c totalFlowRate);
     - packing: the velocity follows the local volumetric flux computed by
       the pressure equation, which is driven by the packing pressure
       target imposed at the gate by the moldingPrghPressure boundary
@@ -119,6 +121,10 @@ class moldingInletVelocityFvPatchVectorField
 
         //- Injection volumetric flow rate during filling [m^3/s]
         scalar volumetricFlowRate_;
+
+        //- Optional time-dependent injection flow rate profile [m^3/s];
+        //  when present it overrides the constant volumetricFlowRate
+        autoPtr<Function1<scalar>> flowRateProfile_;
 
         //- Patch area; computed on first use and cached [m^2]
         scalar area_;

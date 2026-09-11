@@ -26,6 +26,24 @@ License
 
 #include "moldingInletVelocityFvPatchVectorField.H"
 #include "moldingStage.H"
+
+namespace
+{
+
+//- Deep copy a Function1 held by autoPtr (the autoPtr copy would transfer
+//  ownership and crash later writes of the source)
+Foam::autoPtr<Foam::Function1<Foam::scalar>> cloneProfile
+(
+    const Foam::autoPtr<Foam::Function1<Foam::scalar>>& p
+)
+{
+    return
+        p.valid()
+      ? Foam::autoPtr<Foam::Function1<Foam::scalar>>(p->clone().ptr())
+      : Foam::autoPtr<Foam::Function1<Foam::scalar>>();
+}
+
+} // End anonymous namespace
 #include "moldingRunnerNetwork.H"
 #include "addToRunTimeSelectionTable.H"
 #include "fvPatchFieldMapper.H"
@@ -47,6 +65,18 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 :
     fixedValueFvPatchVectorField(p, iF, dict),
     volumetricFlowRate_(dict.lookupOrDefault<scalar>("volumetricFlowRate", 0)),
+    flowRateProfile_
+    (
+        dict.found("volumetricFlowRateProfile")
+      ? Function1<scalar>::New
+        (
+            "volumetricFlowRateProfile",
+            time().userUnits(),
+            dimensionSet(0, 3, -1, 0, 0, 0, 0),
+            dict
+        )
+      : autoPtr<Function1<scalar>>()
+    ),
     area_(-1),
     runner_
     (
@@ -92,11 +122,12 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
                 << exit(FatalIOError);
         }
     }
-    else if (volumetricFlowRate_ <= 0)
+    else if (volumetricFlowRate_ <= 0 && !flowRateProfile_.valid())
     {
         FatalIOErrorInFunction(dict)
             << "The moldingInletVelocity condition requires a positive "
-            << "volumetricFlowRate or a runner network: volumetricFlowRate = "
+            << "volumetricFlowRate, a volumetricFlowRateProfile or a "
+            << "runner network: volumetricFlowRate = "
             << volumetricFlowRate_ << exit(FatalIOError);
     }
 }
@@ -112,6 +143,7 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 :
     fixedValueFvPatchVectorField(pivpvf, p, iF, m),
     volumetricFlowRate_(pivpvf.volumetricFlowRate_),
+    flowRateProfile_(cloneProfile(pivpvf.flowRateProfile_)),
     area_(pivpvf.area_),
     runner_
     (
@@ -133,6 +165,7 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 :
     fixedValueFvPatchVectorField(pivpvf, iF),
     volumetricFlowRate_(pivpvf.volumetricFlowRate_),
+    flowRateProfile_(cloneProfile(pivpvf.flowRateProfile_)),
     area_(pivpvf.area_),
     runner_
     (
@@ -193,6 +226,11 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
         }
 
         scalar Q = volumetricFlowRate_;
+
+        if (flowRateProfile_.valid())
+        {
+            Q = flowRateProfile_->value(patch().time().value());
+        }
 
         if (runner_.valid())
         {

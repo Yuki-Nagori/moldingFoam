@@ -70,11 +70,11 @@
 
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
-| [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | planned | 018 |
-| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | planned | 029/018 |
-| [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | planned | 018a/031 |
-| [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | planned | 024/025/027/013b |
-| [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | planned | 017/022/013b |
+| [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | **in-progress**（psi 非 stale 已证；待通量投影） | 018 |
+| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **in-progress**（GAMG 排除；55k 49%/222k 30%；方差 20-25%） | 029/018 |
+| [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | **in-progress**（公式化澄清；实现待做） | 018a/031 |
+| [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **in-progress**（阶段 1 结晶度-收缩耦合完成） | 024/025/027/013b |
+| [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | **done**（GCI/有界误差报告；阈值 10%→8%） | 017/022/013b |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | planned | 019/008 |
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、

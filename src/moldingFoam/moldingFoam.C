@@ -121,6 +121,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudget_(false),
     massBudgetIn_(0),
     massBudgetInitial_(0),
+    massBudgetInterval_(50),
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
     viscousDissipation_(false),
@@ -233,6 +234,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
 
         // Optional discrete mass-budget diagnostic (task 018)
         massBudget_ = moldingDict.lookupOrDefault<Switch>("massBudget", false);
+        massBudgetInterval_ =
+            moldingDict.lookupOrDefault<label>("massBudgetInterval", 50);
 
         // Optional trapped-air diagnostic (see reportTrappedAir)
         const label trapAirInterval =
@@ -1633,7 +1636,7 @@ void Foam::solvers::moldingFoam::postSolve()
 
     massBudgetIn_ += flux*dt;
 
-    if (runTime.timeIndex() % 50 == 0)
+    if (massBudgetInterval_ > 0 && runTime.timeIndex() % massBudgetInterval_ == 0)
     {
         Info<< "moldingFoam: mass budget: m = " << m
             << " kg, accumulated boundary flux = " << massBudgetIn_

@@ -127,6 +127,9 @@ class moldingFoam
         //- Initial domain melt mass [kg]
         scalar massBudgetInitial_;
 
+        //- Mass-budget logging interval [time steps]
+        label massBudgetInterval_;
+
         //- Trapped-air diagnostic interval [time steps]; zero disables it
         label trapAirInterval_;
 

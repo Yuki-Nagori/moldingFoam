@@ -57,7 +57,17 @@ else
 fi
 
 echo "=============================================================="
-echo "moldingFoam contract case finished, verifying acceptance ..."
+echo "moldingFoam case finished, verifying acceptance ..."
 echo "=============================================================="
 
-python3 "$(dirname "$0")/verify-case.py" "$caseDir"
+# A case may name its own verifier in system/verifier; otherwise the
+# contract acceptance verifier is used
+if [ -f "$caseDir/system/verifier" ]; then
+    verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p'         "$caseDir/system/verifier" | head -1)
+else
+    verifier="verify-case.py"
+fi
+
+scriptDir=$(cd "$(dirname "$0")" && pwd)
+
+python3 "$scriptDir/$verifier" "$caseDir"

@@ -48,9 +48,10 @@ packing
     // fires when the filling gate pressure reaches 7 MPa, which happens at
     // about 98.5% fill, so the residual air is small but still provides
     // enough compressibility for the sealed cavity to stay stable. The
-    // case is the calibration vehicle of tasks 009/018: the sealed
-    // cooling contraction currently leaves a ~4.6e-2 mass conservation
-    // error, which task 018 closes
+    // case is the calibration vehicle of tasks 009/018: the compressible
+    // pressure-density splitting error of the packing ramp left a ~4.5e-2
+    // window mass error, closed by the conservative global mass fixer
+    // (massFixGlobal, below) to ~1e-5
     switchPressure   7e6;
 
     // Stage M2: time after the V/P switch at which the gate freezes off

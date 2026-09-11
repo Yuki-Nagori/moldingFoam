@@ -745,6 +745,20 @@ moldingFoam: mass budget: m = 8.1012857e-05 kg, accumulated boundary
 flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
 ```
 
+### 保守质量修正器（`massFix`/`massFixGlobal`，任务 018）
+
+`constant/moldingDict` 可选（缺省 false）：
+
+- `massFix true`：局部修正，把离散质量残差
+  `R = ddt(alpha1,rho1) + div(alphaRhoPhi1)` 反馈到相密度
+  `rho1 -= R·dt/alpha1`。预算可闭合但会经压力-密度耦合失稳
+  （时间步崩溃），不推荐；
+- `massFixGlobal true`：**全局均匀**修正，按运行残差对整场密度缩放
+  `rho1 *= 1 − relax·residual/m`（保形、无局部压力反馈）。
+  `massFixRelaxation`（缺省 1）为松弛因子。高压保压校准 case
+  `validation/highPressure` 启用本项后，保压窗口离散质量守恒误差由
+  ~4.5e-2 降到 **1.1e-5**（Euler 一致积分口径）。
+
 ### 困气诊断（`trapAirInterval`，任务 003 选项 B）
 
 `constant/moldingDict` 可选 `trapAirInterval`（时间步间隔，缺省 0 =

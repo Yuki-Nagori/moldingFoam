@@ -369,6 +369,7 @@ $ xmake run test
 | `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille（`verify-fountain-flow.py`） |
 | `moldCHT-cycle` | 多周期多区域 CHT：模温 354→405 K 跨周期保留，界面连续（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
 | `moldCHT-cooled` | 模具外壁 Robin 对流冷却：能量平衡含冷却热流（22.1 J）实测 0.314%（`verify-moldcht-cooled.py`） |
+| `moldCHT-lumped` | 002 集总极限对照：薄层 CHT 平衡温度 373.862 vs 集总 373.901 K（1.05e-4）（`verify-moldcht-lumped.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -501,7 +502,7 @@ regionSolvers
 ```
 
 验证（`xmake run moldCHT` 依次运行 `moldCHT` / `moldCHT-fill` /
-`moldCHT-cycle` / `moldCHT-cooled`）：
+`moldCHT-cycle` / `moldCHT-cooled` / `moldCHT-lumped`）：
 
 - `validation/moldCHT`：静止熔体 + 钢模具的瞬态导热，界面温度与独立
   一维两层隐式 FD（Tait ρ(T)、Cv(T)）对拍 **0.19%**、腔体平均
@@ -514,7 +515,9 @@ regionSolvers
   保留）：2 个周期完成，模具平均温度 354.1 → 404.5 K，界面连续；
 - `validation/moldCHT-cooled`：模具外壁 Robin 对流冷却
   （`moldingConvectiveCooling`，2000 W/m²K、300 K）：能量平衡含冷却
-  热流积分 22.1 J，实测 0.314%，界面连续。
+  热流积分 22.1 J，实测 0.314%，界面连续；
+- `validation/moldCHT-lumped`：002 集总极限（薄层无梯度）平衡温度与
+  2 节点集总模型一致（1.05e-4）。
 
 ### 粘弹性动量耦合（任务 027 第二阶段）
 

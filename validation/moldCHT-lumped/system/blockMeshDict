@@ -1,0 +1,69 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+scale   1;
+
+vertices
+(
+    (0    0       0)       // 0
+    (0.02 0       0)       // 1
+    (0.02 0.0002  0)       // 2
+    (0    0.0002  0)       // 3
+    (0    0       0.02)    // 6 -> 4
+    (0.02 0       0.02)    // 7 -> 5
+    (0.02 0.0002  0.02)    // 8 -> 6
+    (0    0.0002  0.02)    // 9 -> 7
+    (0    0.0007  0)       // 4 -> 8
+    (0.02 0.0007  0)       // 5 -> 9
+    (0    0.0007  0.02)    // 10
+    (0.02 0.0007  0.02)    // 11
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7)     (40  8 1) simpleGrading (1 1 1)
+    hex (3 2 9 8 7 6 11 10)   (40 10 1) simpleGrading (1 1 1)
+);
+
+defaultPatch
+{
+    type empty;
+}
+
+boundary
+(
+    cavityBottom
+    {
+        type wall;
+        faces ((0 1 5 4));
+    }
+
+    cavitySides
+    {
+        type wall;
+        faces
+        (
+            (0 3 7 4)
+            (1 2 6 5)
+        );
+    }
+
+    moldSides
+    {
+        type wall;
+        faces
+        (
+            (3 8 10 7)
+            (2 9 11 6)
+        );
+    }
+
+    moldTop
+    {
+        type wall;
+        faces ((8 9 11 10));
+    }
+);

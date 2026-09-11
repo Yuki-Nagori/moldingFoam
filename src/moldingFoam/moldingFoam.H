@@ -165,6 +165,11 @@ class moldingFoam
         //- Initial shrinkage field for the cycle reset
         autoPtr<volScalarField> shrinkageInitial_;
 
+        //- Optional void-fraction indicator of the sealed melt (task
+        //  018a, stage 2): active when the shrinkage sub-dictionary
+        //  enables it with `voidFraction true`
+        autoPtr<volScalarField> voidField_;
+
         //- Optional fill-time field (the time each cell fills); the last
         //  cells to fill are the weld lines
         bool writeFillTime_;

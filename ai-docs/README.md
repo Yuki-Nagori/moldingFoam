@@ -51,7 +51,7 @@
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |
 | [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
 | [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **in-progress**（通量一致性+平滑封冻已做；高压端压力-密度振荡待修） | 009 | 3–5 天 |
-| [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **in-progress**（阶段 1：PVT 空洞指标 API + EOS 测试；求解器场待做） | 018 | 1–2 周 |
+| [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **in-progress**（阶段 1/2：PVT 指标 + `voidFraction` 场 + 密封冷却用例 18/18；阶段 3：精确 EOS/守恒待做） | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | **done**（四基准：多周期/Robin 冷却/002 极限/周期稳态；三维水区受上游模块限制） | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
 | [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |

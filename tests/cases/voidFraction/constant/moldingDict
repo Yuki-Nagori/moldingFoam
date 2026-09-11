@@ -1,0 +1,45 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      moldingDict;
+}
+injection
+{
+    meltTemperature  480;
+}
+packing
+{
+    switchFraction   1e-6;
+    switchPressure   1e9;
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+cooling
+{
+    ejectionTemperature  400;
+    releasePressure      1e5;
+}
+viscousDissipation  false;
+
+// PVT-consistent shrinkage and residual-stress indicators
+shrinkage
+{
+    referenceDensity       950;     // [kg/m^3] solid reference
+    referenceTemperature   293.15;  // [K]
+    elasticModulus         2e9;     // [Pa]
+    poissonRatio           0.3;     // [-]
+    thermalExpansion       7e-5;    // [1/K]
+
+    // Void-fraction indicator of the sealed melt (task 018a)
+    voidFraction           true;
+    voidPressure           0;       // [Pa] cavitation pressure
+}
+
+// Seal the gate while the melt is still hot so that the subsequent
+// cooling runs on a fixed mass; the isochoric pressure then falls and
+// voids form (the voidFraction indicator)
+gateFreezeTemperature 465;

@@ -131,6 +131,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     shrinkage_(),
     shrinkageField_(),
     shrinkageInitial_(),
+    voidField_(),
     writeFillTime_(false),
     fillTime_(),
     fillTimeInitial_(),
@@ -362,6 +363,36 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             );
 
             shrinkageInitial_.reset(new volScalarField(*shrinkageField_));
+
+            // Optional void-fraction indicator of the sealed melt (task
+            // 018a, stage 2): the volume fraction that would open up if
+            // the sealed melt relaxed to the cavitation pressure pv
+            if
+            (
+                moldingDict.subDict("shrinkage").lookupOrDefault<Switch>
+                (
+                    "voidFraction",
+                    false
+                )
+            )
+            {
+                voidField_.reset
+                (
+                    new volScalarField
+                    (
+                        IOobject
+                        (
+                            "voidFraction",
+                            runTime.name(),
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::AUTO_WRITE
+                        ),
+                        mesh,
+                        dimensionedScalar("voidFraction", dimless, 0)
+                    )
+                );
+            }
         }
 
         // Optional fill-time field: the time each cell becomes filled
@@ -951,6 +982,12 @@ void Foam::solvers::moldingFoam::resetCycle()
         shrinkageField_->correctBoundaryConditions();
     }
 
+    if (voidField_.valid())
+    {
+        voidField_->primitiveFieldRef() = 0;
+        voidField_->correctBoundaryConditions();
+    }
+
     if (fillTime_.valid())
     {
         fillTime_->primitiveFieldRef() = fillTimeInitial_->primitiveField();
@@ -1455,6 +1492,58 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
             Info<< "moldingFoam: shrinkage: max(S) = " << gMax(sc)
                 << ", min(S) = " << gMin(sc) << endl;
         }
+    }
+
+    // Void-fraction indicator of the sealed melt (task 018a, stage 2):
+    // once the gate has frozen off the sealed melt cannot draw more
+    // material, so any density above rho(pv, T) opens a void. The density
+    // at the cavitation pressure is estimated from the local
+    // compressibility, rho(pv, T) ~ rho + psi (pv - p)
+    if (voidField_.valid())
+    {
+        volScalarField& v = *voidField_;
+        scalarField& vc = v.primitiveFieldRef();
+
+        const moldingStage* stagePtr = nullptr;
+
+        if (mesh.foundObject<moldingStage>(moldingStage::typeName))
+        {
+            stagePtr = &mesh.lookupObject<moldingStage>(moldingStage::typeName);
+        }
+
+        if (stagePtr && stagePtr->gateSealed())
+        {
+            const scalarField& rhoc = mixture_.rho1().primitiveField();
+            const scalarField& psim =
+                mixture_.thermo1().psi().primitiveField();
+            const scalarField& pc = p.primitiveField();
+            const scalarField& alphac = alpha1.primitiveField();
+            const scalar pv = shrinkage_->pv();
+
+            forAll(vc, i)
+            {
+                vc[i] =
+                    alphac[i] > 0.5
+                  ? shrinkage_->voidFraction
+                    (
+                        rhoc[i],
+                        rhoc[i] + psim[i]*(pv - pc[i])
+                    )
+                  : 0;
+            }
+
+            if (runTime.timeIndex() % 50 == 0)
+            {
+                Info<< "moldingFoam: void fraction: max = " << gMax(vc)
+                    << ", min = " << gMin(vc) << endl;
+            }
+        }
+        else
+        {
+            vc = 0;
+        }
+
+        v.correctBoundaryConditions();
     }
 }
 

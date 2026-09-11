@@ -53,7 +53,7 @@
 | [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（封冻前守恒 5.02e-4；浇口通量一致性修正） | 009 | 3–5 天 |
 | [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | planned | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | planned | 008/002 | 1–2 周 |
-| [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **in-progress**（前沿 0.013%、剖面 L2 1.64%；前沿形状/收敛待做） | 001/006/017 | 1–2 周 |
+| [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
 | [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |
 | [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | planned | 001–012 | 2–4 周 |
 | [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | planned | 022 | 1–2 周 |

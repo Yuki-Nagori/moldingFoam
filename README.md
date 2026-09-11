@@ -512,6 +512,12 @@ regionSolvers
 - `validation/moldCHT-cycle`：多周期集成（cavity 周期重置、模具温度
   保留）：2 个周期完成，模具平均温度 354.1 → 404.5 K，界面连续。
 
+### 残余应力分布（任务 023 第一阶段）
+
+`moldingWarpage::residualStress`：面内约束板的自平衡弹性残余应力
+`σ(y)=E/(1−ν)·α·((T(y)−Tref)−ε0)`、`ε0=α·mean(T−Tref)`（Simpson），
+model test 验证逐点解析值与全域自平衡（均值 ~3e-11 Pa）。
+
 ### 自由翘曲解析模型（任务 022 第一阶段）
 
 `Foam::moldingWarpage`：由厚度方向温度剖面积分自由膜应变与热弯曲

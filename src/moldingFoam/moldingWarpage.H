@@ -111,6 +111,17 @@ public:
         //- Residual stress of a fully constrained plate [Pa]
         scalar constrainedStress(const scalar T) const;
 
+        //- Self-equilibrated through-thickness residual stress of a plate
+        //  constrained in-plane: sigma(y) = E/(1-nu) alpha ((T-Tref) - eps0)
+        //  with eps0 = alpha mean(T-Tref). The profile is integrated with
+        //  Simpson per cell (exact for linear profiles)
+        void residualStress
+        (
+            const UList<scalar>& T,
+            const scalar h,
+            UList<scalar>& sigma
+        ) const;
+
         //- Linear thermal expansion coefficient [1/K]
         scalar alpha() const
         {

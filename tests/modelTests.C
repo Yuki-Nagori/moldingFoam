@@ -1722,6 +1722,46 @@ void warpageTests()
         );
     }
 
+    // Self-equilibrated residual stress distribution
+    {
+        const label n = 8;
+        const scalar Teq = 363;
+        List<scalar> T(n);
+        List<scalar> sigma(n);
+
+        for (label i = 0; i < n; ++i)
+        {
+            T[i] = 353 + 20*(i + 0.5)/n;
+        }
+
+        warp.residualStress(T, h, sigma);
+
+        scalar mean = 0;
+        forAll(sigma, i)
+        {
+            mean += sigma[i];
+        }
+        mean /= n;
+
+        // sigma_i = E/(1-nu) alpha (T_i - Tref) for a zero-mean profile
+        const scalar coeff = 2e9/(1 - 0.3)*alpha;
+        scalar maxErr = 0;
+        forAll(sigma, i)
+        {
+            maxErr = max(maxErr, mag(sigma[i] - coeff*(T[i] - Teq))/1e6);
+        }
+
+        Info<< "    residual stress: mean = " << mean
+            << " Pa, max|err| = " << maxErr << " MPa" << endl;
+
+        checkBool
+        (
+            "warpage: residual stress is self-equilibrated and matches "
+            "E/(1-nu) alpha (T - Tref)",
+            mag(mean) < 1e-6 && maxErr < 1e-12
+        );
+    }
+
     // Strip deflection and constrained residual stress hand values
     {
         const scalar kappa = 0.7;

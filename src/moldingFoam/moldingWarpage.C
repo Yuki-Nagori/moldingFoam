@@ -172,6 +172,31 @@ Foam::scalar Foam::moldingWarpage::constrainedStress(const scalar T) const
 }
 
 
+void Foam::moldingWarpage::residualStress
+(
+    const UList<scalar>& T,
+    const scalar h,
+    UList<scalar>& sigma
+) const
+{
+    const label n = T.size();
+
+    if (n == 0 || sigma.size() != n)
+    {
+        return;
+    }
+
+    // Membrane strain of the constrained plate: the mean thermal strain
+    const scalar eps0 = freeStrain(T, h);
+
+    for (label i = 0; i < n; ++i)
+    {
+        sigma[i] =
+            E_/(1 - nu_)*(alpha_*(T[i] - Tref_) - eps0);
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

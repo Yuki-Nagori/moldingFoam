@@ -362,6 +362,7 @@ $ xmake run test
 | `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
+| `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -502,6 +503,13 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 多浇口分流（任务 026 第一阶段）
+
+`tests/cases/multiGate`：双入口共用同一 1D 流道网络（`totalFlowRate`
+相同、`gate` 不同、gate 直径 4/2 mm、幂律 n=0.5）；等压降分流实测
+`Q1/Q2 = 32.30` vs 解析 `(D1/D2)^(3+1/n) = 32`（误差 0.93%），总流量
+误差 3.4%（闸口密度差异）。热流道温度场耦合与阀浇口时序为后续阶段。
 
 ### 多级工艺曲线（`volumetricFlowRateProfile`/`switchTime`，任务 030）
 
@@ -1014,6 +1022,7 @@ moldingFoam/
                              verify-shrinkage.py
                              verify-weld-line.py
                              verify-process-profile.py
+                             verify-multi-gate.py
 ```
 
 ---

@@ -72,6 +72,12 @@ Description
     - with many small cross-sections the march converges to the analytic
       plug-flow exponential within 1e-3.
 
+    Shrinkage indicators (moldingShrinkage):
+    - the volumetric shrinkage is zero at the reference density and
+      follows 1 - rhoRef/rho;
+    - the constrained thermal stress indicator follows
+      E/(1 - nu) alpha (Tref - T).
+
     Fibre orientation (moldingFiberOrientation):
     - the shape factor reproduces (r^2 - 1)/(r^2 + 1);
     - tr(a) is invariant and the advance keeps tr(a) = 1 and the
@@ -110,6 +116,7 @@ Description
 #include "moldingRunnerNetwork.H"
 #include "moldingCrystallization.H"
 #include "moldingFiberOrientation.H"
+#include "moldingShrinkage.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -1333,6 +1340,56 @@ void fiberOrientationTests()
 }
 
 
+
+const char* shrinkageDictString = R"(
+referenceDensity 950;
+referenceTemperature 293.15;
+elasticModulus 2e9;
+poissonRatio 0.3;
+thermalExpansion 7e-5;
+)";
+
+
+void shrinkageTests()
+{
+    IStringStream is(shrinkageDictString);
+    dictionary dict(is);
+    moldingShrinkage shrink(dict);
+
+    // Volumetric shrinkage
+    {
+        const scalar S0 = shrink.volumetricShrinkage(950);
+        const scalar S1 = shrink.volumetricShrinkage(1.05*950);
+
+        Info<< "    S(rhoRef) = " << S0 << ", S(1.05 rhoRef) = " << S1
+            << endl;
+
+        checkBool
+        (
+            "shrinkage: zero at the reference density and 1 - rhoRef/rho",
+            mag(S0) < 1e-14
+         && relDiff(S1, 1 - 1.0/1.05) < 1e-12
+         && shrink.volumetricShrinkage(0.95*950) < 0
+        );
+    }
+
+    // Thermal stress indicator
+    {
+        const scalar sigma = shrink.thermalStress(373);
+        const scalar expected = 2e9/(1 - 0.3)*7e-5*(293.15 - 373);
+
+        Info<< "    sigma(373 K) = " << sigma << " Pa" << endl;
+
+        checkBool
+        (
+            "shrinkage: constrained thermal stress indicator",
+            relDiff(sigma, expected) < 1e-12
+         && sigma < 0
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1345,6 +1402,7 @@ int main()
     moldThermalTests();
     coolantChannelTests();
     crystallizationTests();
+    shrinkageTests();
     fiberOrientationTests();
     runnerNetworkTests();
     ventOrificeTests();

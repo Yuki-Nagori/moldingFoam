@@ -28,6 +28,7 @@ License
 #include "moldingStage.H"
 #include "moldingCrystallization.H"
 #include "moldingFiberOrientation.H"
+#include "moldingShrinkage.H"
 #include "IOobject.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
 #include "moldingVentVelocityFvPatchVectorField.H"
@@ -110,6 +111,9 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     fiberOrientation_(),
     a_(),
     aInitial_(),
+    shrinkage_(),
+    shrinkageField_(),
+    shrinkageInitial_(),
     nCycles_(1),
     cycle_(1),
     deltaTInitial_(runTime.deltaTValue()),
@@ -294,6 +298,35 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             );
 
             aInitial_.reset(new volSymmTensorField(*a_));
+        }
+
+        // Optional shrinkage and residual-stress indicators from the
+        // local melt density and temperature
+        if (moldingDict.found("shrinkage"))
+        {
+            shrinkage_.reset
+            (
+                new moldingShrinkage(moldingDict.subDict("shrinkage"))
+            );
+
+            shrinkageField_.reset
+            (
+                new volScalarField
+                (
+                    IOobject
+                    (
+                        "shrinkage",
+                        runTime.name(),
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mesh,
+                    dimensionedScalar("shrinkage", dimless, 0)
+                )
+            );
+
+            shrinkageInitial_.reset(new volScalarField(*shrinkageField_));
         }
 
         // The stage object registers itself on the mesh and is shared with
@@ -802,6 +835,13 @@ void Foam::solvers::moldingFoam::resetCycle()
         a_->primitiveFieldRef() = aInitial_->primitiveField();
         a_->correctBoundaryConditions();
     }
+
+    if (shrinkageField_.valid())
+    {
+        shrinkageField_->primitiveFieldRef() =
+            shrinkageInitial_->primitiveField();
+        shrinkageField_->correctBoundaryConditions();
+    }
     p.primitiveFieldRef() = pInitial_->primitiveField();
     p_rgh_.primitiveFieldRef() = p_rghInitial_->primitiveField();
 
@@ -1215,6 +1255,27 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 
     mixture_.correctThermo();
     mixture_.correct();
+
+    // Shrinkage indicator from the updated melt density
+    if (shrinkage_.valid())
+    {
+        volScalarField& s = *shrinkageField_;
+        scalarField& sc = s.primitiveFieldRef();
+        const scalarField& rhoc = mixture_.rho1().primitiveField();
+
+        forAll(sc, i)
+        {
+            sc[i] = shrinkage_->volumetricShrinkage(rhoc[i]);
+        }
+
+        s.correctBoundaryConditions();
+
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            Info<< "moldingFoam: shrinkage: max(S) = " << gMax(sc)
+                << ", min(S) = " << gMin(sc) << endl;
+        }
+    }
 }
 
 

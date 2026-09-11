@@ -359,6 +359,7 @@ $ xmake run test
 | `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
 | `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
+| `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -499,6 +500,25 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 收缩/残余应力指标（`shrinkage`，任务 013a）
+
+`constant/moldingDict` 可选 `shrinkage` 子字典：启用后求解器创建并
+写出 `shrinkage` 场，按局部熔体密度给出 PVT 一致的自由体积收缩
+
+```
+S = 1 − ρ_ref/ρ
+```
+
+并可由 `σ = E/(1−ν)·α·(T_ref−T)` 给出约束板残余热应力指标。参数：
+`referenceDensity`（固态参考密度）、`referenceTemperature`、
+`elasticModulus`、`poissonRatio`、`thermalExpansion`。结构耦合翘曲
+（013b）需结构求解器，超出本模块范围。
+
+- 验证（`xmake run test`）：`S(ρ_ref)=0`、`S(1.05ρ_ref)` 解析值、
+  热应力手算点；
+- 集成用例 `tests/cases/shrinkage`：开放通道冷却，max(S) 由 −0.008
+  增长到 0.298；缺省不写时行为不变。
 
 ### 纤维取向（`fiberOrientation`，任务 015）
 
@@ -768,6 +788,11 @@ thermoType
 
 ### 契约变更日志
 
+**v1.16**（收缩/残余应力指标，任务 013a）：
+
+- `constant/moldingDict` 新增可选 `shrinkage` 子字典：求解器创建并
+  写出 PVT 一致的体积收缩场。缺省不写时行为与 v1.15 一致。
+
 **v1.15**（纤维取向，任务 015）：
 
 - `constant/moldingDict` 新增可选 `fiberOrientation` 子字典
@@ -946,6 +971,7 @@ moldingFoam/
                              verify-runner-network.py
                              verify-crystallization.py
                              verify-fiber-orientation.py
+                             verify-shrinkage.py
 ```
 
 ---

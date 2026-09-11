@@ -64,6 +64,7 @@ namespace Foam
 
 class moldingCrystallization;
 class moldingFiberOrientation;
+class moldingShrinkage;
 
 namespace solvers
 {
@@ -145,6 +146,17 @@ class moldingFoam
 
         //- Initial orientation tensor field for the cycle reset
         autoPtr<volSymmTensorField> aInitial_;
+
+        //- Optional shrinkage/residual-stress indicators: model and
+        //  volumetric shrinkage field, active when constant/moldingDict
+        //  contains a shrinkage sub-dictionary
+        autoPtr<moldingShrinkage> shrinkage_;
+
+        //- Volumetric shrinkage field
+        autoPtr<volScalarField> shrinkageField_;
+
+        //- Initial shrinkage field for the cycle reset
+        autoPtr<volScalarField> shrinkageInitial_;
 
         //- Number of moulding cycles to run [-]; each ejection criterion
         //  met resets the flow fields and starts the next cycle, keeping

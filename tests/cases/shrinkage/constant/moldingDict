@@ -1,0 +1,36 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      moldingDict;
+}
+injection
+{
+    meltTemperature  480;
+}
+packing
+{
+    switchFraction   1;
+    switchPressure   1e9;
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+cooling
+{
+    ejectionTemperature  50;
+    releasePressure      1e5;
+}
+viscousDissipation  false;
+
+// PVT-consistent shrinkage and residual-stress indicators
+shrinkage
+{
+    referenceDensity       950;     // [kg/m^3] solid reference
+    referenceTemperature   293.15;  // [K]
+    elasticModulus         2e9;     // [Pa]
+    poissonRatio           0.3;     // [-]
+    thermalExpansion       7e-5;    // [1/K]
+}

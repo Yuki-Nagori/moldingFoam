@@ -359,6 +359,7 @@ $ xmake run test
 | `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
 | `crystallizationAdvection` | χ 随流输运：新鲜熔体（χ=0）驱替初始 χ=1，熔体加权均值 0.029（`verify-crystallization-advection.py`） |
+| `fiberOrientationAdvection` | 取向张量随流输运：初始 a=xx 被 a=I/3 驱替，平均 a_xx=0.072，tr(a) 保持（`verify-fiber-orientation-advection.py`） |
 | `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
 | `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
@@ -579,7 +580,11 @@ Da/Dt = (W·a − a·W) + λ(D·a + a·D − 2A:D) + 2·CI·γ̇·(I − 3a)
   <1e-6）；
 - 集成用例 `tests/cases/fiberOrientation`：剪切 Couette 下
   `max|a12|` 增长到 0.147，`tr(a)−1 = 2.2e-16`；
-- 缺省不写时行为不变；各向异性黏度与 a 随流输运为后续扩展。
+- `a` 随流输运（隐式 upwind + 对称化/迹归一化）：
+  `tests/cases/fiberOrientationAdvection` 中初始 `a=xx` 的型腔被
+  `a=I/3` 的新鲜熔体驱替，平均 `a_xx=0.072`（阈值 0.5）；启用时需在
+  case 的 `fvSchemes` 加 `div(phi,a)`、`fvSolution` 加 `(a|aFinal)`；
+- 缺省不写时行为不变；各向异性黏度/热导率为后续扩展。
 
 ### 结晶动力学（`crystallization`，任务 014）
 

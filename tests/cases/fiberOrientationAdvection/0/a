@@ -1,0 +1,14 @@
+FoamFile
+{
+    format      ascii;
+    class       volSymmTensorField;
+    object      a;
+}
+dimensions      [];
+internalField   uniform (1 0 0 0 0 0);
+boundaryField
+{
+    inlet   { type fixedValue; value uniform (0.3333333 0 0 0.3333333 0 0.3333333); }
+    vent    { type inletOutlet; inletValue uniform (0.3333333 0 0 0.3333333 0 0.3333333); value uniform (0.3333333 0 0 0.3333333 0 0.3333333); }
+    walls   { type zeroGradient; }
+}

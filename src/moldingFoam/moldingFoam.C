@@ -314,7 +314,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                         IOobject::AUTO_WRITE
                     ),
                     mesh,
-                    dimensionedSymmTensor("a", dimless, symmTensor::I/3)
+                    dimensionedSymmTensor("a", dimless, symmTensor::I/3),
+                    zeroGradientFvPatchField<symmTensor>::typeName
                 )
             );
 
@@ -1202,6 +1203,38 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     if (fiberOrientation_.valid())
     {
         const scalar dt(runTime.deltaTValue());
+
+        // Advect the orientation tensor with the mixture flux before the
+        // local Folgar-Tucker advance; the case's fvSchemes needs a
+        // div(phi,a) entry and fvSolution an (a|aFinal) solver
+        {
+            volSymmTensorField& a = *a_;
+
+            fvSymmTensorMatrix aEqn
+            (
+                fvm::ddt(a)
+              + fvm::div(phi, a)
+              - fvm::Sp(fvc::div(phi), a)
+            );
+
+            aEqn.solve();
+
+            symmTensorField& ac = a.primitiveFieldRef();
+
+            forAll(ac, i)
+            {
+                ac[i] = symm(ac[i]);
+                const scalar trA = tr(ac[i]);
+
+                if (trA > small)
+                {
+                    ac[i] /= trA;
+                }
+            }
+
+            a.correctBoundaryConditions();
+        }
+
         const volTensorField gradU(fvc::grad(U));
 
         volSymmTensorField& a = *a_;

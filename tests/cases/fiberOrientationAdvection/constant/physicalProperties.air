@@ -6,52 +6,46 @@
      \\/     M anipulation |
 -------------------------------------------------------------------------------
 Description
-    Discretisation schemes.
+    Physical properties of the air phase.
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      fvSchemes;
+    location    "constant";
+    object      physicalProperties.air;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
+thermoType
 {
-    default         Euler;
+    type            heRhoThermo;
+    mixture         pureMixture;
+    transport       const;
+    thermo          hConst;
+    equationOfState perfectGas;
+    specie          specie;
+    energy          sensibleInternalEnergy;
 }
 
-gradSchemes
+mixture
 {
-    default         Gauss linear;
-}
+    specie
+    {
+        molWeight   28.9;
+    }
 
-divSchemes
-{
-    div(phi,a)      Gauss upwind;
-    div(phi,alpha)  Gauss interfaceCompression vanLeer 1;
-    div(rhoPhi,U)   Gauss linearUpwind grad(U);
-    div(alphaRhoPhi,e) Gauss upwind;
-    div(alphaRhoPhi,T) Gauss upwind;
-    div(rhoPhi,K)   Gauss upwind;
-    div(phi,p)      Gauss upwind;
-    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
-}
+    thermodynamics
+    {
+        Cp          1007;
+        hf          0;
+    }
 
-laplacianSchemes
-{
-    default         Gauss linear uncorrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         uncorrected;
+    transport
+    {
+        mu          1.84e-05;
+        Pr          0.7;
+    }
 }
 
 // ************************************************************************* //

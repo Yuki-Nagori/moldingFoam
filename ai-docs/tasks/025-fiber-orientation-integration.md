@@ -1,9 +1,23 @@
 # 025 — 纤维取向集成（015 落地）
 
-- 状态：planned
+- 状态：in-progress（2026-09-10：a 张量随流输运已落地；各向异性黏度/热导率与实验对拍待做）
 - 优先级：P2
 - 依赖：001/002/015
 - 预估规模：2–4 周
+
+验收记录（第一阶段：取向张量随流输运）：
+
+- 求解器在局部 Folgar-Tucker 推进前对 `a` 做隐式 upwind 输运
+  （`ddt(a)+div(phi,a)-Sp(div(phi),a)`）+ 对称化与迹归一化；内部创建
+  的 `a` 场默认 `zeroGradient` 边界；启用时需在 case 的 `fvSchemes`
+  加 `div(phi,a)`、`fvSolution` 加 `(a|aFinal)`；
+- 集成用例 `tests/cases/fiberOrientationAdvection`：初始 `a=xx` 的
+  型腔被 `a=I/3` 的新鲜熔体驱替，t=1.5 s 平均 `a_xx=0.072`（阈值
+  0.5），`max|tr(a)−1|=1e-8`；
+- 原 `fiberOrientation` 用例回归通过（剪切取向 max|a12|=0.147，
+  tr(a) 保持）；
+- 待做：Lipscomb 各向异性黏度 `η(a, AR)`、各向异性热导率、实验对拍；
+  closure 默认 quadratic（单纤维精确），Hybrid/ARD-RSC 可选。
 
 ## 1. 背景与现状
 

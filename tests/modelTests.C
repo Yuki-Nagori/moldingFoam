@@ -1390,6 +1390,62 @@ void shrinkageTests()
 }
 
 
+
+const char* crossWlfPressureDictString = R"(
+n 0.393539;
+tauStar 64568.9;
+D1 3.76174e15;
+D2 153.15;
+D3 1e-7;
+A1 33.21;
+A2 51.6;
+etaMin 5;
+etaMax 1e6;
+gammaDotMin 1e-6;
+)";
+
+
+void pressureDependentViscosityTests()
+{
+    // CrossWlf pressure shift TStar = D2 + D3 p: the viscosity must grow
+    // with pressure, and D3 = 0 must leave it pressure-independent
+    IStringStream is(crossWlfPressureDictString);
+    dictionary dict(is);
+
+    const scalar etaLow =
+        laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
+        (dict, 1e5, 480, 100);
+    const scalar etaHigh =
+        laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
+        (dict, 4e7, 480, 100);
+
+    Info<< "    eta(p=1e5) = " << etaLow
+        << " Pa s, eta(p=4e7) = " << etaHigh << " Pa s" << endl;
+
+    checkBool
+    (
+        "CrossWlf: pressure shift raises the viscosity with pressure",
+        relDiff(etaLow, 517.9224369741157) < 1e-10
+     && relDiff(etaHigh, 533.9137831768737) < 1e-10
+     && etaHigh > etaLow
+    );
+
+    {
+        IStringStream isZero(crossWlfDictString);
+        dictionary zeroDict(isZero);
+
+        checkBool
+        (
+            "CrossWlf: D3 = 0 leaves the viscosity pressure-independent",
+            laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
+            (zeroDict, 1e5, 480, 100)
+         == laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
+            (zeroDict, 4e7, 480, 100)
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1404,6 +1460,7 @@ int main()
     crystallizationTests();
     shrinkageTests();
     fiberOrientationTests();
+    pressureDependentViscosityTests();
     runnerNetworkTests();
     ventOrificeTests();
     crossWlfTests();

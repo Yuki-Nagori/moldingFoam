@@ -100,6 +100,9 @@ class moldingFoam
         //  defaults to great (seal when the packing pressure is released)
         scalar gateSealTime_;
 
+        //- Gate seal ramp duration [s]; zero seals instantaneously
+        scalar gateSealRamp_;
+
         //- Gate mass-weighted average melt temperature at or below which
         //  the gate freezes off [K]; defaults to -great (disabled)
         scalar gateFreezeTemperature_;

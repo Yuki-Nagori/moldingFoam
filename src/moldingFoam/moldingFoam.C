@@ -99,6 +99,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     releasePressure_(great),
     switchPressure_(great),
     gateSealTime_(great),
+    gateSealRamp_(0),
     gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
     trapAirInterval_(0),
@@ -181,6 +182,12 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar gateSealTime =
             packingDict.lookupOrDefault<scalar>("gateSealTime", great);
 
+        // Optional gate seal ramp: the gate flow ramps to zero over this
+        // duration instead of sealing instantaneously (default 0 keeps
+        // the historical behaviour)
+        const scalar gateSealRamp =
+            packingDict.lookupOrDefault<scalar>("gateSealRamp", 0);
+
         // Optional gate melt temperature at or below which the gate
         // freezes off; disabled by default (time / pressure release only)
         const scalar gateFreezeTemperature =
@@ -223,6 +230,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         releasePressure_ = releasePressure;
         switchPressure_ = switchPressure;
         gateSealTime_ = gateSealTime;
+        gateSealRamp_ = gateSealRamp;
         gateFreezeTemperature_ = gateFreezeTemperature;
         ventSealAlpha_ = ventSealAlpha;
         trapAirInterval_ = trapAirInterval;
@@ -333,7 +341,14 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // the molding boundary conditions
         if (!mesh.foundObject<moldingStage>(moldingStage::typeName))
         {
-            new moldingStage(mesh, runTime, switchFraction, std::move(pressure));
+            new moldingStage
+            (
+                mesh,
+                runTime,
+                switchFraction,
+                std::move(pressure),
+                gateSealRamp
+            );
         }
 
         Info<< "moldingFoam: read " << moldingDictPath << nl
@@ -341,6 +356,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        switchFraction      = " << switchFraction << nl
             << "        switchPressure      = " << switchPressure << nl
             << "        gateSealTime        = " << gateSealTime << nl
+            << "        gateSealRamp        = " << gateSealRamp << nl
             << "        gateFreezeTemperature = " << gateFreezeTemperature
             << nl
             << "        pressure type       = "
@@ -521,6 +537,15 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         )
     );
 
+    const scalar newGateSealRamp
+    (
+        moldingDict.subDict("packing").lookupOrDefault<scalar>
+        (
+            "gateSealRamp",
+            0
+        )
+    );
+
     const scalar newGateFreezeTemperature
     (
         moldingDict.lookupOrDefault<scalar>("gateFreezeTemperature", -great)
@@ -552,6 +577,7 @@ void Foam::solvers::moldingFoam::readMoldingDict()
      || newReleasePressure != releasePressure_
      || newSwitchPressure != switchPressure_
      || newGateSealTime != gateSealTime_
+     || newGateSealRamp != gateSealRamp_
      || newGateFreezeTemperature != gateFreezeTemperature_
      || newVentSealAlpha != ventSealAlpha_
      || newTrapAirInterval != trapAirInterval_
@@ -570,6 +596,8 @@ void Foam::solvers::moldingFoam::readMoldingDict()
             << " -> " << newSwitchPressure
             << ", gateSealTime " << gateSealTime_
             << " -> " << newGateSealTime
+            << ", gateSealRamp " << gateSealRamp_
+            << " -> " << newGateSealRamp
             << ", gateFreezeTemperature " << gateFreezeTemperature_
             << " -> " << newGateFreezeTemperature
             << ", ventSealAlpha " << ventSealAlpha_
@@ -585,6 +613,7 @@ void Foam::solvers::moldingFoam::readMoldingDict()
         releasePressure_ = newReleasePressure;
         switchPressure_ = newSwitchPressure;
         gateSealTime_ = newGateSealTime;
+        gateSealRamp_ = newGateSealRamp;
         gateFreezeTemperature_ = newGateFreezeTemperature;
         ventSealAlpha_ = newVentSealAlpha;
         trapAirInterval_ = newTrapAirInterval;
@@ -1398,7 +1427,7 @@ void Foam::solvers::moldingFoam::preSolve()
 
             if (Tgate <= gateFreezeTemperature_)
             {
-                stage.sealGate();
+                stage.sealGate(runTime.value());
 
                 Info<< "moldingFoam: gate sealed at t = " << runTime.value()
                     << " s (gate temperature = " << Tgate
@@ -1415,7 +1444,7 @@ void Foam::solvers::moldingFoam::preSolve()
          && (pTarget <= releasePressure_ || timeInPacking >= gateSealTime_)
         )
         {
-            stage.sealGate();
+            stage.sealGate(runTime.value());
 
             Info<< "moldingFoam: gate sealed at t = " << runTime.value()
                 << " s (" << timeInPacking << " s after the V/P switch,"

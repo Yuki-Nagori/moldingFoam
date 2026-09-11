@@ -41,7 +41,8 @@ Foam::moldingStage::moldingStage
     const fvMesh& mesh,
     const Time& runTime,
     scalar switchFraction,
-    autoPtr<Function1<scalar>> pressure
+    autoPtr<Function1<scalar>> pressure,
+    scalar gateSealRamp
 )
 :
     regIOobject
@@ -64,8 +65,17 @@ Foam::moldingStage::moldingStage
     switchTime_(-1),
     pressure_(std::move(pressure)),
     gateSealed_(false),
+    gateSealRamp_(gateSealRamp),
+    gateSealTime_(-1),
     ventSealed_(false)
 {
+    if (gateSealRamp_ < 0)
+    {
+        FatalIOErrorInFunction(mesh.time().controlDict())
+            << "The gate seal ramp must be non-negative: gateSealRamp = "
+            << gateSealRamp_ << exit(FatalIOError);
+    }
+
     if (switchFraction_ <= 0 || switchFraction_ > 1)
     {
         FatalIOErrorInFunction(mesh.time().controlDict())
@@ -139,6 +149,10 @@ bool Foam::moldingStage::readData(Istream& is)
     {
         is >> gateFlag >> ventFlag;
     }
+    if (is.good())
+    {
+        is >> gateSealTime_;
+    }
 
     stage_ = packingFlag ? stage::packing : stage::filling;
     gateSealed_ = gateFlag;
@@ -152,7 +166,8 @@ bool Foam::moldingStage::writeData(Ostream& os) const
 {
     os  << label(stage_ == stage::packing) << token::SPACE << switchTime_
         << token::SPACE << label(gateSealed_)
-        << token::SPACE << label(ventSealed_);
+        << token::SPACE << label(ventSealed_)
+        << token::SPACE << gateSealTime_;
 
     return os.good();
 }
@@ -192,10 +207,16 @@ void Foam::moldingStage::read(const dictionary& moldingDict)
         << "moldingStage: pressure type "
         << packingDict.subDict("pressure").lookup<word>("type") << endl;
 
+    const scalar newGateSealRamp
+    (
+        packingDict.lookupOrDefault<scalar>("gateSealRamp", gateSealRamp_)
+    );
+
     // Only the parameters are updated: the stage state and switch time
     // are preserved, so changes take effect from now on
     switchFraction_ = newSwitchFraction;
     pressure_ = std::move(newPressure);
+    gateSealRamp_ = newGateSealRamp;
 }
 
 

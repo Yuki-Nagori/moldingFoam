@@ -118,7 +118,12 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.gateSealed())
+    // Gate seal ramp factor: the Dirichlet weight decreases from 1 to 0
+    // over the optional gateSealRamp, so the fixed-pressure gate blends
+    // smoothly into the zero-flux sealed gate
+    const scalar sealFactor(stage.gateSealFactor(patch().time().value()));
+
+    if (sealFactor <= 0)
     {
         // The gate has frozen off at the end of packing: zero normal
         // flux, enforced together with the zero-velocity
@@ -148,7 +153,7 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
             pTarget -= network.pressureDrop(mag(gSum(phip)));
         }
 
-        valueFraction() = 1.0;
+        valueFraction() = sealFactor;
         refValue() = pTarget;
         refGrad() = 0.0;
     }

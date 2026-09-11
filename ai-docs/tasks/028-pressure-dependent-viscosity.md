@@ -1,9 +1,17 @@
 # 028 — 压力依赖粘度模型
 
-- 状态：planned
+- 状态：done（2026-09-10）
 - 优先级：P2
 - 依赖：001
 - 预估规模：3–5 天
+
+验收记录：
+
+- `CrossWlf::etaValue` 已实现压力平移 `TStar = D2 + D3·p`
+  （`src/viscosityModels/CrossWlf/CrossWlf.C`），`D3` 缺省 0；
+- model tests：`D3 = 1e-7 K/Pa` 时 `η(4e7) > η(1e5)`
+  （517.92 → 533.91 Pa·s，手算点 rtol 1e-10）；`D3 = 0` 时压力无关；
+- 缺省 `D3 = 0` 行为与旧版一致；高压 case（018）可选用。
 
 ## 1. 背景与现状
 

@@ -160,7 +160,11 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.gateSealed())
+    // Gate seal ramp factor: 1 before the seal, decreasing to 0 over the
+    // optional gateSealRamp, so the gate flux is ramped down smoothly
+    const scalar sealFactor(stage.gateSealFactor(patch().time().value()));
+
+    if (sealFactor <= 0)
     {
         // The gate has frozen off at the end of packing: no through-flow
         operator==(vector::zero);
@@ -170,14 +174,14 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
         // Packing: pressure controlled; the velocity follows the local
         // volumetric flux computed by the pressure equation, which is
         // driven by the packing pressure target imposed by the
-        // moldingPrghPressure boundary condition
+        // moldingPrghPressure boundary condition, scaled by the seal ramp
         const surfaceScalarField& phi =
             db().lookupObject<surfaceScalarField>("phi");
 
         const fvsPatchField<scalar>& phip =
             patch().patchField<surfaceScalarField, scalar>(phi);
 
-        operator==(patch().nf()*phip/patch().magSf());
+        operator==(patch().nf()*phip/patch().magSf()*sealFactor);
     }
     else
     {

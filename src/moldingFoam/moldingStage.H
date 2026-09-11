@@ -94,6 +94,12 @@ private:
         //- Has the gate frozen off at the end of packing?
         bool gateSealed_;
 
+        //- Gate seal ramp duration [s]; zero seals instantaneously
+        scalar gateSealRamp_;
+
+        //- Time at which the gate seal was triggered [s]
+        scalar gateSealTime_;
+
         //- Has the vent been sealed by the arriving melt front?
         bool ventSealed_;
 
@@ -112,7 +118,8 @@ public:
             const fvMesh& mesh,
             const Time& runTime,
             scalar switchFraction,
-            autoPtr<Function1<scalar>> pressure
+            autoPtr<Function1<scalar>> pressure,
+            scalar gateSealRamp = 0
         );
 
         //- Disallow default bitwise copy construction
@@ -151,10 +158,35 @@ public:
             return gateSealed_;
         }
 
-        //- Seal the gate: no further flow through the gate
-        void sealGate()
+        //- Seal the gate at time t: the gate flow ramps to zero over
+        //  gateSealRamp seconds (zero ramp seals instantaneously)
+        void sealGate(const scalar t)
         {
             gateSealed_ = true;
+            gateSealTime_ = t;
+        }
+
+        //- Gate seal ramp factor in [0, 1]: 1 before the seal, linearly
+        //  decreasing to 0 over gateSealRamp after the seal time
+        scalar gateSealFactor(const scalar t) const
+        {
+            if (!gateSealed_)
+            {
+                return 1;
+            }
+
+            if (gateSealRamp_ <= 0)
+            {
+                return 0;
+            }
+
+            return max(scalar(0), min(scalar(1), 1 - (t - gateSealTime_)/gateSealRamp_));
+        }
+
+        //- Gate seal ramp duration [s]
+        scalar gateSealRamp() const
+        {
+            return gateSealRamp_;
         }
 
         //- Has the vent been sealed by the arriving melt front?
@@ -176,6 +208,7 @@ public:
             stage_ = stage::filling;
             switchTime_ = -1;
             gateSealed_ = false;
+            gateSealTime_ = -1;
             ventSealed_ = false;
         }
 

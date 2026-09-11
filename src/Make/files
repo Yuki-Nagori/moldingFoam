@@ -22,3 +22,4 @@ viscosityModels/CrossWlf/CrossWlf.C
 LIB = $(FOAM_USER_LIBBIN)/libmoldingFoam
 moldingFoam/boundaryConditions/moldingRunnerTemperature/moldingRunnerTemperatureFvPatchScalarField.C
 moldingFoam/boundaryConditions/moldingConvectiveCooling/moldingConvectiveCoolingFvPatchScalarField.C
+moldingFoam/fvModels/viscoelasticStress/viscoelasticStress.C

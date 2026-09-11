@@ -516,6 +516,14 @@ regionSolvers
   （`moldingConvectiveCooling`，2000 W/m²K、300 K）：能量平衡含冷却
   热流积分 22.1 J，实测 0.314%，界面连续。
 
+### 粘弹性动量耦合（任务 027 第二阶段）
+
+`constant/fvModels` 可选 `type viscoelasticStress`（参数
+`relaxationTime`/`zeroShearViscosity`/`mobilityFactor`）：模型持有
+`tau` 场并逐步推进 UCM/Giesekus 本构，向动量方程加 `div(tau)`（用例
+需在 fvSchemes 提供 `div(tau)`）；用例
+`tests/cases/viscoelasticFlow` 中剪切通道 max|tau_xy|=1.54e5 Pa。
+
 ### 翘曲形状（任务 022 第二阶段）
 
 `moldingWarpage::deflectionProfile`：由曲率分布沿流向求简支条带的

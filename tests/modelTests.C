@@ -1499,6 +1499,12 @@ zeroShearViscosity 1000;
 mobilityFactor 0.5;
 )";
 
+const char* ucmOscillatoryDictString = R"(
+relaxationTime 0.01;
+zeroShearViscosity 1000;
+mobilityFactor 0;
+)";
+
 
 void viscoelasticTests()
 {
@@ -1617,6 +1623,55 @@ void viscoelasticTests()
             eta2 < eta1
          && eta2 > 0
          && (t2.xx() - t2.yy()) > 0
+        );
+    }
+
+    // Small-amplitude oscillatory shear: the steady-state shear stress
+    // amplitude is eta0 gammadot0/sqrt(1 + (lambda omega)^2)
+    {
+        IStringStream isO(ucmOscillatoryDictString);
+        dictionary oDict(isO);
+        moldingViscoelastic ucmO(oDict);
+
+        const scalar lambda = 0.01;
+        const scalar eta0 = 1000;
+        const scalar gammaDot0 = 0.01;
+        const scalar omega = 2*constant::mathematical::pi*10;
+        const scalar period = 2*constant::mathematical::pi/omega;
+        const scalar dt = 1e-4;
+
+        symmTensor tau(symmTensor::zero);
+
+        scalar t = 0;
+        scalar maxLast = 0;
+        const scalar tStart = 5*period;
+
+        for (label i = 0; i < 12000; ++i)
+        {
+            tensor L(tensor::zero);
+            L(0, 1) = gammaDot0*std::cos(omega*t);
+
+            tau = ucmO.advance(tau, L, dt);
+
+            t += dt;
+
+            if (t > tStart)
+            {
+                maxLast = max(maxLast, mag(tau.xy()));
+            }
+        }
+
+        const scalar expected =
+            eta0*gammaDot0/std::sqrt(1 + (lambda*omega)*(lambda*omega));
+
+        Info<< "    UCM oscillatory |tau_xy| = " << maxLast
+            << " Pa (expected " << expected << " Pa)" << endl;
+
+        checkBool
+        (
+            "viscoelastic: UCM oscillatory shear amplitude matches "
+            "eta0 gammadot0/sqrt(1+(lambda omega)^2)",
+            relDiff(maxLast, expected) < 1e-2
         );
     }
 

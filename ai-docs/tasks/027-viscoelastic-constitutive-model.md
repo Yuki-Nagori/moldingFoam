@@ -1,6 +1,6 @@
 # 027 — 粘弹性本构模型
 
-- 状态：in-progress（2026-09-10：单模 UCM/Giesekus 本构 + 解析验证已落地；动量方程耦合待做）
+- 状态：done（2026-09-10：本构 + 启动/松弛/N1/振荡解析验证 + fvModel 动量耦合；tau 随流输运与多模谱为增强）
 - 优先级：P2
 - 依赖：001/007
 - 预估规模：1–2 周
@@ -18,8 +18,18 @@
   - 稳态第一法向应力差 `N1 = 2η₀λγ̇²`（rtol 1e-3）；
   - Giesekus：η(0.1)=990 → η(1)=618 Pa·s 剪切变稀、N1>0；
   - 无流动 τ 保持 0；
-- 待做：动量方程耦合（附加应力源项/构型张量输运）、多模谱、
-  挤出胀大/法向应力基准。
+- 动量方程耦合（第二阶段）：自注册 fvModel `viscoelasticStress`
+  （`constant/fvModels` 选择）：持有 `tau` 场、逐步推进本构（PIMPLE
+  校正器内以时间索引防过积分）并向动量方程加 `div(tau)`；用例
+  `tests/cases/viscoelasticFlow` 剪切通道中 max|tau_xy|=1.54e5 Pa、
+  运行稳定；
+- 振荡剪切（解析补充）：小振幅 UCM 稳态 `|tau_xy| =
+  eta0 gammadot0/sqrt(1+(lambda omega)^2)` 对拍 rtol 1e-2；
+- `xmake run test-solver` 17 用例全绿；缺省不选 fvModel 时牛顿行为不变。
+
+### 待做（增强）
+
+- `tau` 随流输运（当前局部演化）、多模谱、挤出胀大/法向应力基准。
 
 ## 1. 背景与现状
 

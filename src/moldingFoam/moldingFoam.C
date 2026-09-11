@@ -1690,9 +1690,13 @@ void Foam::solvers::moldingFoam::postSolve()
                 << " kg" << endl;
         }
 
+    }
+
+    if (massBudget_)
+    {
         massBudgetAlpha1Prev_ = alphac;
         massBudgetRho1Prev_ = rhoc;
-        massBudgetPrghPrev_ = prghc;
+        massBudgetPrghPrev_ = p_rgh_.primitiveField();
     }
 
     massBudgetIn_ += flux*dt;

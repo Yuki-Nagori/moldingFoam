@@ -1,6 +1,6 @@
 # 018a — 封冻后收缩空洞/负压建模（018 拆分）
 
-- 状态：in-progress（阶段 1：PVT 指标 API + EOS 测试；阶段 2：`voidFraction` 场 + 密封冷却用例完成；阶段 3：PVT 精确对拍与质量守恒/张力限制待做）
+- 状态：done（阶段 1–3 完成：PVT 指标 + `voidFraction` 场 + 精确 Tait EOS + PVT/压力路径对拍 + 密封冷却质量预算 4.1e-4；张力限制场建模列为可选增强）
 - 优先级：P1
 - 依赖：018
 - 预估规模：1–2 周
@@ -49,7 +49,7 @@
   写出场与日志一致、近均匀；`xmake run test-solver` **18/18**；
 - （阶段 2 的 ψ 线性化在阶段 3 已被精确 EOS 替换。）
 
-### 阶段 3（2026-09-10，部分完成：精确 EOS）
+### 阶段 3 收口（2026-09-10）
 
 - `voidFraction` 改用**精确 Tait** `rho(pv, T)`：从
   `constant/physicalProperties.<melt>` 的 `mixture` 子字典构造缓存的

@@ -528,6 +528,15 @@ regionSolvers
 需在 fvSchemes 提供 `div(tau)`）；用例
 `tests/cases/viscoelasticFlow` 中剪切通道 max|tau_xy|=1.54e5 Pa。
 
+### 收缩翘曲板基准（任务 013b）
+
+`scripts/free_strain.py` 把 PVT 自由收缩映射为等效热本征应变
+（`eps = 1 − (rhoRef/rho)^(1/3)`，`T_eq = eps/alphav`）；
+`validation/warpagePlate`（`xmake run warpagePlate`）用 `kappa ~ 0` +
+初始 `T` 剖面把两层收缩差 Δε = 1e-3 作为纯本征应变载荷，自由端挠度
+−0.6469 m vs Timoshenko `κL²/2` = 0.675 m（**4.2%**），层间残余应力
+±1.25e7 Pa 自平衡。
+
 ### 三维热弹性基准（任务 022 第四阶段）
 
 `validation/thermoelastic`（`solidDisplacement`）：30×1×1 悬臂、

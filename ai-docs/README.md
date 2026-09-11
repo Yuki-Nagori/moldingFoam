@@ -46,7 +46,7 @@
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
 | [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | deferred（拆分为 013a done + 013b/022） | 001–012 | 数周起 |
 | [013a](tasks/013a-shrinkage-indicators.md) | PVT 一致收缩/残余应力指标 | P3 | **done**（S 与热应力指标；用例 max(S) −0.008→0.298） | 001/002 | 3–5 天 |
-| [013b](tasks/013b-structural-warpage.md) | 结构翘曲集成（顺序耦合，022 落地） | P2 | planned（依赖 013a/018a/022/023/027） | 013a/022 | 2–4 周 |
+| [013b](tasks/013b-structural-warpage.md) | 结构翘曲集成（顺序耦合，022 落地） | P2 | **done**（MVP：PVT 自由应变映射 + 双层收缩板基准 4.2% + 应力自平衡） | 013a/022 | 2–4 周 |
 | [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | **done**（Nakamura/Avrami + χ 场/潜热耦合；Jeffery 级解析验证） | 001 | 1–2 周 |
 | [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | **done**（Folgar-Tucker + Jeffery 轨道 <1e-6；局部 a 场） | 001/002 | 2–4 周 |
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |

@@ -55,12 +55,12 @@
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | planned | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
 | [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |
-| [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | planned | 001–012 | 2–4 周 |
-| [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | planned | 022 | 1–2 周 |
+| [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | **in-progress**（自由翘曲解析模型；结构耦合待做） | 001–012 | 2–4 周 |
+| [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | **in-progress**（1D 自平衡弹性解；粘弹性待做） | 022 | 1–2 周 |
 | [024](tasks/024-crystallization-integration.md) | 结晶动力学集成（014 落地） | P2 | **done**（随流输运 + η(χ) + DSC 标定工作流） | 001/014 | 1–2 周 |
 | [025](tasks/025-fiber-orientation-integration.md) | 纤维取向集成（015 落地） | P2 | **done**（随流输运；各向异性黏度为增强） | 001/002/015 | 2–4 周 |
 | [026](tasks/026-runner-system-integration.md) | 流道/热流道耦合集成（016 落地） | P2 | **done**（多浇口分流 + 热流道温度；阀浇口为增强） | 001/006/016 | 1–2 周 |
-| [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | planned | 001/007 | 1–2 周 |
+| [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | **in-progress**（UCM/Giesekus 本构+验证；动量耦合待做） | 001/007 | 1–2 周 |
 | [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | planned | 001 | 3–5 天 |
 | [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **in-progress**（网络缓存已落地；基准/profiling 待做） | 009/018 | 2–4 周 |
 | [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | planned | 006/016 | 1–2 周 |

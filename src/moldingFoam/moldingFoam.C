@@ -30,6 +30,7 @@ License
 #include "upwind.H"
 #include "zeroGradientFvPatchFields.H"
 #include "moldingFiberOrientation.H"
+#include "moldingInletVelocityFvPatchVectorField.H"
 #include "moldingShrinkage.H"
 #include "IOobject.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
@@ -1441,6 +1442,35 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         {
             Info<< "moldingFoam: shrinkage: max(S) = " << gMax(sc)
                 << ", min(S) = " << gMin(sc) << endl;
+        }
+    }
+}
+
+
+void Foam::solvers::moldingFoam::prePredictor()
+{
+    compressibleVoF::prePredictor();
+
+    // Melt-gate flux consistency: at the gate the melt fraction is 1, so
+    // the melt volumetric flux must equal the total volumetric flux. The
+    // alpha transport's numerical transients otherwise create spurious
+    // outflow spikes at the gate during rapid pressure changes (measured
+    // up to 0.66 kg/s against a 7.5e-5 kg/s inflow in the 40 MPa
+    // calibration), corrupting the integrated polymer mass flux
+    forAll(U.boundaryField(), patchi)
+    {
+        if
+        (
+            U.boundaryField()[patchi].type()
+         == moldingInletVelocityFvPatchVectorField::typeName
+        )
+        {
+            alphaPhi1.boundaryFieldRef()[patchi] ==
+                alpha1.boundaryField()[patchi]*phi.boundaryField()[patchi];
+
+            alphaRhoPhi1.boundaryFieldRef()[patchi] ==
+                mixture_.thermo1().rho().boundaryField()[patchi]
+               *alpha1.boundaryField()[patchi]*phi.boundaryField()[patchi];
         }
     }
 }

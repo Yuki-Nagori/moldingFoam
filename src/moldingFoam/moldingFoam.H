@@ -268,6 +268,10 @@ public:
 
         //- Advance the moulding stage and the ejection criterion
         //  before the PIMPLE loop
+        //- Override the base pre-predictor to enforce the melt-gate flux
+        //  consistency
+        virtual void prePredictor();
+
         virtual void preSolve();
 
         //- Solve the energy equation; clamps the solved temperature to

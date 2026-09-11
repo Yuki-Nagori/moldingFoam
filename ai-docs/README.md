@@ -50,7 +50,8 @@
 | [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | **done**（Folgar-Tucker + Jeffery 轨道 <1e-6；局部 a 场） | 001/002 | 2–4 周 |
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |
 | [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
-| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | planned | 009 | 3–5 天 |
+| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（封冻前守恒 5.02e-4；浇口通量一致性修正） | 009 | 3–5 天 |
+| [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | planned | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | planned | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **in-progress**（前沿 0.013%、剖面 L2 1.64%；前沿形状/收敛待做） | 001/006/017 | 1–2 周 |
 | [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |

@@ -1,0 +1,56 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\      /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Cavity velocity: melt enters through the inlet at a fixed volumetric
+    flow rate and the vent passes the displaced air and then the melt.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    location    "0/cavity";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet
+    {
+        type                moldingInletVelocity;
+        volumetricFlowRate  1e-07;
+        value               uniform (0 0 0);
+    }
+
+    vent
+    {
+        type            moldingVentVelocity;
+        value           uniform (0 0 0);
+    }
+
+    cavityBottom
+    {
+        type            noSlip;
+    }
+
+    cavity_to_mold
+    {
+        type            noSlip;
+    }
+
+    defaultFaces
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

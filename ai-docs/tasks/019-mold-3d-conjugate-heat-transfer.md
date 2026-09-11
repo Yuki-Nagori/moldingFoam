@@ -15,6 +15,12 @@
   重置流场、模具 `solid` 温度保留——实测 2 个周期完成、模具平均温度
   由 354.1 K 升到 404.5 K、界面连续误差 0；`xmake run moldCHT` 依次
   运行 moldCHT / moldCHT-fill / moldCHT-cycle；
+- **等效对流冷却边界已落地**（2026-09-10）：新增自注册 Robin 边界
+  `moldingConvectiveCooling`（`kappa`/`htc`/`coolantTemperature`，
+  mixed 隐式 `valueFraction = h/(h+kΔ)`，h→∞ 退化为定温、h=0 绝热）；
+  `validation/moldCHT-cooled` 在模具外壁加 2000 W/m²K、300 K 冷却，
+  能量平衡（含冷却热流积分 22.1 J）实测 **0.314%**（阈值 2%），界面
+  连续误差 0；`xmake run moldCHT` 现依次运行 4 个 case；
 - 落地缺口：
   1. **完整周期**（充填→保压→封冻→冷却）的多区域集成与能量记账：
      多区域下入口/出口通量没有 function object（顶层 functions 不逐

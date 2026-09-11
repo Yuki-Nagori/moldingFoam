@@ -26,6 +26,7 @@ License
 
 #include "moldingInletVelocityFvPatchVectorField.H"
 #include "moldingStage.H"
+#include "moldingRunnerNetwork.H"
 #include "addToRunTimeSelectionTable.H"
 #include "fvPatchFieldMapper.H"
 #include "surfaceFields.H"
@@ -45,9 +46,60 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 )
 :
     fixedValueFvPatchVectorField(p, iF, dict),
-    volumetricFlowRate_(dict.lookup<scalar>("volumetricFlowRate")),
-    area_(-1)
-{}
+    volumetricFlowRate_(dict.lookupOrDefault<scalar>("volumetricFlowRate", 0)),
+    area_(-1),
+    runner_
+    (
+        dict.found("runner")
+      ? autoPtr<dictionary>(new dictionary(dict.subDict("runner")))
+      : autoPtr<dictionary>()
+    ),
+    gate_(dict.lookupOrDefault<word>("gate", word::null)),
+    gateIndex_(-1),
+    totalFlowRate_(dict.lookupOrDefault<scalar>("totalFlowRate", 0))
+{
+    if (runner_.valid())
+    {
+        if (gate_ == word::null)
+        {
+            FatalIOErrorInFunction(dict)
+                << "The runner-coupled moldingInletVelocity condition "
+                << "requires the gate name: gate" << exit(FatalIOError);
+        }
+
+        if (totalFlowRate_ <= 0)
+        {
+            FatalIOErrorInFunction(dict)
+                << "The runner-coupled moldingInletVelocity condition "
+                << "requires a positive totalFlowRate: totalFlowRate = "
+                << totalFlowRate_ << exit(FatalIOError);
+        }
+
+        const moldingRunnerNetwork network(*runner_);
+
+        for (label g = 0; g < network.nGates(); ++g)
+        {
+            if (network.gate(g).name == gate_)
+            {
+                gateIndex_ = g;
+            }
+        }
+
+        if (gateIndex_ < 0)
+        {
+            FatalIOErrorInFunction(*runner_)
+                << "The runner network has no gate named " << gate_
+                << exit(FatalIOError);
+        }
+    }
+    else if (volumetricFlowRate_ <= 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The moldingInletVelocity condition requires a positive "
+            << "volumetricFlowRate or a runner network: volumetricFlowRate = "
+            << volumetricFlowRate_ << exit(FatalIOError);
+    }
+}
 
 
 moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
@@ -60,7 +112,16 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 :
     fixedValueFvPatchVectorField(pivpvf, p, iF, m),
     volumetricFlowRate_(pivpvf.volumetricFlowRate_),
-    area_(pivpvf.area_)
+    area_(pivpvf.area_),
+    runner_
+    (
+        pivpvf.runner_.valid()
+      ? autoPtr<dictionary>(new dictionary(*pivpvf.runner_))
+      : autoPtr<dictionary>()
+    ),
+    gate_(pivpvf.gate_),
+    gateIndex_(pivpvf.gateIndex_),
+    totalFlowRate_(pivpvf.totalFlowRate_)
 {}
 
 
@@ -72,7 +133,16 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
 :
     fixedValueFvPatchVectorField(pivpvf, iF),
     volumetricFlowRate_(pivpvf.volumetricFlowRate_),
-    area_(pivpvf.area_)
+    area_(pivpvf.area_),
+    runner_
+    (
+        pivpvf.runner_.valid()
+      ? autoPtr<dictionary>(new dictionary(*pivpvf.runner_))
+      : autoPtr<dictionary>()
+    ),
+    gate_(pivpvf.gate_),
+    gateIndex_(pivpvf.gateIndex_),
+    totalFlowRate_(pivpvf.totalFlowRate_)
 {}
 
 
@@ -111,13 +181,23 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
     }
     else
     {
-        // Filling: flow-rate controlled injection
+        // Filling: flow-rate controlled injection, either directly or
+        // through the equal-pressure-drop split of the runner network
         if (area_ < 0)
         {
             area_ = gSum(mag(patch().Sf()));
         }
 
-        operator==(patch().nf()*(-volumetricFlowRate_/area_));
+        scalar Q = volumetricFlowRate_;
+
+        if (runner_.valid())
+        {
+            const moldingRunnerNetwork network(*runner_);
+
+            Q = network.gateFlow(gateIndex_, totalFlowRate_);
+        }
+
+        operator==(patch().nf()*(-Q/area_));
     }
 
     fixedValueFvPatchVectorField::updateCoeffs();

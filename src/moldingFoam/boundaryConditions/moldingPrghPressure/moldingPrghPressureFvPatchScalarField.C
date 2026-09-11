@@ -26,6 +26,8 @@ License
 
 #include "moldingPrghPressureFvPatchScalarField.H"
 #include "moldingStage.H"
+#include "moldingRunnerNetwork.H"
+#include "surfaceFields.H"
 #include "addToRunTimeSelectionTable.H"
 #include "fvPatchFieldMapper.H"
 
@@ -43,7 +45,13 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
     const dictionary& dict
 )
 :
-    mixedFvPatchScalarField(p, iF, dict)
+    mixedFvPatchScalarField(p, iF, dict),
+    runner_
+    (
+        dict.found("runner")
+      ? autoPtr<dictionary>(new dictionary(dict.subDict("runner")))
+      : autoPtr<dictionary>()
+    )
 {
     if (dict.found("value"))
     {
@@ -70,7 +78,13 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
     const fieldMapper& m
 )
 :
-    mixedFvPatchScalarField(mpppsf, p, iF, m)
+    mixedFvPatchScalarField(mpppsf, p, iF, m),
+    runner_
+    (
+        mpppsf.runner_.valid()
+      ? autoPtr<dictionary>(new dictionary(*mpppsf.runner_))
+      : autoPtr<dictionary>()
+    )
 {}
 
 
@@ -80,7 +94,13 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
     const DimensionedField<scalar, fvMesh>& iF
 )
 :
-    mixedFvPatchScalarField(mpppsf, iF)
+    mixedFvPatchScalarField(mpppsf, iF),
+    runner_
+    (
+        mpppsf.runner_.valid()
+      ? autoPtr<dictionary>(new dictionary(*mpppsf.runner_))
+      : autoPtr<dictionary>()
+    )
 {}
 
 
@@ -111,9 +131,25 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         // Packing: prescribe the packing pressure target at the gate.
         // p_rgh = p - rho*(g.h); for the thin cavities of the moldingFoam
         // contract the hydrostatic head is negligible, so p_rgh equals the
-        // target pressure
+        // target pressure. With a runner network the machine target is
+        // reduced by the runner pressure drop at the current gate flow.
+        scalar pTarget(stage.pressure(patch().time().value()));
+
+        if (runner_.valid())
+        {
+            const surfaceScalarField& phi =
+                db().lookupObject<surfaceScalarField>("phi");
+
+            const fvsPatchField<scalar>& phip =
+                patch().patchField<surfaceScalarField, scalar>(phi);
+
+            const moldingRunnerNetwork network(*runner_);
+
+            pTarget -= network.pressureDrop(mag(gSum(phip)));
+        }
+
         valueFraction() = 1.0;
-        refValue() = stage.pressure(patch().time().value());
+        refValue() = pTarget;
         refGrad() = 0.0;
     }
     else

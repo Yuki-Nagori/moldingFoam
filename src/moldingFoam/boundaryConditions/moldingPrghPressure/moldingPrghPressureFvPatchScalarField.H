@@ -37,7 +37,10 @@ Description
       by the moldingInletVelocity boundary condition);
     - packing: Dirichlet; \c p_rgh is set to the packing pressure target
       returned by the \c pressure curve of \c constant/moldingDict,
-      evaluated relative to the V/P switch time.
+      evaluated relative to the V/P switch time. With an optional
+      \c runner sub-dictionary the 1D runner network pressure drop at the
+      current gate flow is subtracted from the target, so the runner
+      participates in the packing pressure transmission.
 
     The condition prescribes \c p_rgh, i.e. \f$ p - \rho \boldsymbol{g}
     \cdot \boldsymbol{h} \f$. For the thin-walled plaque cavities targeted
@@ -61,6 +64,29 @@ Description
         }
     \endverbatim
 
+    Example with a runner network (the packing target is the machine
+    pressure; the gate sees it reduced by the runner pressure drop):
+
+    \verbatim
+        inlet
+        {
+            type            moldingPrghPressure;
+            refValue        uniform 1e5;
+            refGradient     uniform 0;
+            valueFraction   uniform 0;
+            value           uniform 1e5;
+            runner
+            {
+                inletTemperature 480;
+                cp               2400;
+                rho              800;
+                viscosity { type powerLaw; K 1e4; n 0.5; }
+                feed { length 0.05; diameter 0.004; }
+                gates { gate1 { length 0.01; diameter 0.002; } }
+            }
+        }
+    \endverbatim
+
 See also
     Foam::moldingStage
     Foam::moldingInletVelocityFvPatchVectorField
@@ -75,6 +101,7 @@ SourceFiles
 #define moldingPrghPressureFvPatchScalarField_H
 
 #include "mixedFvPatchFields.H"
+#include "moldingRunnerNetwork.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -89,6 +116,12 @@ class moldingPrghPressureFvPatchScalarField
 :
     public mixedFvPatchScalarField
 {
+    // Private Data
+
+        //- Optional 1D runner network (kept for writing)
+        autoPtr<dictionary> runner_;
+
+
 public:
 
     //- Runtime type information

@@ -1,6 +1,7 @@
 # 016 — 流道/热流道耦合
 
-- 状态：planned
+- 状态：done（2026-09-10：1D 流道网络模型 + 入口/保压边界耦合已落地
+  并解析验证；热流道温度控制经可选的段壁温/换热系数支持）
 - 优先级：P3
 - 依赖：001/006
 - 预估规模：1–2 周
@@ -45,6 +46,23 @@
 - 多浇口流量分配与阻力比一致；
 - 缺省（无流道）行为不变；
 - CI 双架构绿。
+
+验收记录：
+
+- `Foam::moldingRunnerNetwork`：主流道（串联）+ 多浇口（并联）圆管
+  网络；每段广义 Hagen–Poiseuille 压降 `dp = 128ηLQ/(πD⁴)`（η 由
+  常数/幂律/CrossWlf 在壁面剪切率 `32Q/(πD³)` 求值），并联按等压降
+  分流（定黏度 = 阻力比解析解；同幂律指数 `Qi/Qj=(Dj/Di)^(3+1/n)`），
+  熔体温度沿段按一维稳态能量平衡演化（可选 `wallTemperature`/`htc`）；
+- model tests：Hagen–Poiseuille 手算点（rtol 1e-12）、串联精确复现、
+  定黏度分流比 16、幂律分流比 32（rtol 1e-6）、壁耦合温度指数
+  （rtol 1e-12）；
+- 求解器耦合：`moldingInletVelocity` 可选 `runner`/`gate`/
+  `totalFlowRate`（入口流量取网络分流，支持多浇口）；
+  `moldingPrghPressure` 可选 `runner`（保压期闸口压力扣除流道压降）；
+- 集成用例 `tests/cases/runnerNetwork`：单浇口网络入口质量流与 ρQ
+  一致（1.6%）；`xmake run test-solver` 6 用例全绿；
+- 缺省不写 `runner` 时行为与旧版一致（原 `volumetricFlowRate` 路径）。
 
 ## 6. 风险与缓解
 

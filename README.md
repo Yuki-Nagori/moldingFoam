@@ -356,6 +356,7 @@ $ xmake run test
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
 | `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
+| `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -496,6 +497,24 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 1D 流道网络（`runner`，任务 016）
+
+`Foam::moldingRunnerNetwork` 把流道系统表示为主流道（串联）+ 多浇口
+（并联）的圆管网络：每段按广义 Hagen–Poiseuille 压降
+`dp = 128·η·L·Q/(π·D⁴)`（η 由常数/幂律/CrossWlf 在壁面剪切率
+`γ̇ = 32Q/(πD³)` 处求值），并联支路按等压降分流——定黏度退化为阻力比
+解析解，同幂律指数时 `Qi/Qj = (Dj/Di)^(3+1/n)`；熔体温度沿段按一维
+稳态能量平衡演化（可选 `wallTemperature`/`htc`，即热流道控温）。
+
+- 模型级验证（`xmake run test`）：Hagen–Poiseuille 手算点、串联精确
+  复现、并联分流比（定黏度 16、幂律 32）、壁耦合指数温度；
+- 求解器耦合：`0/U` 的 `moldingInletVelocity` 可选
+  `runner`/`gate`/`totalFlowRate`，入口流量取网络分流（多浇口按阻力
+  分配）；`0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期
+  闸口压力 = 保压目标 − 当前流量下的流道压降；
+- 集成用例 `tests/cases/runnerNetwork`：单浇口网络入口质量流与
+  ρQ 一致（1.6%）；缺省不写 `runner` 时行为不变。
 
 ### 黏性生热（`viscousDissipation`，任务 007）
 
@@ -698,6 +717,15 @@ thermoType
 
 ### 契约变更日志
 
+**v1.13**（1D 流道网络，任务 016）：
+
+- `0/U` 的 `moldingInletVelocity` 新增可选 `runner` 子字典与
+  `gate`/`totalFlowRate`：入口流量由流道网络的等压降分流给出（多浇口
+  按阻力分配）；缺省不写时仍用 `volumetricFlowRate`，行为与 v1.12
+  一致；
+- `0/p_rgh` 的 `moldingPrghPressure` 新增可选 `runner` 子字典：保压
+  期闸口压力 = 保压目标 − 当前闸口流量下的流道压降。
+
 **v1.12**（冷却水 1D 通道，任务 008）：
 
 - `0/T` 的 `moldingMoldTemperature` 新增可选 `coolant` 子字典
@@ -852,6 +880,7 @@ moldingFoam/
                              run-moldcht.sh、verify-couette.py
                              verify-stefan.py、verify-moldcht.py
                              verify-coolant-channel.py
+                             verify-runner-network.py
 ```
 
 ---

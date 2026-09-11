@@ -34,7 +34,10 @@ Description
     that the moldingFoam solver registers on the mesh:
 
     - filling: the velocity is volumetric-flow-rate controlled, i.e. the
-      gate injects with a constant volumetric flow rate;
+      gate injects with a constant volumetric flow rate, either given
+      directly (\c volumetricFlowRate) or, for a multi-gate runner, taken
+      from the equal-pressure-drop split of an optional 1D runner network
+      (\c runner sub-dictionary, \c gate name and \c totalFlowRate);
     - packing: the velocity follows the local volumetric flux computed by
       the pressure equation, which is driven by the packing pressure
       target imposed at the gate by the moldingPrghPressure boundary
@@ -55,6 +58,32 @@ Description
         }
     \endverbatim
 
+    Example with a runner network (the gate flow follows the network
+    resistance split of the total flow rate):
+
+    \verbatim
+        inlet
+        {
+            type            moldingInletVelocity;
+            totalFlowRate   3e-06;
+            gate            gate1;
+            runner
+            {
+                inletTemperature 480;
+                cp               2400;
+                rho              800;
+                viscosity { type powerLaw; K 1e4; n 0.5; }
+                feed { length 0.1; diameter 0.006; }
+                gates
+                {
+                    gate1 { length 0.02; diameter 0.004; }
+                    gate2 { length 0.02; diameter 0.002; }
+                }
+            }
+            value           uniform (0 0 0);
+        }
+    \endverbatim
+
 See also
     Foam::moldingStage
     Foam::moldingPrghPressureFvPatchScalarField
@@ -70,6 +99,7 @@ SourceFiles
 #define moldingInletVelocityFvPatchVectorField_H
 
 #include "fixedValueFvPatchFields.H"
+#include "moldingRunnerNetwork.H"
 #include "Function1.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -92,6 +122,18 @@ class moldingInletVelocityFvPatchVectorField
 
         //- Patch area; computed on first use and cached [m^2]
         scalar area_;
+
+        //- Optional 1D runner network (kept for writing)
+        autoPtr<dictionary> runner_;
+
+        //- Gate name within the runner network
+        word gate_;
+
+        //- Index of the gate within the runner network
+        label gateIndex_;
+
+        //- Total runner flow rate [m^3/s]
+        scalar totalFlowRate_;
 
 
 public:

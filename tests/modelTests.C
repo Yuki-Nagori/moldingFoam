@@ -72,6 +72,16 @@ Description
     - with many small cross-sections the march converges to the analytic
       plug-flow exponential within 1e-3.
 
+    Runner network (1D pressure-flow-thermal model, moldingRunnerNetwork):
+    - the Hagen-Poiseuille and wall-shear-rate helpers reproduce hand
+      values;
+    - a single feed + gate chain reproduces the exact Hagen-Poiseuille
+      pressure drop;
+    - parallel branches split by the analytic resistance ratio for a
+      constant viscosity and by (D1/D2)^(3 + 1/n) for a power law;
+    - the melt temperature follows the analytic exponential along a
+      wall-coupled segment and is unchanged along an adiabatic one.
+
 \*---------------------------------------------------------------------------*/
 
 #include "Tait.H"
@@ -79,6 +89,7 @@ Description
 #include "CrossWlf.H"
 #include "moldThermalState.H"
 #include "moldingCoolantChannel.H"
+#include "moldingRunnerNetwork.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -888,6 +899,163 @@ void coolantChannelTests()
 }
 
 
+
+const char* runnerConstantDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+gates { g1 { length 0.02; diameter 0.004; } }
+)";
+
+const char* runnerConstantTwoGatesDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+gates
+{
+    g1 { length 0.02; diameter 0.004; }
+    g2 { length 0.02; diameter 0.002; }
+}
+)";
+
+const char* runnerPowerLawTwoGatesDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type powerLaw; K 1e4; n 0.5; }
+feed { length 0.1; diameter 0.006; }
+gates
+{
+    g1 { length 0.02; diameter 0.004; }
+    g2 { length 0.02; diameter 0.002; }
+}
+)";
+
+const char* runnerCooledDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; wallTemperature 500; htc 2000; }
+gates { g1 { length 0.02; diameter 0.004; } }
+)";
+
+
+void runnerNetworkTests()
+{
+    // Hagen-Poiseuille and wall-shear-rate helpers (hand values)
+    {
+        const scalar dp =
+            moldingRunnerNetwork::hagenPoiseuille(100, 0.1, 0.006, 3e-6);
+        const scalar gd = moldingRunnerNetwork::shearRate(3e-6, 0.006);
+
+        Info<< "    HP(100, 0.1, 0.006, 3e-6) = " << dp
+            << " Pa, shearRate = " << gd << " 1/s" << endl;
+
+        checkBool
+        (
+            "runnerNetwork: Hagen-Poiseuille hand value",
+            relDiff(dp, 943140.4035075279) < 1e-12
+        );
+        checkBool
+        (
+            "runnerNetwork: wall shear rate hand value",
+            relDiff(gd, 141.4710605261292) < 1e-12
+        );
+    }
+
+    // A single feed + gate chain reproduces the exact Hagen-Poiseuille
+    // pressure drop of the two segments in series
+    {
+        IStringStream is(runnerConstantDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q = 3e-6;
+        const scalar expected =
+            moldingRunnerNetwork::hagenPoiseuille(100, 0.1, 0.006, Q)
+          + moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.004, Q);
+
+        Info<< "    series dp = " << network.pressureDrop(Q)
+            << " Pa (expected " << expected << " Pa)" << endl;
+
+        checkBool
+        (
+            "runnerNetwork: series chain reproduces Hagen-Poiseuille",
+            relDiff(network.pressureDrop(Q), expected) < 1e-12
+         && relDiff(network.gateFlow(0, Q), Q) < 1e-12
+        );
+    }
+
+    // Parallel branches split by the analytic resistance ratio
+    {
+        IStringStream is(runnerConstantTwoGatesDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q = 3e-6;
+        const scalar Q1 = network.gateFlow(0, Q);
+        const scalar Q2 = network.gateFlow(1, Q);
+
+        Info<< "    constant split Q1/Q2 = " << Q1/Q2
+            << " (expected 16), Q1 = " << Q1 << " m^3/s" << endl;
+
+        checkBool
+        (
+            "runnerNetwork: constant-viscosity split by resistance ratio",
+            relDiff(Q1/Q2, 16.0) < 1e-9
+         && relDiff(Q1 + Q2, Q) < 1e-12
+         && relDiff(Q1, 2.823529411764706e-06) < 1e-9
+        );
+    }
+
+    // Power-law parallel split: Qi/Qj = (Dj/Di)^(3 + 1/n)
+    {
+        IStringStream is(runnerPowerLawTwoGatesDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q = 3e-6;
+        const scalar Q1 = network.gateFlow(0, Q);
+        const scalar Q2 = network.gateFlow(1, Q);
+
+        Info<< "    power-law split Q1/Q2 = " << Q1/Q2
+            << " (expected 32)" << endl;
+
+        checkBool
+        (
+            "runnerNetwork: power-law split follows (D1/D2)^(3 + 1/n)",
+            relDiff(Q1/Q2, 32.0) < 1e-6
+         && relDiff(Q1 + Q2, Q) < 1e-12
+        );
+    }
+
+    // Melt temperature: adiabatic segments leave it unchanged, a
+    // wall-coupled feed follows the analytic exponential
+    {
+        IStringStream is(runnerCooledDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q = 3e-6;
+        const scalar expected = 489.6059471207037;
+
+        Info<< "    cooled gate temperature = "
+            << network.gateTemperature(0, Q)
+            << " K (expected " << expected << " K)" << endl;
+
+        checkBool
+        (
+            "runnerNetwork: wall-coupled melt temperature exponential",
+            relDiff(network.gateTemperature(0, Q), expected) < 1e-12
+        );
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -899,6 +1067,7 @@ int main()
     latentHeatTests();
     moldThermalTests();
     coolantChannelTests();
+    runnerNetworkTests();
     ventOrificeTests();
     crossWlfTests();
 

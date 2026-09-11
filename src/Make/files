@@ -2,6 +2,7 @@ moldingFoam/moldingFoam.C
 moldingFoam/moldingStage.C
 moldingFoam/moldThermalState.C
 moldingFoam/moldingCoolantChannel.C
+moldingFoam/moldingRunnerNetwork.C
 moldingFoam/ventOrifice.C
 moldingFoam/boundaryConditions/moldingInletVelocity/moldingInletVelocityFvPatchVectorField.C
 moldingFoam/boundaryConditions/moldingMoldTemperature/moldingMoldTemperatureFvPatchScalarField.C

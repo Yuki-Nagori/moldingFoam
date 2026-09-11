@@ -22,6 +22,7 @@
 import os
 import re
 import sys
+import math
 
 
 def read_scalar_field(path):
@@ -49,6 +50,32 @@ def time_dirs(case_dir):
          if re.match(r"^[0-9]+(\.[0-9]+)?$", d) and float(d) > 0),
         key=float,
     )
+
+
+def read_tait(case_dir):
+    path = os.path.join(case_dir, "constant", "physicalProperties.melt")
+
+    with open(path, errors="replace") as f:
+        txt = f.read()
+
+    def coeff(name):
+        m = re.search(name + r"\s+([-+0-9.eE]+)", txt)
+        return float(m.group(1)) if m else None
+
+    return dict(
+        b1m=coeff("b1m"),
+        b2m=coeff("b2m"),
+        b3=coeff(r"b3\s"),
+        b4=coeff("b4"),
+        b5=coeff("b5"),
+        C=coeff(r"C\s"),
+    )
+
+
+def rho_tait_melt(p, T, c):
+    B = c["b3"]*math.exp(-c["b4"]*T)
+    v0 = c["b1m"] + c["b2m"]*(T - c["b5"])
+    return 1.0/(v0*(1 - c["C"]*math.log(1 + p/B)))
 
 
 def main():
@@ -119,6 +146,52 @@ def main():
         fail = True
     if abs(fmax - max(V)) > 0.02 + 0.1*abs(max(V)):
         print("FAIL: the written field disagrees with the log")
+        fail = True
+
+    # Exact PVT consistency in the melt cells: the sealed density is the
+    # current melt density (fixed mass and volume) and the indicator must
+    # equal 1 - rho/rho_tait(pv, T) to round-off
+    try:
+        with open(os.path.join(case_dir, "constant", "moldingDict"),
+                  errors="replace") as f:
+            mdict = f.read()
+        m = re.search(r"voidPressure\s+([-+0-9.eE]+)", mdict)
+        pv = float(m.group(1)) if m else 0.0
+
+        tdir = os.path.join(case_dir, times[-1])
+        alpha = read_scalar_field(os.path.join(tdir, "alpha.melt"))
+        Tmelt = read_scalar_field(os.path.join(tdir, "T.melt"))
+        rho = read_scalar_field(os.path.join(tdir, "rho"))
+        vfield = read_scalar_field(os.path.join(tdir, "voidFraction"))
+        tait = read_tait(case_dir)
+
+        if None in tait.values() or not all((alpha, Tmelt, rho, vfield)):
+            raise ValueError("missing Tait coefficients or fields")
+
+        if min(Tmelt) <= tait["b5"] + 1:
+            raise ValueError("a melt cell is inside the Tait transition band")
+
+        n = 0
+        dmax = 0.0
+        for i in range(len(alpha)):
+            if alpha[i] <= 0.9999:
+                continue
+
+            expected = max(0.0, 1 - rho[i]/rho_tait_melt(pv, Tmelt[i], tait))
+            dmax = max(dmax, abs(expected - vfield[i]))
+            n += 1
+
+        if n == 0:
+            raise ValueError("no melt cells to check")
+
+        print("  PVT check: {} melt cells, max |voidFraction - 1 + rho/rho_tait|"
+              " = {:.3e}".format(n, dmax))
+
+        if dmax > 1e-4:
+            print("FAIL: the void fraction is not PVT-consistent")
+            fail = True
+    except Exception as e:
+        print("FAIL: the PVT consistency check could not run: {}".format(e))
         fail = True
 
     if fail:

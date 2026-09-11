@@ -118,6 +118,9 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     forcedSwitchTime_(great),
     gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
+    massBudget_(false),
+    massBudgetIn_(0),
+    massBudgetInitial_(0),
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
     viscousDissipation_(false),
@@ -227,6 +230,9 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // sealed (polymer must not escape through the vent)
         const scalar ventSealAlpha =
             moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5);
+
+        // Optional discrete mass-budget diagnostic (task 018)
+        massBudget_ = moldingDict.lookupOrDefault<Switch>("massBudget", false);
 
         // Optional trapped-air diagnostic (see reportTrappedAir)
         const label trapAirInterval =
@@ -1575,6 +1581,64 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         }
 
         v.correctBoundaryConditions();
+    }
+}
+
+
+void Foam::solvers::moldingFoam::postSolve()
+{
+    compressibleVoF::postSolve();
+
+    // Optional discrete mass-budget diagnostic (task 018): the domain
+    // melt mass and the accumulated boundary melt flux are formed with
+    // the same discretisation, so their residual isolates any mass
+    // inconsistency of the solve (the function-object accounting can be
+    // confused by the sub-step variation of the boundary flux)
+    if (!massBudget_)
+    {
+        return;
+    }
+
+    const scalarField& Vc = mesh.V();
+    const scalarField& alphac = alpha1.primitiveField();
+    const scalarField& rhoc = mixture_.rho1().primitiveField();
+
+    scalar m = 0;
+    forAll(Vc, i)
+    {
+        m += Vc[i]*alphac[i]*rhoc[i];
+    }
+
+    scalar flux = 0;
+    const surfaceScalarField::Boundary& abf =
+        alphaRhoPhi1.boundaryField();
+
+    forAll(abf, patchi)
+    {
+        flux += gSum(abf[patchi]);
+    }
+
+    reduce(m, sumOp<scalar>());
+    reduce(flux, sumOp<scalar>());
+
+    const scalar dt = runTime.deltaTValue();
+
+    if (runTime.timeIndex() == 1)
+    {
+        // Back out the first step to express the initial mass at t = 0
+        // (m_after = m_before - flux*dt for an outward-positive flux)
+        massBudgetInitial_ = m + flux*dt;
+        massBudgetIn_ = 0;
+    }
+
+    massBudgetIn_ += flux*dt;
+
+    if (runTime.timeIndex() % 50 == 0)
+    {
+        Info<< "moldingFoam: mass budget: m = " << m
+            << " kg, accumulated boundary flux = " << massBudgetIn_
+            << " kg, residual = " << (m - massBudgetInitial_ + massBudgetIn_)
+            << " kg" << endl;
     }
 }
 

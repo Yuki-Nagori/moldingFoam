@@ -116,6 +116,17 @@ class moldingFoam
         //  is sealed (polymer must not escape through the vent)
         scalar ventSealAlpha_;
 
+        //- Enable the discrete polymer mass-budget diagnostic (task 018):
+        //  accumulates the boundary melt flux with the same discretisation
+        //  as the domain mass and logs the residual [dimensionless switch]
+        bool massBudget_;
+
+        //- Accumulated boundary melt flux [kg]
+        scalar massBudgetIn_;
+
+        //- Initial domain melt mass [kg]
+        scalar massBudgetInitial_;
+
         //- Trapped-air diagnostic interval [time steps]; zero disables it
         label trapAirInterval_;
 
@@ -282,6 +293,10 @@ public:
         //- Override the base pre-predictor to enforce the melt-gate flux
         //  consistency
         virtual void prePredictor();
+
+        //- Called at the end of each time step: runs the optional
+        //  discrete mass-budget diagnostic (task 018)
+        virtual void postSolve();
 
         virtual void preSolve();
 

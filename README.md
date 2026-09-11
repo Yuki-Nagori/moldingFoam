@@ -733,6 +733,18 @@ K(T,p) = Kmax·exp(−4ln2·(T−Tmax(p))²/W²),  Tmax(p) = Tmax0 + dTdp·p
   Couette、绝热、初始即稳态剖面，平均温升与独立积分对拍实测
   **4.1e-4**。
 
+### 质量预算诊断（`massBudget`，任务 018 工具）
+
+`constant/moldingDict` 可选 `massBudget`（bool，缺省 false）：启用后每个
+时间步在求解器内累加边界熔体通量（与域质量同一离散口径，并行归约）
+并每 50 步输出域质量、累积通量与残差，用于定位高压保压期的质量
+不一致（功能对象的逐步采样会漏掉步内通量变化）。示例输出：
+
+```
+moldingFoam: mass budget: m = 8.1012857e-05 kg, accumulated boundary
+flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
+```
+
 ### 困气诊断（`trapAirInterval`，任务 003 选项 B）
 
 `constant/moldingDict` 可选 `trapAirInterval`（时间步间隔，缺省 0 =

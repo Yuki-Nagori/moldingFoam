@@ -17,8 +17,12 @@
   - 对称抛物线 → 曲率为 0（对称性）、膜应变 `alpha·c·h²/12`
     （1024 采样，rtol 1e-4）；
   - 挠度与残余应力手算点精确；
-- 待做：结构求解（线弹性/`solidDisplacement` 顺序耦合）、脱模约束
-  释放、平板/哑铃基准与文献 ±10% 对比。
+- 翘曲形状（第二阶段）：`moldingWarpage::deflectionProfile(kappa, L, w)`
+  由曲率分布求简支条带的 1D 板方程 `w''=-kappa`、`w(0)=w(L)=0` 解；
+  model test：均匀曲率下剖面 `w(x)=kappa·x(L-x)/2`（中点 `kappa L²/8`
+  精确，最大误差 4e-19 m）；
+- 待做：三维结构求解（线弹性/`solidDisplacement` 顺序耦合）、脱模
+  约束释放、平板/哑铃与文献 ±10% 对比。
 
 ## 1. 背景与现状
 

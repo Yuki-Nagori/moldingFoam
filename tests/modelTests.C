@@ -1762,6 +1762,39 @@ void warpageTests()
         );
     }
 
+    // Simply supported strip deflection profile from a uniform curvature
+    {
+        const label n = 65;
+        const scalar L = 0.05;
+        const scalar kappa = 0.7;
+        List<scalar> kList(n, kappa);
+        List<scalar> w(n);
+
+        warp.deflectionProfile(kList, L, w);
+
+        // Uniform curvature: w(x) = kappa x (L - x)/2
+        scalar maxErr = 0;
+        for (label i = 0; i < n; ++i)
+        {
+            const scalar x = L*i/(n - 1);
+            const scalar wAna = kappa*x*(L - x)/2;
+            maxErr = max(maxErr, mag(w[i] - wAna));
+        }
+
+        const scalar wMidAna = kappa*L*L/8;
+
+        Info<< "    deflection profile: w(L/2) = " << w[(n - 1)/2]
+            << " m (expected " << wMidAna << " m), max|err| = "
+            << maxErr << " m" << endl;
+
+        checkBool
+        (
+            "warpage: uniform curvature gives the parabolic deflection "
+            "kappa x (L - x)/2",
+            relDiff(w[(n - 1)/2], wMidAna) < 1e-3 && maxErr < 1e-5
+        );
+    }
+
     // Strip deflection and constrained residual stress hand values
     {
         const scalar kappa = 0.7;

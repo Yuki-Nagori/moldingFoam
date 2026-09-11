@@ -108,6 +108,16 @@ public:
         //- Free deflection of a strip of length L [m]
         scalar deflection(const scalar kappa, const scalar L) const;
 
+        //- Out-of-plane deflection profile of a simply supported strip
+        //  from a curvature distribution: w'' = -kappa with w(0) = w(L) = 0
+        //  (the curvature and deflection samples are uniformly spaced)
+        void deflectionProfile
+        (
+            const UList<scalar>& kappa,
+            const scalar L,
+            UList<scalar>& w
+        ) const;
+
         //- Residual stress of a fully constrained plate [Pa]
         scalar constrainedStress(const scalar T) const;
 

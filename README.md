@@ -516,6 +516,12 @@ regionSolvers
   （`moldingConvectiveCooling`，2000 W/m²K、300 K）：能量平衡含冷却
   热流积分 22.1 J，实测 0.314%，界面连续。
 
+### 翘曲形状（任务 022 第二阶段）
+
+`moldingWarpage::deflectionProfile`：由曲率分布沿流向求简支条带的
+1D 板方程 `w''=−κ` 解；model test 均匀曲率下 `w(x)=κ·x(L−x)/2`
+（中点 `κL²/8` 精确）。
+
 ### 残余应力分布（任务 023 第一阶段）
 
 `moldingWarpage::residualStress`：面内约束板的自平衡弹性残余应力

@@ -172,6 +172,47 @@ Foam::scalar Foam::moldingWarpage::constrainedStress(const scalar T) const
 }
 
 
+void Foam::moldingWarpage::deflectionProfile
+(
+    const UList<scalar>& kappa,
+    const scalar L,
+    UList<scalar>& w
+) const
+{
+    const label n = kappa.size();
+
+    if (n < 2 || L <= 0 || w.size() != n)
+    {
+        return;
+    }
+
+    const scalar dx = L/(n - 1);
+
+    // Slope w'(x) = -integral kappa dx + C; w(0) = 0 gives the second
+    // integration constant
+    scalar slope = 0;
+    scalar wLast = 0;
+
+    w[0] = 0;
+
+    for (label i = 1; i < n; ++i)
+    {
+        // Trapezoidal slope update over the interval
+        slope -= 0.5*(kappa[i - 1] + kappa[i])*dx;
+        w[i] = w[i - 1] + slope*dx;
+        wLast = w[i];
+    }
+
+    // Enforce w(L) = 0 by adding a linear correction
+    const scalar corr = wLast/L;
+
+    for (label i = 0; i < n; ++i)
+    {
+        w[i] -= corr*(i*dx);
+    }
+}
+
+
 void Foam::moldingWarpage::residualStress
 (
     const UList<scalar>& T,

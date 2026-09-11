@@ -123,6 +123,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetInitial_(0),
     massBudgetInterval_(50),
     massFix_(false),
+    massFixRelaxation_(1),
     massBudgetInit_(false),
     massBudgetAlpha1Prev_(),
     massBudgetRho1Prev_(),
@@ -242,6 +243,11 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         massBudgetInterval_ =
             moldingDict.lookupOrDefault<label>("massBudgetInterval", 50);
         massFix_ = moldingDict.lookupOrDefault<Switch>("massFix", false);
+        massFixRelaxation_ = moldingDict.lookupOrDefault<scalar>
+        (
+            "massFixRelaxation",
+            1
+        );
 
         // Optional trapped-air diagnostic (see reportTrappedAir)
         const label trapAirInterval =
@@ -1711,7 +1717,7 @@ void Foam::solvers::moldingFoam::postSolve()
         {
             if (ac[i] > small)
             {
-                rc[i] -= Rc[i]*dt/ac[i];
+                rc[i] -= massFixRelaxation_*Rc[i]*dt/ac[i];
             }
         }
 

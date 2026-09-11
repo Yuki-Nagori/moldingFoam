@@ -365,6 +365,7 @@ $ xmake run test
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
+| `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -505,6 +506,15 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 热流道温度（`moldingRunnerTemperature`，任务 026 第二阶段）
+
+`0/T` 的入口可选类型 `moldingRunnerTemperature`（自注册）：闸口熔体
+温度取 1D 流道网络的段能量平衡结果
+`Tout = Twall + (Tin−Twall)·exp(−htc·π·D·L/(ṁ·cp))`；填充期用网络的
+分流流量，保压期用当前 patch 通量。集成用例
+`tests/cases/runnerTemperature`（段壁温 500 K、htc 2000、D=4 mm、
+L=50 mm）实测入口 499.9712 K vs 解析 499.9713 K（误差 0.0000%）。
 
 ### 多浇口分流（任务 026 第一阶段）
 
@@ -834,6 +844,11 @@ thermoType
 
 ### 契约变更日志
 
+**v1.20**（热流道温度边界，任务 026）：
+
+- `0/T` 的入口新增可选类型 `moldingRunnerTemperature`：闸口熔体温度
+  取流道网络段能量平衡结果。不写该类型的旧 case 行为与 v1.19 一致。
+
 **v1.19**（结晶度黏度修正，任务 024）：
 
 - `constant/momentumTransport` 的 `CrossWlfCoeffs` 新增可选
@@ -1039,6 +1054,7 @@ moldingFoam/
                              verify-weld-line.py
                              verify-process-profile.py
                              verify-multi-gate.py
+                             verify-runner-temperature.py
 ```
 
 ---

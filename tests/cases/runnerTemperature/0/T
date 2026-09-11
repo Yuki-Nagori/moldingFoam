@@ -1,0 +1,29 @@
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    object      T;
+}
+dimensions      [0 0 0 1 0 0 0];
+internalField   uniform 300;
+boundaryField
+{
+    inlet
+    {
+        type            moldingRunnerTemperature;
+        totalFlowRate   1e-07;
+        gate            gate1;
+        runner
+        {
+            inletTemperature 480;
+            cp               2400;
+            rho              800;
+            viscosity { type powerLaw; K 1e4; n 0.5; }
+            feed { length 0.05; diameter 0.004; wallTemperature 500; htc 2000; }
+            gates { gate1 { length 0.01; diameter 0.002; } }
+        }
+        value           uniform 480;
+    }
+    vent    { type inletOutlet; inletValue uniform 300; value uniform 300; }
+    walls   { type fixedValue; value uniform 353; }
+}

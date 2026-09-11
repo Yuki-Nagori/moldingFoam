@@ -37,14 +37,14 @@
 | [003](tasks/003-venting-model.md) | 排气反压/困气模型 | P1 | **done**（A 反压 + B 困气诊断均已验收） | 006 | 3–5 天 |
 | [004](tasks/004-molding-dict-runtime-reload.md) | moldingDict 运行时重载 | P1 | **done** | 无 | 半天 |
 | [005](tasks/005-nightly-contract-case.md) | CI 夜间契约 case 回归 | P2 | **done**（运行验证待推送后手动触发） | 无 | 半天 |
-| [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.305e-04，周期单调） | 无 | 2–4 天 |
+| [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.383e-04，周期单调） | 无 | 2–4 天 |
 | [007](tasks/007-viscous-dissipation.md) | 黏性生热（能量方程剪切耗散项） | P0 | **done**（解析 Couette 对拍 4.1e-4；契约 case 已开启） | 001/006 | 2–4 天 |
 | [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | **done**（路线 A 双区域 + VoF 充填能量守恒 0.24%；冷却水 1D 通道） | 002 之后 | 1–2 周 |
 | [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **done**（018 收口：massFixGlobal + Euler 口径，40 MPa 离散守恒 1.1e-5） | 006 | 1–2 周 |
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | **done**（温度判据实现+用例；契约物理触发依赖 016） | 006/016 | 3–5 天 |
 | [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
-| [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | deferred（拆分为 013a done + 013b/022） | 001–012 | 数周起 |
+| [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | **done**（拆分为 013a/013b，均完成） | 001–012 | 数周起 |
 | [013a](tasks/013a-shrinkage-indicators.md) | PVT 一致收缩/残余应力指标 | P3 | **done**（S 与热应力指标；用例 max(S) −0.008→0.298） | 001/002 | 3–5 天 |
 | [013b](tasks/013b-structural-warpage.md) | 结构翘曲集成（顺序耦合，022 落地） | P2 | **done**（MVP：PVT 自由应变映射 + 双层收缩板基准 4.2% + 应力自平衡） | 013a/022 | 2–4 周 |
 | [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | **done**（Nakamura/Avrami + χ 场/潜热耦合；Jeffery 级解析验证） | 001 | 1–2 周 |
@@ -55,16 +55,30 @@
 | [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **done**（PVT 指标 + voidFraction 场 + 精确 Tait + PVT 对拍 1.6e-6 + 质量预算 4.1e-4） | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | **done**（四基准：多周期/Robin 冷却/002 极限/周期稳态；三维水区受上游模块限制） | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
-| [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |
+| [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | **done**（fillTime/airTrap 场 + 熔接痕对称性 0.554%） | 006/003 | 1–2 周 |
 | [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | **done**（解析翘曲/残余应力 + `solidDisplacement` 三维悬臂基准 5.46%） | 001–012 | 2–4 周 |
 | [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | **done**（1D 自平衡弹性解 + 解析验证） | 022 | 1–2 周 |
 | [024](tasks/024-crystallization-integration.md) | 结晶动力学集成（014 落地） | P2 | **done**（随流输运 + η(χ) + DSC 标定工作流） | 001/014 | 1–2 周 |
 | [025](tasks/025-fiber-orientation-integration.md) | 纤维取向集成（015 落地） | P2 | **done**（随流输运；各向异性黏度为增强） | 001/002/015 | 2–4 周 |
 | [026](tasks/026-runner-system-integration.md) | 流道/热流道耦合集成（016 落地） | P2 | **done**（多浇口分流 + 热流道温度；阀浇口为增强） | 001/006/016 | 1–2 周 |
 | [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | **done**（本构+解析验证+fvModel 动量耦合） | 001/007 | 1–2 周 |
-| [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | planned | 001 | 3–5 天 |
+| [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | **done**（CrossWlf D3 压致增稠验证 517.92→533.91 Pa·s） | 001 | 3–5 天 |
 | [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **done**（22.3 万单元基准、强扩展 1.49×@4、弱扩展 59%、内存报告） | 009/018 | 2–4 周 |
-| [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | planned | 006/016 | 1–2 周 |
+| [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | **done**（Function1 曲线 + switchTime + 用例） | 006/016 | 1–2 周 |
+
+### 下一阶段任务（031–036，2026-09-12 审查新增）
+
+| 任务 | 主题 | 优先级 | 状态 | 依赖 |
+|------|------|--------|------|------|
+| [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | planned | 018 |
+| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | planned | 029/018 |
+| [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | planned | 018a/031 |
+| [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | planned | 024/025/027/013b |
+| [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | planned | 017/022/013b |
+| [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | planned | 019/008 |
+
+整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
+精度债务、性能瓶颈与优化机会）。
 
 ### 追加任务评估（018–030）
 

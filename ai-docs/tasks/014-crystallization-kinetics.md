@@ -1,6 +1,7 @@
 # 014 — 结晶动力学（半结晶聚合物）
 
-- 状态：planned
+- 状态：done（2026-09-10：Nakamura/Avrami 结晶动力学模型 + χ 场/潜热
+  能量耦合已落地并解析验证；黏度/密度修正接口与 χ 随流输运为后续扩展）
 - 优先级：P3
 - 依赖：001（潜热）
 - 预估规模：1–2 周
@@ -48,6 +49,26 @@ hMelt 用固定带宽的潜热平台等效相变，不区分结晶度演化。�
 - 非等温冷却结晶度演化定性正确；
 - 缺省（不启用）行为与 001 一致；
 - CI 双架构绿。
+
+验收记录：
+
+- `Foam::moldingCrystallization`：Nakamura 微分形式
+  `dχ/dt = nK(1−χ)(−ln(1−χ))^((n−1)/n)`，速率窗口
+  `K(T,p)=Kmax·exp(−4ln2·(T−Tmax(p))²/W²)`、`Tmax(p)=Tmax0+dTdp·p`；
+  以等效 Avrami 时间 `ξ=(−ln(1−χ))^(1/n)` 做**精确一步**
+  `χ_new=1−exp(−(ξ+K·dt)^n)`，对任意步长无条件有界；
+- model tests：窗口峰值/半宽（K(Tmax)=Kmax、K(Tmax±W/2)=Kmax/2）与
+  压力漂移；等温精确解 `1−exp(−(Kt)^n)` 与分段常数叠加（rtol 1e-12）；
+  χ∈[0,1] 有界、χ=1 时 dχ/dt=0；潜热源 `ρLdχ/dt`（rtol 1e-10）；
+- 求解器耦合：`constant/moldingDict` 可选 `crystallization` 子字典，
+  求解器创建并写出 χ 场，每步按局部 T、p 精确推进，潜热源
+  `α·ρ_melt·L·dχ/dt` 显式加入能量方程（启用时应将 hMelt 的固定
+  `latentHeat` 置 0）；周期重置时 χ 复位；
+- 求解器用例 `tests/cases/crystallization`：熔体穿过结晶窗口，χ 单调
+  有界增长到 0.99999；开/关结晶的模温对比 300.0206 vs 300.0151 K
+  （潜热使模温略高）；`xmake run test-solver` 7 用例全绿；
+- 缺省不写 `crystallization` 时行为与 001 完全一致；
+- 后续扩展：χ 随流输运（当前为局部 ODE）、黏度/密度对 χ 的修正。
 
 ## 6. 风险与缓解
 

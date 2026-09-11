@@ -357,6 +357,7 @@ $ xmake run test
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
 | `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
 | `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
+| `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -497,6 +498,31 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 结晶动力学（`crystallization`，任务 014）
+
+`constant/moldingDict` 可选 `crystallization` 子字典：启用后求解器创建
+并写出相对结晶度场 `χ`（`0..1`），按 Nakamura 微分形式的 Avrami 方程
+在局部温度/压力下演化
+
+```
+dχ/dt = n·K(T,p)·(1−χ)·(−ln(1−χ))^((n−1)/n)
+K(T,p) = Kmax·exp(−4ln2·(T−Tmax(p))²/W²),  Tmax(p) = Tmax0 + dTdp·p
+```
+
+并以等效 Avrami 时间 `ξ = (−ln(1−χ))^(1/n)` 做**精确一步**
+`χ_new = 1 − exp(−(ξ+K·dt)^n)`（任意步长无条件有界）。释放的潜热
+`α·ρ_melt·L·dχ/dt` 显式加入能量方程，替代 hMelt 的固定潜热平台
+（启用时应将 `physicalProperties.melt` 的 `latentHeat` 置 0）。
+
+- 参数：`avramiExponent`、`rateConstant`、`peakTemperature`、
+  `windowWidth`（半高全宽）、可选的 `peakTemperaturePressureShift`、
+  `latentHeat`、`rho`；
+- 验证（`xmake run test`）：窗口峰值/半宽、等温精确解、分段叠加、
+  有界性、潜热源 rtol 1e-12/1e-10；
+- 集成用例 `tests/cases/crystallization`：χ 单调有界增长到 0.99999，
+  潜热使模温略高于无结晶工况；
+- 缺省不写时行为与 001 完全一致；χ 随流输运为后续扩展。
 
 ### 1D 流道网络（`runner`，任务 016）
 
@@ -717,6 +743,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.14**（结晶动力学，任务 014）：
+
+- `constant/moldingDict` 新增可选 `crystallization` 子字典（Nakamura/
+  Avrami 动力学 + 潜热释放）：求解器创建并写出 χ 场，潜热源加入能量
+  方程。缺省不写时行为与 v1.13 一致。
+
 **v1.13**（1D 流道网络，任务 016）：
 
 - `0/U` 的 `moldingInletVelocity` 新增可选 `runner` 子字典与
@@ -881,6 +913,7 @@ moldingFoam/
                              verify-stefan.py、verify-moldcht.py
                              verify-coolant-channel.py
                              verify-runner-network.py
+                             verify-crystallization.py
 ```
 
 ---

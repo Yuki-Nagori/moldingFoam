@@ -61,6 +61,9 @@ SourceFiles
 
 namespace Foam
 {
+
+class moldingCrystallization;
+
 namespace solvers
 {
 
@@ -118,6 +121,17 @@ class moldingFoam
         //- CrossWlf coefficients used by the dissipation source
         laminarModels::generalisedNewtonianViscosityModels::CrossWlf::coeffs
             dissipationCoeffs_;
+
+        //- Optional crystallisation kinetics: relative crystallinity
+        //  model and field, active when constant/moldingDict contains a
+        //  crystallization sub-dictionary
+        autoPtr<moldingCrystallization> crystallization_;
+
+        //- Relative crystallinity field (0..1)
+        autoPtr<volScalarField> chi_;
+
+        //- Initial crystallinity field for the cycle reset
+        autoPtr<volScalarField> chiInitial_;
 
         //- Number of moulding cycles to run [-]; each ejection criterion
         //  met resets the flow fields and starts the next cycle, keeping

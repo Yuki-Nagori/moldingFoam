@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Temperature: uniform 392 K (just above the solidification band), cold
+    wall at 353 K, all other walls adiabatic.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      T;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   uniform 392;
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    coldWall
+    {
+        type             moldingMoldTemperature;
+        heatCapacity     500;      // [J/K]
+        waterHTC         0;        // [W/m^2/K] adiabatic mould (warms up)
+        wettedArea       0;        // [m^2]
+        waterTemperature 300;      // [K]
+        T                300;      // [K] initial mould temperature
+        value            uniform 300;
+    }
+
+    hotEnd
+    {
+        type            zeroGradient;
+    }
+
+    sides
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

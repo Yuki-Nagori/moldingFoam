@@ -26,6 +26,7 @@ License
 
 #include "moldingFoam.H"
 #include "moldingStage.H"
+#include "moldingCrystallization.H"
 #include "IOobject.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
 #include "moldingVentVelocityFvPatchVectorField.H"
@@ -102,6 +103,9 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     trapAirAlpha_(0.5),
     viscousDissipation_(false),
     dissipationCoeffs_(),
+    crystallization_(),
+    chi_(),
+    chiInitial_(),
     nCycles_(1),
     cycle_(1),
     deltaTInitial_(runTime.deltaTValue()),
@@ -221,6 +225,39 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         if (viscousDissipation_)
         {
             readDissipationCoeffs();
+        }
+
+        // Optional crystallisation kinetics: a relative crystallinity
+        // field evolved with the Nakamura/Avrami model whose latent heat
+        // replaces the fixed hMelt latent-Cp platform
+        if (moldingDict.found("crystallization"))
+        {
+            crystallization_.reset
+            (
+                new moldingCrystallization
+                (
+                    moldingDict.subDict("crystallization")
+                )
+            );
+
+            chi_.reset
+            (
+                new volScalarField
+                (
+                    IOobject
+                    (
+                        "chi",
+                        runTime.name(),
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mesh,
+                    dimensionedScalar("chi", dimless, 0)
+                )
+            );
+
+            chiInitial_.reset(new volScalarField(*chi_));
         }
 
         // The stage object registers itself on the mesh and is shared with
@@ -717,6 +754,12 @@ void Foam::solvers::moldingFoam::resetCycle()
     alpha1.primitiveFieldRef() = alpha1Initial_->primitiveField();
     U_.primitiveFieldRef() = UInitial_->primitiveField();
     mixture_.T().primitiveFieldRef() = TInitial_->primitiveField();
+
+    if (chi_.valid())
+    {
+        chi_->primitiveFieldRef() = chiInitial_->primitiveField();
+        chi_->correctBoundaryConditions();
+    }
     p.primitiveFieldRef() = pInitial_->primitiveField();
     p_rgh_.primitiveFieldRef() = p_rghInitial_->primitiveField();
 
@@ -1011,6 +1054,52 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         (e1Source&e1)
       + (e2Source&e2)
     );
+
+    // Explicit crystallisation latent-heat source. The relative
+    // crystallinity is advanced with the exact Avrami step over dt and
+    // the released latent heat rho L dchi/dt heats the melt; the source
+    // is added to the integrated source directly
+    if (crystallization_.valid())
+    {
+        const scalar dt(runTime.deltaTValue());
+        volScalarField& chi = *chi_;
+        const volScalarField& T = mixture_.T();
+        const volScalarField& p = mixture_.p();
+        const volScalarField& rhoMelt = mixture_.rho1();
+
+        scalarField& chic = chi.primitiveFieldRef();
+        const scalarField& Tc = T.primitiveField();
+        const scalarField& pc = p.primitiveField();
+        const scalarField& ac = alpha1.primitiveField();
+        const scalarField& rc = rhoMelt.primitiveField();
+        scalarField& src = TEqn.source();
+        const scalarField& Vc = mesh.V();
+
+        scalar maxDchiDt = 0;
+
+        forAll(chic, i)
+        {
+            const scalar chiOld = chic[i];
+            const scalar chiNew =
+                crystallization_->advance(chiOld, Tc[i], pc[i], dt);
+
+            src[i] +=
+                Vc[i]*crystallization_->latentHeat()
+               *ac[i]*rc[i]*(chiNew - chiOld)/dt;
+
+            maxDchiDt = max(maxDchiDt, mag(chiNew - chiOld)/dt);
+            chic[i] = chiNew;
+        }
+
+        chi.correctBoundaryConditions();
+
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            Info<< "moldingFoam: crystallinity: max(chi) = "
+                << gMax(chic) << ", max(dchi/dt) = " << maxDchiDt
+                << " 1/s" << endl;
+        }
+    }
 
     // Explicit viscous-dissipation (shear heating) source. It is added
     // to the integrated source directly, so the positive sign is

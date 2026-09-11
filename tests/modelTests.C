@@ -72,6 +72,15 @@ Description
     - with many small cross-sections the march converges to the analytic
       plug-flow exponential within 1e-3.
 
+    Crystallisation kinetics (moldingCrystallization):
+    - the Gaussian rate window reproduces K(Tmax) = Kmax and the half
+      width K(Tmax +/- W/2) = Kmax/2, with the pressure shift;
+    - the exact Avrami step reproduces the isothermal solution
+      1 - exp(-(K t)^n) and composes over piecewise-constant stages;
+    - chi stays bounded in [0, 1] for arbitrarily large steps and
+      dchi/dt vanishes at chi = 1;
+    - the latent source returns rho L dchi/dt.
+
     Runner network (1D pressure-flow-thermal model, moldingRunnerNetwork):
     - the Hagen-Poiseuille and wall-shear-rate helpers reproduce hand
       values;
@@ -90,6 +99,7 @@ Description
 #include "moldThermalState.H"
 #include "moldingCoolantChannel.H"
 #include "moldingRunnerNetwork.H"
+#include "moldingCrystallization.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -1056,6 +1066,99 @@ void runnerNetworkTests()
     }
 }
 
+
+const char* crystallizationDictString = R"(
+avramiExponent 2;
+rateConstant 0.1;
+peakTemperature 400;
+windowWidth 40;
+peakTemperaturePressureShift 1e-7;
+latentHeat 2e5;
+rho 800;
+)";
+
+
+void crystallizationTests()
+{
+    IStringStream is(crystallizationDictString);
+    dictionary dict(is);
+    moldingCrystallization xtal(dict);
+
+    // Gaussian rate window and the pressure shift
+    {
+        const scalar K0 = xtal.K(400, 0);
+        const scalar K1 = xtal.K(420, 0);
+        const scalar K2 = xtal.K(380, 0);
+
+        Info<< "    K(400) = " << K0 << ", K(420) = " << K1
+            << ", Tmax(1e7 Pa) = " << xtal.Tmax(1e7) << " K" << endl;
+
+        checkBool
+        (
+            "crystallization: rate window peaks at Kmax with half width W/2",
+            relDiff(K0, 0.1) < 1e-14
+         && relDiff(K1, 0.05) < 1e-14
+         && relDiff(K2, 0.05) < 1e-14
+         && relDiff(xtal.Tmax(1e7), 401.0) < 1e-12
+        );
+    }
+
+    // Isothermal exact Avrami step: chi = 1 - exp(-(K t)^n)
+    {
+        const scalar chi = xtal.advance(0, 400, 0, 5.0);
+
+        Info<< "    advance(0, 400, 0, 5) = " << chi
+            << " (expected 0.22119921692859512)" << endl;
+
+        checkBool
+        (
+            "crystallization: exact isothermal Avrami step",
+            relDiff(chi, 0.22119921692859512) < 1e-12
+        );
+    }
+
+    // Piecewise-constant stages compose through the equivalent time:
+    // 1 - exp(-(K1 t1 + K2 t2)^n)
+    {
+        const scalar chi =
+            xtal.advance(xtal.advance(0, 400, 0, 3.0), 420, 0, 4.0);
+
+        checkBool
+        (
+            "crystallization: piecewise stages compose",
+            relDiff(chi, 0.22119921692859512) < 1e-12
+        );
+    }
+
+    // Boundedness and the vanishing rate at chi = 1
+    {
+        const scalar chi = xtal.advance(0.5, 400, 0, 1e6);
+
+        checkBool
+        (
+            "crystallization: chi stays in [0, 1]",
+            chi >= 0 && chi <= 1 && relDiff(chi, 1.0) < 1e-12
+         && xtal.dchiDt(1, 400, 0) == 0
+         && xtal.advance(1, 400, 0, 10) == 1
+        );
+    }
+
+    // Latent source rho L dchi/dt
+    {
+        const scalar q = xtal.latentSource(0, 400, 0, 5.0);
+
+        Info<< "    latent source = " << q << " W/m^3" << endl;
+
+        checkBool
+        (
+            "crystallization: latent source is rho L dchi/dt",
+            relDiff(q, 7078374.941715044) < 1e-10
+         && xtal.latentSource(1, 400, 0, 5.0) == 0
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1067,6 +1170,7 @@ int main()
     latentHeatTests();
     moldThermalTests();
     coolantChannelTests();
+    crystallizationTests();
     runnerNetworkTests();
     ventOrificeTests();
     crossWlfTests();

@@ -55,6 +55,7 @@ SourceFiles
 
 #include "compressibleVoF.H"
 #include "CrossWlf.H"
+#include "Tait.H"
 #include <ctime>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -169,6 +170,11 @@ class moldingFoam
         //  018a, stage 2): active when the shrinkage sub-dictionary
         //  enables it with `voidFraction true`
         autoPtr<volScalarField> voidField_;
+
+        //- Melt equation of state used by the void-fraction indicator:
+        //  rho(pv, T) is evaluated exactly with the Tait coefficients of
+        //  the case's physicalProperties.melt (task 018a, stage 3)
+        autoPtr<Tait<specie>> voidEos_;
 
         //- Optional fill-time field (the time each cell fills); the last
         //  cells to fill are the weld lines

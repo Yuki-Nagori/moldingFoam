@@ -33,6 +33,11 @@
     1.5e-2 kg/s 尖峰**（近不可压 ψ 极小、rAUf 大 → 边界局部通量误差）。
     下一步候选：质量通量一致的压力入口、ψ 隐式/参考压力正则化、
     声学松弛；封冻后空洞/负压另见 018a。
+  - **018a**（in-progress，阶段 1–3）：PVT 空洞指标 API + `voidFraction`
+    求解器场（默认关）+ 精确 Tait `rho(pv,T)`（从
+    `physicalProperties.<melt>` 构造缓存 EOS）+ 密封冷却用例
+    （`tests/cases/voidFraction`，空洞 4.1% 近均匀稳定）；待做：
+    0D PVT 对拍、张力限制（p 下限 pv）、封冻后守恒（依赖 018）。
   - ~~019~~（done）：四基准完成；三维水区调研结论——v14
     `incompressibleFluid` 为等温模块（无 T），需自研非等温求解器；
     等效冷却已由 `moldingCoolantChannel` + `moldingConvectiveCooling`

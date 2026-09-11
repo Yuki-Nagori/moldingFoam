@@ -132,6 +132,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     shrinkageField_(),
     shrinkageInitial_(),
     voidField_(),
+    voidEos_(),
     writeFillTime_(false),
     fillTime_(),
     fillTimeInitial_(),
@@ -390,6 +391,37 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                         ),
                         mesh,
                         dimensionedScalar("voidFraction", dimless, 0)
+                    )
+                );
+
+                // Exact melt equation of state for rho(pv, T): the Tait
+                // coefficients of the melt phase's physicalProperties
+                const fileName meltPropsPath
+                (
+                    constantDictPath
+                    (
+                        mesh,
+                        word("physicalProperties." + mixture_.phase1Name())
+                    )
+                );
+
+                IFstream meltPropsIs(meltPropsPath);
+
+                if (!meltPropsIs.good())
+                {
+                    FatalIOErrorInFunction(meltPropsPath)
+                        << "Cannot read the melt physical properties "
+                        << "required by the void-fraction indicator"
+                        << exit(FatalIOError);
+                }
+
+                dictionary meltPropsDict(meltPropsIs);
+                voidEos_.reset
+                (
+                    new Tait<specie>
+                    (
+                        mixture_.phase1Name(),
+                        meltPropsDict.subDict("mixture")
                     )
                 );
             }
@@ -1494,11 +1526,11 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         }
     }
 
-    // Void-fraction indicator of the sealed melt (task 018a, stage 2):
-    // once the gate has frozen off the sealed melt cannot draw more
-    // material, so any density above rho(pv, T) opens a void. The density
-    // at the cavitation pressure is estimated from the local
-    // compressibility, rho(pv, T) ~ rho + psi (pv - p)
+    // Void-fraction indicator of the sealed melt (task 018a): once the
+    // gate has frozen off the sealed melt cannot draw more material, so
+    // any density above the equilibrium density at the cavitation
+    // pressure, rho(pv, T), opens a void. The equilibrium density is
+    // evaluated exactly with the melt's Tait equation of state
     if (voidField_.valid())
     {
         volScalarField& v = *voidField_;
@@ -1514,9 +1546,8 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         if (stagePtr && stagePtr->gateSealed())
         {
             const scalarField& rhoc = mixture_.rho1().primitiveField();
-            const scalarField& psim =
-                mixture_.thermo1().psi().primitiveField();
-            const scalarField& pc = p.primitiveField();
+            const scalarField& Tc =
+                mixture_.thermo1().T().primitiveField();
             const scalarField& alphac = alpha1.primitiveField();
             const scalar pv = shrinkage_->pv();
 
@@ -1527,7 +1558,7 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
                   ? shrinkage_->voidFraction
                     (
                         rhoc[i],
-                        rhoc[i] + psim[i]*(pv - pc[i])
+                        voidEos_->rho(pv, Tc[i])
                     )
                   : 0;
             }

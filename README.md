@@ -360,6 +360,7 @@ $ xmake run test
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
 | `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
 | `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
+| `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -500,6 +501,21 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 熔接痕与气穴（`writeFillTime`，任务 021）
+
+`constant/moldingDict` 可选 `writeFillTime`（bool，缺省 false）：启用后
+求解器记录每个单元填充（α≥0.5）的时刻并写出 `fillTime` 场；配合
+`trapAirInterval` 同时写出困气单元场 `airTrap`（1 = 困气，复用 003 的
+连通域诊断）。熔接痕判据：壁面单元在每个流向截面最后填充，故取**截面
+最大填充时间**再沿流向找峰值，峰值截面即熔接痕。
+
+- 集成用例 `tests/cases/weldLine`：40×4 mm 通道双端等流量充填、全顶面
+  排气；熔接痕位于中心面 ±4 cell（实测 2.5 cell），截面最大填充时间
+  对称误差 2.5%，困气 12/640 cell；
+- 小排气口会因困气压缩使双前沿对称性自发破缺（熔接痕偏移 28.75%），
+  全顶面排气恢复对称；
+- 缺省不写时行为不变。
 
 ### 收缩/残余应力指标（`shrinkage`，任务 013a）
 
@@ -788,6 +804,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.17**（熔接痕/气穴，任务 021）：
+
+- `constant/moldingDict` 新增可选 `writeFillTime`（bool，缺省 false）：
+  写出单元填充时间场 `fillTime`；`trapAirInterval` 启用时同时写出困气
+  场 `airTrap`。缺省不写时行为与 v1.16 一致。
+
 **v1.16**（收缩/残余应力指标，任务 013a）：
 
 - `constant/moldingDict` 新增可选 `shrinkage` 子字典：求解器创建并
@@ -972,6 +994,7 @@ moldingFoam/
                              verify-crystallization.py
                              verify-fiber-orientation.py
                              verify-shrinkage.py
+                             verify-weld-line.py
 ```
 
 ---

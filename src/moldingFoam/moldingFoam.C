@@ -115,6 +115,10 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     shrinkage_(),
     shrinkageField_(),
     shrinkageInitial_(),
+    writeFillTime_(false),
+    fillTime_(),
+    fillTimeInitial_(),
+    airTrap_(),
     nCycles_(1),
     cycle_(1),
     deltaTInitial_(runTime.deltaTValue()),
@@ -335,6 +339,58 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             );
 
             shrinkageInitial_.reset(new volScalarField(*shrinkageField_));
+        }
+
+        // Optional fill-time field: the time each cell becomes filled
+        // (alpha >= 0.5); its local maxima are the weld lines
+        writeFillTime_ = moldingDict.lookupOrDefault<Switch>
+        (
+            "writeFillTime",
+            false
+        );
+
+        if (writeFillTime_)
+        {
+            fillTime_.reset
+            (
+                new volScalarField
+                (
+                    IOobject
+                    (
+                        "fillTime",
+                        runTime.name(),
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mesh,
+                    dimensionedScalar("fillTime", dimTime, VGREAT)
+                )
+            );
+
+            fillTimeInitial_.reset(new volScalarField(*fillTime_));
+        }
+
+        // Optional trapped-air field, written with the trapped-air
+        // diagnostic
+        if (trapAirInterval_ > 0)
+        {
+            airTrap_.reset
+            (
+                new volScalarField
+                (
+                    IOobject
+                    (
+                        "airTrap",
+                        runTime.name(),
+                        mesh,
+                        IOobject::NO_READ,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mesh,
+                    dimensionedScalar("airTrap", dimless, 0)
+                )
+            );
         }
 
         // The stage object registers itself on the mesh and is shared with
@@ -871,6 +927,12 @@ void Foam::solvers::moldingFoam::resetCycle()
             shrinkageInitial_->primitiveField();
         shrinkageField_->correctBoundaryConditions();
     }
+
+    if (fillTime_.valid())
+    {
+        fillTime_->primitiveFieldRef() = fillTimeInitial_->primitiveField();
+        fillTime_->correctBoundaryConditions();
+    }
     p.primitiveFieldRef() = pInitial_->primitiveField();
     p_rgh_.primitiveFieldRef() = p_rghInitial_->primitiveField();
 
@@ -933,6 +995,11 @@ void Foam::solvers::moldingFoam::reportTrappedAir()
         {
             ++nAir;
         }
+    }
+
+    if (airTrap_.valid())
+    {
+        airTrap_->primitiveFieldRef() = 0;
     }
 
     if (nAir == 0)
@@ -1056,11 +1123,19 @@ void Foam::solvers::moldingFoam::reportTrappedAir()
 
     const vectorField& Cc = mesh.C().primitiveField();
 
+    scalarField* airTrapc =
+        airTrap_.valid() ? &airTrap_->primitiveFieldRef() : nullptr;
+
     forAll(air, i)
     {
         if (air[i] && !connected[i])
         {
             const scalar m = (1 - alpha[i])*rho2c[i]*Vc[i];
+
+            if (airTrapc)
+            {
+                (*airTrapc)[i] = 1;
+            }
 
             ++nTrap;
             vol += Vc[i];
@@ -1311,6 +1386,64 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 void Foam::solvers::moldingFoam::preSolve()
 {
     compressibleVoF::preSolve();
+
+    // Record the fill time of cells that just became filled (alpha >= 0.5)
+    if (fillTime_.valid())
+    {
+        volScalarField& ft = *fillTime_;
+        scalarField& ftc = ft.primitiveFieldRef();
+        const scalarField& ac = alpha1.primitiveField();
+        const scalar t(runTime.value());
+
+        forAll(ftc, i)
+        {
+            if (ac[i] >= 0.5 && ftc[i] > t)
+            {
+                ftc[i] = t;
+            }
+        }
+
+        ft.correctBoundaryConditions();
+
+        // Report the last-filled cell (the weld line) at the diagnostic
+        // interval: the maximum finite fill time and its location
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            scalar maxFinite(-great);
+
+            forAll(ftc, i)
+            {
+                if (ftc[i] < great)
+                {
+                    maxFinite = max(maxFinite, ftc[i]);
+                }
+            }
+
+            reduce(maxFinite, maxOp<scalar>());
+
+            label maxCell(-1);
+
+            if (maxFinite > -great)
+            {
+                forAll(ftc, i)
+                {
+                    if (ftc[i] == maxFinite)
+                    {
+                        maxCell = i;
+                        break;
+                    }
+                }
+
+                reduce(maxCell, minOp<label>());
+            }
+
+            if (Pstream::master() && maxCell >= 0)
+            {
+                Info<< "moldingFoam: fill time: max = " << maxFinite
+                    << " s at " << mesh.C()[maxCell] << " m" << endl;
+            }
+        }
+    }
 
     // Runtime reload of constant/moldingDict: the runTimeModifiable
     // mechanism only monitors controlDict, so the moulding dictionary is

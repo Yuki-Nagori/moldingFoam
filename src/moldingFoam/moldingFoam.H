@@ -161,6 +161,18 @@ class moldingFoam
         //- Initial shrinkage field for the cycle reset
         autoPtr<volScalarField> shrinkageInitial_;
 
+        //- Optional fill-time field (the time each cell fills); the last
+        //  cells to fill are the weld lines
+        bool writeFillTime_;
+
+        autoPtr<volScalarField> fillTime_;
+
+        autoPtr<volScalarField> fillTimeInitial_;
+
+        //- Optional trapped-air field (1 in trapped air cells), written
+        //  at the trapped-air diagnostic interval
+        autoPtr<volScalarField> airTrap_;
+
         //- Number of moulding cycles to run [-]; each ejection criterion
         //  met resets the flow fields and starts the next cycle, keeping
         //  the mould thermal state

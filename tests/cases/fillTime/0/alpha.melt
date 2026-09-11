@@ -1,0 +1,15 @@
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    object      alpha.melt;
+}
+dimensions      [];
+internalField   uniform 0;
+boundaryField
+{
+    inlet1  { type fixedValue; value uniform 1; }
+    inlet2  { type zeroGradient; }
+    vent    { type inletOutlet; inletValue uniform 0; value uniform 0; }
+    walls   { type zeroGradient; }
+}

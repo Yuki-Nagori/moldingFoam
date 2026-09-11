@@ -1443,6 +1443,28 @@ void pressureDependentViscosityTests()
             (zeroDict, 4e7, 480, 100)
         );
     }
+
+    // Crystallinity viscosity factor (1 - chi/chiInf)^(-a), clipped
+    {
+        const auto factor =
+            laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+            crystallinityFactor;
+
+        Info<< "    crystallinity factors: " << factor(0, 0.5, 2)
+            << ", " << factor(0.25, 0.5, 2)
+            << ", " << factor(0.4, 0.5, 2)
+            << ", " << factor(0.5, 0.5, 2) << endl;
+
+        checkBool
+        (
+            "CrossWlf: crystallinity factor (1 - chi/chiInf)^(-a) with a "
+            "clipped divergence",
+            relDiff(factor(0, 0.5, 2), 1.0) < 1e-14
+         && relDiff(factor(0.25, 0.5, 2), 4.0) < 1e-12
+         && relDiff(factor(0.4, 0.5, 2), 25.0) < 1e-12
+         && relDiff(factor(0.5, 0.5, 2), 1e6) < 1e-12
+        );
+    }
 }
 
 

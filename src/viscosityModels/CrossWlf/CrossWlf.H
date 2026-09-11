@@ -172,6 +172,15 @@ public:
 
         //- Pre-computed 1 - n for the Cross power law
         scalar oneMinusN;
+
+        //- Apply the crystallinity correction (optional)
+        bool useCrystallinity;
+
+        //- Crystallinity at which the viscosity would diverge [-]
+        scalar chiInfinity;
+
+        //- Crystallinity correction exponent [-]
+        scalar chiExponent;
     };
 
 
@@ -211,6 +220,15 @@ public:
 
         //- Read the coefficients from a CrossWlfCoeffs-like dictionary
         static coeffs readCoeffs(const dictionary& coeffsDict);
+
+        //- Crystallinity viscosity factor
+        //  (1 - chi/chiInfinity)^(-exponent), clipped to a finite maximum
+        static scalar crystallinityFactor
+        (
+            const scalar chi,
+            const scalar chiInfinity,
+            const scalar exponent
+        );
 
         //- Return the dynamic viscosity [Pa s] computed from a
         //  coefficients dictionary; used by the model tests

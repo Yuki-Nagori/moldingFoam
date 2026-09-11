@@ -834,6 +834,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.19**（结晶度黏度修正，任务 024）：
+
+- `constant/momentumTransport` 的 `CrossWlfCoeffs` 新增可选
+  `crystallinity { chiInfinity; exponent; }`：动量黏度按
+  `(1−χ/χ∞)^(−a)` 放大。缺省不写时与 v1.18 一致。
+
 **v1.18**（多级工艺曲线，任务 030）：
 
 - `0/U` 的 `moldingInletVelocity` 新增可选 `volumetricFlowRateProfile`

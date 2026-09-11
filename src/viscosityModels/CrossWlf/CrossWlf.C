@@ -52,6 +52,27 @@ namespace generalisedNewtonianViscosityModels
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 Foam::scalar
+Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+crystallinityFactor
+(
+    const scalar chi,
+    const scalar chiInfinity,
+    const scalar exponent
+)
+{
+    // Clip the factor so a fully crystallised cell stays numerically
+    // finite (the factor models the sharp viscosity rise; the momentum
+    // solve cannot use an infinite viscosity)
+    return
+        min
+        (
+            pow(max(1 - max(chi, scalar(0))/chiInfinity, small), -exponent),
+            scalar(1e6)
+        );
+}
+
+
+Foam::scalar
 Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::etaValue
 (
     const coeffs& c,
@@ -124,6 +145,31 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::readCoeffs
     c.etaMax = coeffsDict.lookup<scalar>("etaMax");
     c.gammaDotMin =
         coeffsDict.lookupOrDefault<scalar>("gammaDotMin", 1e-6);
+
+    // Optional crystallinity correction: eta *= (1 - chi/chiInf)^(-a)
+    c.useCrystallinity = coeffsDict.found("crystallinity");
+
+    if (c.useCrystallinity)
+    {
+        const dictionary& xtal(coeffsDict.subDict("crystallinity"));
+
+        c.chiInfinity = xtal.lookup<scalar>("chiInfinity");
+        c.chiExponent = xtal.lookup<scalar>("exponent");
+
+        if (c.chiInfinity <= 0 || c.chiInfinity > 1 || c.chiExponent < 0)
+        {
+            FatalIOErrorInFunction(xtal)
+                << "The crystallinity correction requires 0 < chiInfinity "
+                << "<= 1 and exponent >= 0: chiInfinity = " << c.chiInfinity
+                << ", exponent = " << c.chiExponent
+                << exit(FatalIOError);
+        }
+    }
+    else
+    {
+        c.chiInfinity = 1;
+        c.chiExponent = 0;
+    }
 
     // Derived, per-call invariants hoisted out of the per-cell loops
     c.oneMinusN = 1 - c.n;
@@ -248,6 +294,24 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
         forAll(nuc, i)
         {
             nuc[i] = etaValue(coeffs_, pc[i], Tc[i], gammadotc[i])/rhoc[i];
+        }
+
+        // Optional crystallinity correction: the viscosity rises sharply
+        // as the relative crystallinity grows
+        if (coeffs_.useCrystallinity && mesh.foundObject<volScalarField>("chi"))
+        {
+            const scalarField& chic =
+                mesh.lookupObject<volScalarField>("chi").primitiveField();
+
+            forAll(nuc, i)
+            {
+                nuc[i] *= crystallinityFactor
+                (
+                    chic[i],
+                    coeffs_.chiInfinity,
+                    coeffs_.chiExponent
+                );
+            }
         }
     }
 

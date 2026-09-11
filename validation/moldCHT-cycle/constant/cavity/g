@@ -1,0 +1,26 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Gravity: zero. The filling CHT benchmark is a planar channel; a
+    gravity-free fill keeps the VoF front flat so the displaced air leaves
+    through the vent and the melt fills the cavity completely.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       uniformDimensionedVectorField;
+    location    "constant";
+    object      g;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -2 0 0 0 0];
+
+value           (0 0 0);
+
+// ************************************************************************* //

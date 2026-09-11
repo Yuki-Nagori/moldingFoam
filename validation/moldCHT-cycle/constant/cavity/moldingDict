@@ -1,0 +1,57 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\      /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Fluid region moulding dictionary: single filling stage (no packing),
+    ejection unreachable and no viscous dissipation so that the global
+    energy balance of the benchmark closes.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant/cavity";
+    object      moldingDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+injection
+{
+    meltTemperature  480;
+}
+
+packing
+{
+    switchFraction   1;
+    switchPressure   1e9;
+
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+
+cooling
+{
+    ejectionTemperature  450;
+    releasePressure      1e5;
+}
+
+// Three moulding cycles: the cavity resets, the mould temperature is kept
+nCycles 3;
+
+// The vent stays open for the whole benchmark so that the cavity never
+// pressurises after filling (the pressure-work contribution to the energy
+// balance stays negligible)
+ventSealAlpha   2;
+
+trapAirInterval 0;
+
+viscousDissipation  false;
+
+// ************************************************************************* //

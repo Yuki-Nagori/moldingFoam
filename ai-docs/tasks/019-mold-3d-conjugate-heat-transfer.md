@@ -10,6 +10,11 @@
 - 008 已交付：`foamMultiRun` 双区域（cavity `moldingFoam` + mold
   `solid`）、`coupledTemperature` 界面、静止导热基准（界面 0.19%/
   腔体 1.33%）、VoF 充填能量守恒 0.24%、冷却水 1D 通道 BC（单区域）；
+- **多周期多区域 CHT 已落地**（2026-09-10）：`validation/moldCHT-cycle`
+  在 `moldCHT-fill` 基础上 `nCycles 3`、顶出温度 450 K；cavity 周期
+  重置流场、模具 `solid` 温度保留——实测 2 个周期完成、模具平均温度
+  由 354.1 K 升到 404.5 K、界面连续误差 0；`xmake run moldCHT` 依次
+  运行 moldCHT / moldCHT-fill / moldCHT-cycle；
 - 落地缺口：
   1. **完整周期**（充填→保压→封冻→冷却）的多区域集成与能量记账：
      多区域下入口/出口通量没有 function object（顶层 functions 不逐

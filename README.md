@@ -367,6 +367,7 @@ $ xmake run test
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
 | `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille（`verify-fountain-flow.py`） |
+| `moldCHT-cycle` | 多周期多区域 CHT：模温 354→405 K 跨周期保留，界面连续（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -498,7 +499,8 @@ regionSolvers
 }
 ```
 
-验证分两级（`xmake run moldCHT` 依次运行）：
+验证（`xmake run moldCHT` 依次运行 `moldCHT` / `moldCHT-fill` /
+`moldCHT-cycle`）：
 
 - `validation/moldCHT`：静止熔体 + 钢模具的瞬态导热，界面温度与独立
   一维两层隐式 FD（Tait ρ(T)、Cv(T)）对拍 **0.19%**、腔体平均
@@ -506,7 +508,9 @@ regionSolvers
 - `validation/moldCHT-fill`：60×2 mm 通道被熔体充填（VoF）并同时向
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
-  体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+  体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0；
+- `validation/moldCHT-cycle`：多周期集成（cavity 周期重置、模具温度
+  保留）：2 个周期完成，模具平均温度 354.1 → 404.5 K，界面连续。
 
 ### 喷泉流基准（任务 020 第一阶段）
 

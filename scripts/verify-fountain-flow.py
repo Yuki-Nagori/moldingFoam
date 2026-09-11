@@ -109,6 +109,26 @@ def main():
         print("FAIL: unexpected velocity field size")
         sys.exit(1)
 
+    # Fountain signature: the centreline front must lead the wall front
+    alpha = scalars(read_field(
+        os.path.join(case_dir, tProf, "alpha.melt"), "scalar"))
+    if alpha is None:
+        print("FAIL: cannot read the melt fraction field")
+        sys.exit(1)
+
+    def front_i(j):
+        for i in range(NCX):
+            if alpha[cell_index(i, j)] < 0.5:
+                return i
+        return NCX
+
+    iCentre = front_i(NCY//2)
+    iWall = max(front_i(0), front_i(NCY - 1))
+    fountain = iCentre - iWall
+
+    print("  front position: centreline i = {}, wall i = {}, "
+          "lead = {} cells".format(iCentre, iWall, fountain))
+
     # L2 (RMS) error of the developed profile against the analytic
     # Poiseuille parabola: the cell values represent cell averages, so the
     # RMS norm avoids over-weighting the steep near-wall cells
@@ -131,6 +151,10 @@ def main():
     if profErr > 0.10:
         print("FAIL: the developed velocity profile deviates from the "
               "analytic Poiseuille profile")
+        fail = True
+    if fountain <= 0:
+        print("FAIL: the centreline front does not lead the wall front "
+              "(no fountain signature)")
         fail = True
 
     if fail:

@@ -40,7 +40,7 @@
 | [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.305e-04，周期单调） | 无 | 2–4 天 |
 | [007](tasks/007-viscous-dissipation.md) | 黏性生热（能量方程剪切耗散项） | P0 | **done**（解析 Couette 对拍 4.1e-4；契约 case 已开启） | 001/006 | 2–4 天 |
 | [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | **done**（路线 A 双区域 + VoF 充填能量守恒 0.24%；冷却水 1D 通道） | 002 之后 | 1–2 周 |
-| [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **done**（由 018 收口：封冻前 5.02e-4） | 006 | 1–2 周 |
+| [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **in-progress**（<1e-3 只到约 38 MPa；40 MPa hold 4.5e-2） | 006 | 1–2 周 |
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | **done**（温度判据实现+用例；契约物理触发依赖 016） | 006/016 | 3–5 天 |
 | [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
@@ -50,7 +50,7 @@
 | [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | **done**（Folgar-Tucker + Jeffery 轨道 <1e-6；局部 a 场） | 001/002 | 2–4 周 |
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |
 | [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
-| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（封冻前守恒 5.02e-4；浇口通量一致性修正） | 009 | 3–5 天 |
+| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **in-progress**（通量一致性+平滑封冻已做；高压端压力-密度振荡待修） | 009 | 3–5 天 |
 | [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | planned | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | planned | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |

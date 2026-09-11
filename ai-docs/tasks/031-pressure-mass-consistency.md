@@ -30,6 +30,22 @@
   `rho += ψ·dp`；
 - 先 A（改动最小），A 不足再 B/C；每步用 `massBudget` 仪表验证。
 
+## 3a. 首轮调查（2026-09-12）
+
+- 上游核对：`compressibleTwoPhaseVoFMixture::correct()` 只更新混合物
+  `rho_/nu_`，**不刷新相 psi**；`psi1/psi2` 在校正器入口取引用、整步
+  恒定——压力方程与 `correctRho` 用的是同一 psi（口径自洽，与四项分解
+  `dm≈ψ·dp` 一致）。因此拆分误差不在 stale psi，而在压缩项的
+  显隐式处理（`correction(fvm::ddt(p_rgh))` + 显式 `ddt/div` 用步初
+  rho）与通量插值（`ddtCorr`）的组合；
+- 下一实验（建议顺序）：
+  1. 在求解器内逐项记录压力方程的显式/隐式贡献与最终 phi 的通量积分
+     （与 `massBudget` 同口径），定位哪一项与守恒不一致；
+  2. 实现**显式质量通量投影**（选项 B）：压力解后解
+     `laplacian(D, lambda) = R`（R 为离散质量残差，零法向势）并修正
+     `phi`/`alphaPhi1`，使离散质量平衡精确成立；
+  3. 仅在 1 的定位结果指向 EOS 非线性时才走选项 C。
+
 ## 4. 验收标准（DoD）
 
 - `verify-highpressure.py`（Euler 口径）**无 `massFixGlobal`** PASS

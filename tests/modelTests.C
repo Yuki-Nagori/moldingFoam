@@ -1437,6 +1437,37 @@ void shrinkageTests()
         );
     }
 
+    // Crystallinity coupling (task 034): the shrinkage gains
+    // chiShrinkage per unit relative crystallinity
+    {
+        IStringStream cis(
+            "referenceDensity 950;"
+            "referenceTemperature 293.15;"
+            "elasticModulus 2e9;"
+            "poissonRatio 0.3;"
+            "thermalExpansion 7e-5;"
+            "crystallinityShrinkage 0.02;"
+        );
+        dictionary cdict(cis);
+        moldingShrinkage cshrink(cdict);
+
+        const scalar S0 = cshrink.volumetricShrinkage(950, 0);
+        const scalar S1 = cshrink.volumetricShrinkage(950, 1);
+
+        Info<< "    shrinkage with crystallinity: S(chi=0) = " << S0
+            << ", S(chi=1) = " << S1 << endl;
+
+        checkBool
+        (
+            "shrinkage: the crystallinity coupling adds chiShrinkage per "
+            "unit chi and leaves the default case unchanged",
+            mag(S0) < 1e-14
+         && relDiff(S1 - S0, 0.02) < 1e-12
+         && relDiff(cshrink.chiShrinkage(), 0.02) < 1e-12
+         && mag(shrink.chiShrinkage()) < 1e-14
+        );
+    }
+
     // The cavitation pressure is optional and defaults to vacuum
     {
         IStringStream vis(

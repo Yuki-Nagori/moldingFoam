@@ -57,5 +57,18 @@ crystallization
     rho               800;     // [kg/m^3]
 }
 
+// Crystallinity-coupled shrinkage (task 034): the semi-crystalline
+// density increase adds crystallinityShrinkage per unit chi on top of
+// the PVT free shrinkage
+shrinkage
+{
+    referenceDensity         950;
+    referenceTemperature     293.15;
+    elasticModulus           2e9;
+    poissonRatio             0.3;
+    thermalExpansion         7e-5;
+    crystallinityShrinkage   0.02;
+}
+
 
 // ************************************************************************* //

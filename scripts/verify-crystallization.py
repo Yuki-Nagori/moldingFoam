@@ -58,11 +58,33 @@ def main():
             fail = True
             break
 
+    # Crystallinity-coupled shrinkage (task 034): with the shrinkage
+    # coupling enabled the volumetric shrinkage must gain at least half
+    # of the chi increment times crystallinityShrinkage (the density
+    # contribution adds more for a cooling melt)
+    S = [float(x) for x in re.findall(r"max\(S\) = ([-+0-9.eE]+)", log)]
+    if S:
+        dS = S[-1] - S[0]
+        dChi = chi[-1] - chi[0]
+        expected = 0.02*dChi
+
+        print("  shrinkage max(S): first = {:.6f}, last = {:.6f} "
+              "(dS = {:.6f}, crystallinity part = {:.6f})".format(
+                  S[0], S[-1], dS, expected))
+
+        if dS < 0.5*expected:
+            print("FAIL: the shrinkage did not gain the crystallinity "
+                  "contribution")
+            fail = True
+    else:
+        print("FAIL: no shrinkage samples in the log")
+        fail = True
+
     if fail:
         sys.exit(1)
 
     print("PASS: crystallinity grows monotonically and bounded to "
-          "near 1")
+          "near 1; the coupled shrinkage gains the crystallinity part")
 
 
 if __name__ == "__main__":

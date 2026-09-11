@@ -69,7 +69,7 @@ def main():
           "(expected {:.6e} m, error {:.3%})".format(
               dyEnd, dAna, err))
 
-    if err > 0.10:
+    if err > 0.08:
         print("FAIL: the thermoelastic cantilever does not bend with "
               "kappa = alpha dT/h")
         sys.exit(1)

@@ -91,6 +91,10 @@ class moldingShrinkage
         //- Void (cavitation) pressure of the sealed melt [Pa]
         scalar pv_;
 
+        //- Shrinkage increment per unit relative crystallinity
+        //  (task 034): S_total = S(rho) + chiShrinkage*chi
+        scalar chiShrinkage_;
+
 
 public:
 
@@ -106,6 +110,20 @@ public:
         scalar volumetricShrinkage(const scalar rho) const
         {
             return 1 - rhoRef_/max(rho, small);
+        }
+
+        //- Free volumetric shrinkage with the crystallinity contribution
+        //  (task 034): the semi-crystalline density increase adds
+        //  chiShrinkage per unit relative crystallinity
+        scalar volumetricShrinkage(const scalar rho, const scalar chi) const
+        {
+            return volumetricShrinkage(rho) + chiShrinkage_*chi;
+        }
+
+        //- Crystallinity shrinkage increment [-]
+        scalar chiShrinkage() const
+        {
+            return chiShrinkage_;
         }
 
         //- Constrained thermal stress indicator [Pa]

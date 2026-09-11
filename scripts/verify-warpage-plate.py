@@ -109,7 +109,7 @@ def main():
     # which bends the cantilever towards -y (the same convention as the
     # thermoelastic case); only the magnitude is asserted
     fail = False
-    if abs(abs(dy) - expected)/expected > 0.10:
+    if abs(abs(dy) - expected)/expected > 0.08:
         print("FAIL: the free-end deflection deviates from kappa L^2/2 by "
               "more than 10%")
         fail = True

@@ -1539,9 +1539,15 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         scalarField& sc = s.primitiveFieldRef();
         const scalarField& rhoc = mixture_.rho1().primitiveField();
 
+        const scalarField* chicPtr =
+            chi_.valid() ? &chi_->primitiveField() : nullptr;
+
         forAll(sc, i)
         {
-            sc[i] = shrinkage_->volumetricShrinkage(rhoc[i]);
+            sc[i] =
+                chicPtr
+              ? shrinkage_->volumetricShrinkage(rhoc[i], (*chicPtr)[i])
+              : shrinkage_->volumetricShrinkage(rhoc[i]);
         }
 
         s.correctBoundaryConditions();

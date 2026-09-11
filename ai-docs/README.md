@@ -39,16 +39,49 @@
 | [005](tasks/005-nightly-contract-case.md) | CI 夜间契约 case 回归 | P2 | **done**（运行验证待推送后手动触发） | 无 | 半天 |
 | [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.305e-04，周期单调） | 无 | 2–4 天 |
 | [007](tasks/007-viscous-dissipation.md) | 黏性生热（能量方程剪切耗散项） | P0 | **done**（解析 Couette 对拍 4.1e-4；契约 case 已开启） | 001/006 | 2–4 天 |
-| [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | planned | 002 之后 | 1–2 周 |
+| [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | **done**（路线 A 双区域 + VoF 充填能量守恒 0.24%；冷却水 1D 通道） | 002 之后 | 1–2 周 |
 | [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **in-progress**（机理与 Pareto 扫描完成；压力耦合重构待做） | 006 | 1–2 周 |
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | **done**（温度判据实现+用例；契约物理触发依赖 016） | 006/016 | 3–5 天 |
 | [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
-| [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | planned | 001–012 | 数周起 |
-| [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | planned | 001 | 1–2 周 |
-| [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | planned | 001/002 | 2–4 周 |
-| [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | planned | 001/006 | 1–2 周 |
+| [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | deferred（拆分为 013a done + 013b/022） | 001–012 | 数周起 |
+| [013a](tasks/013a-shrinkage-indicators.md) | PVT 一致收缩/残余应力指标 | P3 | **done**（S 与热应力指标；用例 max(S) −0.008→0.298） | 001/002 | 3–5 天 |
+| [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | **done**（Nakamura/Avrami + χ 场/潜热耦合；Jeffery 级解析验证） | 001 | 1–2 周 |
+| [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | **done**（Folgar-Tucker + Jeffery 轨道 <1e-6；局部 a 场） | 001/002 | 2–4 周 |
+| [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |
 | [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
+| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | planned | 009 | 3–5 天 |
+| [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | planned | 008/002 | 1–2 周 |
+| [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | planned | 001/006/017 | 1–2 周 |
+| [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | planned | 006/003 | 1–2 周 |
+| [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | planned | 001–012 | 2–4 周 |
+| [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | planned | 022 | 1–2 周 |
+| [024](tasks/024-crystallization-integration.md) | 结晶动力学集成（014 落地） | P2 | planned | 001/014 | 1–2 周 |
+| [025](tasks/025-fiber-orientation-integration.md) | 纤维取向集成（015 落地） | P2 | planned | 001/002/015 | 2–4 周 |
+| [026](tasks/026-runner-system-integration.md) | 流道/热流道耦合集成（016 落地） | P2 | planned | 001/006/016 | 1–2 周 |
+| [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | planned | 001/007 | 1–2 周 |
+| [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | planned | 001 | 3–5 天 |
+| [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | planned | 009/018 | 2–4 周 |
+| [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | planned | 006/016 | 1–2 周 |
+
+### 追加任务评估（018–030）
+
+- **018/019 是 P0 收口**：009 的压力耦合重构（018）与 008 的完整周期
+  三维 CHT 落地（019）是后续所有增强功能的物理基础，建议最先推进；
+- **024/025/026 是已落地首阶段的“集成”任务**：014/015/016 已完成模型
+  与局部场耦合，集成任务的实际范围是**随流输运、黏度/密度/热导率
+  各向异性耦合、多浇口/热流道/阀浇口 case 与实验对拍**（见各任务
+  背景节），不是从零开始；
+- **022 承接 013a**：013a 已提供收缩/热应力指标，022 只需补结构求解
+  与脱模释放；023 再补粘弹性残余应力；
+- **新增 030（工艺曲线/过程控制）**：当前注射速度为常数、保压为
+  table 曲线，多级速度/位置切换与阀浇口时序是真实工艺的缺口，且是
+  016 多浇口的自然延伸，建议列为 P1；
+- 其余补充评估：025 内应含各向异性热导率；029 应覆盖新增场（χ/a/
+  shrinkage）的并行与 I/O 开销；020 的文献数据数字化精度需多源交叉。
+
+建议顺序（与用户给定一致）：018 → 019 → 020/021 → 022 → 029 →
+023–028（含 030）。
 
 ## 背景速览（新会话必读）
 

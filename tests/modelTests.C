@@ -78,6 +78,13 @@ Description
     - the constrained thermal stress indicator follows
       E/(1 - nu) alpha (Tref - T).
 
+    Viscoelastic constitutive (moldingViscoelastic):
+    - UCM start-up shear reproduces eta0 gammadot (1 - exp(-t/lambda));
+    - relaxation from a steady state decays as exp(-t/lambda);
+    - the steady first normal stress difference is 2 eta0 lambda
+      gammadot^2;
+    - the Giesekus term gives shear thinning and a positive N1.
+
     Fibre orientation (moldingFiberOrientation):
     - the shape factor reproduces (r^2 - 1)/(r^2 + 1);
     - tr(a) is invariant and the advance keeps tr(a) = 1 and the
@@ -116,6 +123,7 @@ Description
 #include "moldingRunnerNetwork.H"
 #include "moldingCrystallization.H"
 #include "moldingFiberOrientation.H"
+#include "moldingViscoelastic.H"
 #include "moldingShrinkage.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
@@ -1468,6 +1476,155 @@ void pressureDependentViscosityTests()
 }
 
 
+
+const char* viscoelasticDictString = R"(
+relaxationTime 1;
+zeroShearViscosity 1000;
+mobilityFactor 0;
+)";
+
+const char* giesekusDictString = R"(
+relaxationTime 1;
+zeroShearViscosity 1000;
+mobilityFactor 0.5;
+)";
+
+
+void viscoelasticTests()
+{
+    IStringStream is(viscoelasticDictString);
+    dictionary dict(is);
+    moldingViscoelastic ucm(dict);
+
+    const scalar eta0 = 1000;
+    const scalar lambda = 1;
+    const scalar gammaDot = 0.1;
+
+    tensor L(tensor::zero);
+    L(0, 1) = gammaDot;
+
+    // UCM start-up shear
+    {
+        symmTensor tau(symmTensor::zero);
+        const scalar dt = 1e-4;
+
+        for (label i = 0; i < 200000; ++i)
+        {
+            tau = ucm.advance(tau, L, dt);
+        }
+
+        const scalar tEnd = 200000*dt;
+        const scalar expected =
+            eta0*gammaDot*(1 - std::exp(-tEnd/lambda));
+
+        Info<< "    UCM start-up tau_xy = " << tau.xy()
+            << " Pa (expected " << expected << " Pa)" << endl;
+
+        checkBool
+        (
+            "viscoelastic: UCM start-up shear follows "
+            "eta0 gammadot (1 - exp(-t/lambda))",
+            relDiff(tau.xy(), expected) < 1e-4
+        );
+
+        // Steady first normal stress difference
+        const scalar N1 = tau.xx() - tau.yy();
+
+        checkBool
+        (
+            "viscoelastic: UCM steady N1 = 2 eta0 lambda gammadot^2",
+            relDiff(N1, 2*eta0*lambda*gammaDot*gammaDot) < 1e-3
+        );
+    }
+
+    // UCM relaxation from a steady state
+    {
+        symmTensor tau(symmTensor::zero);
+        const scalar dt = 1e-4;
+
+        for (label i = 0; i < 20000; ++i)
+        {
+            tau = ucm.advance(tau, L, dt);
+        }
+
+        const scalar tau0 = tau.xy();
+
+        // Stop the shear and relax
+        const tensor Lzero(tensor::zero);
+
+        for (label i = 0; i < 10000; ++i)
+        {
+            tau = ucm.advance(tau, Lzero, dt);
+        }
+
+        const scalar expected = tau0*std::exp(-1.0);
+
+        Info<< "    UCM relaxation tau_xy = " << tau.xy()
+            << " Pa (expected " << expected << " Pa)" << endl;
+
+        checkBool
+        (
+            "viscoelastic: relaxation decays as exp(-t/lambda)",
+            relDiff(tau.xy(), expected) < 1e-4
+        );
+    }
+
+    // Giesekus: shear thinning and positive N1
+    {
+        IStringStream isG(giesekusDictString);
+        dictionary gDict(isG);
+        moldingViscoelastic giesekus(gDict);
+
+        const scalar g1 = 0.1;
+        const scalar g2 = 1.0;
+        tensor L1(tensor::zero);
+        tensor L2(tensor::zero);
+        L1(0, 1) = g1;
+        L2(0, 1) = g2;
+
+        symmTensor t1(symmTensor::zero);
+        symmTensor t2(symmTensor::zero);
+
+        for (label i = 0; i < 100000; ++i)
+        {
+            t1 = giesekus.advance(t1, L1, 1e-4);
+        }
+        for (label i = 0; i < 100000; ++i)
+        {
+            t2 = giesekus.advance(t2, L2, 1e-4);
+        }
+
+        const scalar eta1 = t1.xy()/g1;
+        const scalar eta2 = t2.xy()/g2;
+
+        Info<< "    Giesekus eta(0.1) = " << eta1
+            << " Pa s, eta(1) = " << eta2 << " Pa s, N1(1) = "
+            << t2.xx() - t2.yy() << " Pa" << endl;
+
+        checkBool
+        (
+            "viscoelastic: Giesekus shear thins and gives a positive N1",
+            eta2 < eta1
+         && eta2 > 0
+         && (t2.xx() - t2.yy()) > 0
+        );
+    }
+
+    // No flow leaves the stress at zero
+    {
+        symmTensor tau(symmTensor::zero);
+        const symmTensor t = ucm.advance(tau, tensor::zero, 1);
+
+        checkBool
+        (
+            "viscoelastic: no flow keeps the stress at zero",
+            mag(t.xx()) < 1e-14 && mag(t.xy()) < 1e-14
+         && mag(t.yy()) < 1e-14
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1481,6 +1638,7 @@ int main()
     coolantChannelTests();
     crystallizationTests();
     shrinkageTests();
+    viscoelasticTests();
     fiberOrientationTests();
     pressureDependentViscosityTests();
     runnerNetworkTests();

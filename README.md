@@ -512,6 +512,12 @@ regionSolvers
 - `validation/moldCHT-cycle`：多周期集成（cavity 周期重置、模具温度
   保留）：2 个周期完成，模具平均温度 354.1 → 404.5 K，界面连续。
 
+### 粘弹性本构（任务 027 第一阶段）
+
+`Foam::moldingViscoelastic`：单模上随体 Maxwell + 可选 Giesekus 二次
+迁移项的多应力演化（局部，RK2），model tests 与 UCM/Giesekus 解析解
+对拍（启动剪切/松弛/N1/剪切变稀全部通过）。动量方程耦合为下一阶段。
+
 ### 喷泉流基准（任务 020 第一阶段）
 
 `tests/cases/fountainFlow`：40×4 mm 通道单浇口充填（绝热壁、远端

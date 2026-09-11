@@ -1,9 +1,25 @@
 # 027 — 粘弹性本构模型
 
-- 状态：planned
+- 状态：in-progress（2026-09-10：单模 UCM/Giesekus 本构 + 解析验证已落地；动量方程耦合待做）
 - 优先级：P2
 - 依赖：001/007
 - 预估规模：1–2 周
+
+验收记录（第一阶段：本构模型 + 解析验证）：
+
+- `Foam::moldingViscoelastic`：单模上随体 Maxwell（UCM）+ 可选
+  Giesekus 二次迁移项
+  `λDτ/Dt = λ(Lτ+τLᵀ) + 2η₀D − (λα/η₀)τ·τ − τ`，局部（均匀流动）
+  演化，RK2 步进；参数 `relaxationTime`/`zeroShearViscosity`/
+  可选的 `mobilityFactor`；
+- model tests（解析对拍）：
+  - UCM 启动剪切 `τ_xy = η₀γ̇(1−e^(−t/λ))`（rtol 1e-4）；
+  - 松弛 `τ_xy = τ₀e^(−t/λ)`（rtol 1e-4）；
+  - 稳态第一法向应力差 `N1 = 2η₀λγ̇²`（rtol 1e-3）；
+  - Giesekus：η(0.1)=990 → η(1)=618 Pa·s 剪切变稀、N1>0；
+  - 无流动 τ 保持 0；
+- 待做：动量方程耦合（附加应力源项/构型张量输运）、多模谱、
+  挤出胀大/法向应力基准。
 
 ## 1. 背景与现状
 

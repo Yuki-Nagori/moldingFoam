@@ -78,6 +78,13 @@ def rho_tait_melt(p, T, c):
     return 1.0/(v0*(1 - c["C"]*math.log(1 + p/B)))
 
 
+def p_tait_melt_iso(rho, T, c):
+    # Invert the melt-branch Tait EOS for the isochoric pressure
+    B = c["b3"]*math.exp(-c["b4"]*T)
+    v0 = c["b1m"] + c["b2m"]*(T - c["b5"])
+    return B*(math.exp((1 - 1/(rho*v0))/c["C"]) - 1)
+
+
 def main():
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
@@ -173,12 +180,14 @@ def main():
 
         n = 0
         dmax = 0.0
+        idx = []
         for i in range(len(alpha)):
             if alpha[i] <= 0.9999:
                 continue
 
             expected = max(0.0, 1 - rho[i]/rho_tait_melt(pv, Tmelt[i], tait))
             dmax = max(dmax, abs(expected - vfield[i]))
+            idx.append(i)
             n += 1
 
         if n == 0:
@@ -189,6 +198,30 @@ def main():
 
         if dmax > 1e-4:
             print("FAIL: the void fraction is not PVT-consistent")
+            fail = True
+
+        # The sealed melt pressure must have fallen to/below the
+        # cavitation pressure (otherwise no void opens) and must follow
+        # the isochoric PVT path
+        pfield = read_scalar_field(os.path.join(tdir, "p"))
+        if not pfield:
+            raise ValueError("cannot read the pressure field")
+
+        pm = [pfield[i] for i in idx]
+        piso = [p_tait_melt_iso(rho[i], Tmelt[i], tait) for i in idx]
+        dp = max(abs(piso[k] - pm[k])/max(abs(piso[k]), 1e5)
+                 for k in range(len(idx)))
+
+        print("  pressure check: solver {:.4e}..{:.4e} Pa, PVT {:.4e}.."
+              "{:.4e} Pa, max rel. difference = {:.2%}".format(
+                  min(pm), max(pm), min(piso), max(piso), dp))
+
+        if max(pm) > pv:
+            print("FAIL: the sealed melt pressure stayed above the "
+                  "cavitation pressure")
+            fail = True
+        if dp > 0.1:
+            print("FAIL: the pressure does not follow the isochoric PVT path")
             fail = True
     except Exception as e:
         print("FAIL: the PVT consistency check could not run: {}".format(e))

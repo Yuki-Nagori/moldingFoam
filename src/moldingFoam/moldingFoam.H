@@ -130,6 +130,12 @@ class moldingFoam
         //- Mass-budget logging interval [time steps]
         label massBudgetInterval_;
 
+        //- Enable the conservative phase-1 mass correction at the end of
+        //  each time step (task 018 experiment): the local discrete mass
+        //  residual is fed back into the phase density so the mass budget
+        //  closes exactly [dimensionless switch]
+        bool massFix_;
+
         //- Previous-step mass-budget state for the term decomposition
         bool massBudgetInit_;
         scalarField massBudgetAlpha1Prev_;

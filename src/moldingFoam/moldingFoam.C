@@ -122,6 +122,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetIn_(0),
     massBudgetInitial_(0),
     massBudgetInterval_(50),
+    massFix_(false),
     massBudgetInit_(false),
     massBudgetAlpha1Prev_(),
     massBudgetRho1Prev_(),
@@ -240,6 +241,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         massBudget_ = moldingDict.lookupOrDefault<Switch>("massBudget", false);
         massBudgetInterval_ =
             moldingDict.lookupOrDefault<label>("massBudgetInterval", 50);
+        massFix_ = moldingDict.lookupOrDefault<Switch>("massFix", false);
 
         // Optional trapped-air diagnostic (see reportTrappedAir)
         const label trapAirInterval =
@@ -1687,6 +1689,33 @@ void Foam::solvers::moldingFoam::postSolve()
             << " kg, accumulated boundary flux = " << massBudgetIn_
             << " kg, residual = " << (m - massBudgetInitial_ + massBudgetIn_)
             << " kg" << endl;
+    }
+
+    // Optional conservative mass correction (task 018 experiment): fold
+    // the local discrete mass residual back into the phase-1 density so
+    // that ddt(alpha1,rho1) + div(alphaRhoPhi1) = 0 holds exactly
+    if (massFix_)
+    {
+        volScalarField& rho1 = mixture_.thermo1().rho();
+
+        const volScalarField R
+        (
+            fvc::ddt(alpha1, rho1) + fvc::div(alphaRhoPhi1)
+        );
+
+        scalarField& rc = rho1.primitiveFieldRef();
+        const scalarField& ac = alpha1.primitiveField();
+        const scalarField& Rc = R.primitiveField();
+
+        forAll(rc, i)
+        {
+            if (ac[i] > small)
+            {
+                rc[i] -= Rc[i]*dt/ac[i];
+            }
+        }
+
+        mixture_.correct();
     }
 }
 

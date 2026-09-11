@@ -512,6 +512,13 @@ regionSolvers
 - `validation/moldCHT-cycle`：多周期集成（cavity 周期重置、模具温度
   保留）：2 个周期完成，模具平均温度 354.1 → 404.5 K，界面连续。
 
+### 自由翘曲解析模型（任务 022 第一阶段）
+
+`Foam::moldingWarpage`：由厚度方向温度剖面积分自由膜应变与热弯曲
+曲率（逐单元 Simpson，壁面线性外推），给出条带自由挠度
+`κL²/2` 与全约束残余应力 `E/(1−ν)·α·(Tref−T)`；model tests 与
+线性/均匀/对称抛物线剖面及手算点精确对拍。结构求解耦合为下一阶段。
+
 ### 粘弹性本构（任务 027 第一阶段）
 
 `Foam::moldingViscoelastic`：单模上随体 Maxwell + 可选 Giesekus 二次

@@ -78,6 +78,15 @@ Description
     - the constrained thermal stress indicator follows
       E/(1 - nu) alpha (Tref - T).
 
+    Warpage (moldingWarpage):
+    - a linear through-thickness profile gives the classical bimetal
+      curvature alpha dT/h with zero membrane strain;
+    - a uniform profile gives zero curvature;
+    - a symmetric parabolic profile gives zero curvature (symmetry) and
+      the analytical membrane strain alpha c h^2/12;
+    - the strip deflection and constrained residual stress reproduce the
+      hand values.
+
     Viscoelastic constitutive (moldingViscoelastic):
     - UCM start-up shear reproduces eta0 gammadot (1 - exp(-t/lambda));
     - relaxation from a steady state decays as exp(-t/lambda);
@@ -124,6 +133,7 @@ Description
 #include "moldingCrystallization.H"
 #include "moldingFiberOrientation.H"
 #include "moldingViscoelastic.H"
+#include "moldingWarpage.H"
 #include "moldingShrinkage.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
@@ -1625,6 +1635,116 @@ void viscoelasticTests()
 }
 
 
+
+const char* warpageDictString = R"(
+thermalExpansion 7e-5;
+elasticModulus 2e9;
+poissonRatio 0.3;
+referenceTemperature 363;
+)";
+
+
+void warpageTests()
+{
+    IStringStream is(warpageDictString);
+    dictionary dict(is);
+    moldingWarpage warp(dict);
+
+    const scalar alpha = 7e-5;
+    const scalar h = 0.002;
+
+    // Linear through-thickness profile: 353 K bottom, 373 K top,
+    // reference 363 K -> zero membrane strain, kappa = alpha dT/h
+    {
+        const label n = 8;
+        List<scalar> T(n);
+
+        for (label i = 0; i < n; ++i)
+        {
+            T[i] = 353 + 20*(i + 0.5)/n;
+        }
+
+        const scalar kappa = warp.freeCurvature(T, h);
+        const scalar strain = warp.freeStrain(T, h);
+        const scalar expected = alpha*20/h;
+
+        Info<< "    linear profile: kappa = " << kappa
+            << " 1/m (expected " << expected << "), strain = "
+            << strain << endl;
+
+        checkBool
+        (
+            "warpage: linear profile gives the bimetal curvature "
+            "alpha dT/h with zero membrane strain",
+            relDiff(kappa, expected) < 1e-12 && mag(strain) < 1e-15
+        );
+    }
+
+    // Uniform profile: no curvature, membrane strain alpha dT
+    {
+        const label n = 8;
+        List<scalar> T(n, 400.0);
+
+        checkBool
+        (
+            "warpage: uniform profile gives no curvature",
+            mag(warp.freeCurvature(T, h)) < 1e-12
+         && relDiff(warp.freeStrain(T, h), alpha*(400 - 363)) < 1e-14
+        );
+    }
+
+    // Symmetric parabolic profile: no curvature by symmetry and the
+    // analytical membrane strain alpha c h^2/12
+    {
+        const label n = 1024;
+        const scalar c = 1e5;      // K/m^2
+        List<scalar> T(n);
+
+        for (label i = 0; i < n; ++i)
+        {
+            const scalar y = (i + 0.5)*h/n;
+            T[i] = 363 + c*(y - 0.5*h)*(y - 0.5*h);
+        }
+
+        const scalar kappa = warp.freeCurvature(T, h);
+        const scalar strain = warp.freeStrain(T, h);
+        const scalar expected = alpha*c*h*h/12;
+
+        Info<< "    parabolic profile: kappa = " << kappa
+            << " 1/m, strain = " << strain
+            << " (expected " << expected << ")" << endl;
+
+        checkBool
+        (
+            "warpage: symmetric parabolic profile has no curvature and "
+            "the analytical membrane strain",
+            mag(kappa) < 1e-12 && relDiff(strain, expected) < 1e-4
+        );
+    }
+
+    // Strip deflection and constrained residual stress hand values
+    {
+        const scalar kappa = 0.7;
+        const scalar L = 0.05;
+        const scalar delta = warp.deflection(kappa, L);
+        const scalar sigma = warp.constrainedStress(353);
+
+        const scalar deltaExp = kappa*L*L/2;
+        const scalar sigmaExp = 2e9/(1 - 0.3)*alpha*(363 - 353);
+
+        Info<< "    deflection = " << delta << " m, constrained stress = "
+            << sigma << " Pa" << endl;
+
+        checkBool
+        (
+            "warpage: strip deflection and constrained residual stress",
+            relDiff(delta, deltaExp) < 1e-14
+         && relDiff(sigma, sigmaExp) < 1e-14
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1639,6 +1759,7 @@ int main()
     crystallizationTests();
     shrinkageTests();
     viscoelasticTests();
+    warpageTests();
     fiberOrientationTests();
     pressureDependentViscosityTests();
     runnerNetworkTests();

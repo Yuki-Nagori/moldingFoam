@@ -1,0 +1,26 @@
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    object      p_rgh;
+}
+dimensions      [1 -1 -2 0 0 0 0];
+internalField   uniform 1e5;
+boundaryField
+{
+    inlet1
+    {
+        type            moldingPrghPressure;
+        refValue        uniform 1e5;
+        refGradient     uniform 0;
+        valueFraction   uniform 0;
+        value           uniform 1e5;
+    }
+    vent
+    {
+        type            moldingVentPressure;
+        p0              1e5;
+        value           $internalField;
+    }
+    walls   { type fixedFluxPressure; value $internalField; }
+}

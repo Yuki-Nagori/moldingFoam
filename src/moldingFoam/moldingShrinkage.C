@@ -39,7 +39,8 @@ Foam::moldingShrinkage::moldingShrinkage(const dictionary& dict)
     Tref_(dict.lookup<scalar>("referenceTemperature")),
     E_(dict.lookup<scalar>("elasticModulus")),
     nu_(dict.lookup<scalar>("poissonRatio")),
-    alpha_(dict.lookup<scalar>("thermalExpansion"))
+    alpha_(dict.lookup<scalar>("thermalExpansion")),
+    pv_(dict.lookupOrDefault<scalar>("voidPressure", 0))
 {
     if (rhoRef_ <= 0)
     {
@@ -62,6 +63,13 @@ Foam::moldingShrinkage::moldingShrinkage(const dictionary& dict)
         FatalIOErrorInFunction(dict)
             << "The Poisson ratio must lie in (-1, 0.5): poissonRatio = "
             << nu_ << exit(FatalIOError);
+    }
+
+    if (pv_ < 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The void (cavitation) pressure must be non-negative: "
+            << "voidPressure = " << pv_ << exit(FatalIOError);
     }
 }
 

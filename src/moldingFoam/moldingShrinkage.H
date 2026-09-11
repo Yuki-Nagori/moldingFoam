@@ -88,6 +88,9 @@ class moldingShrinkage
         //- Linear thermal expansion coefficient [1/K]
         scalar alpha_;
 
+        //- Void (cavitation) pressure of the sealed melt [Pa]
+        scalar pv_;
+
 
 public:
 
@@ -109,6 +112,21 @@ public:
         scalar thermalStress(const scalar T) const
         {
             return E_/(1 - nu_)*alpha_*(Tref_ - T);
+        }
+
+        //- Void fraction of a sealed cell: the volume fraction that has
+        //  become void once the isochoric pressure reaches the cavitation
+        //  pressure pv, 1 - rho/rho(pv, T). Zero while the sealed melt is
+        //  still compressed above pv (task 018a, stage 1)
+        scalar voidFraction(const scalar rho, const scalar rhoAtPv) const
+        {
+            return max(scalar(0), 1 - rho/max(rhoAtPv, small));
+        }
+
+        //- Cavitation pressure [Pa]
+        scalar pv() const
+        {
+            return pv_;
         }
 
         //- Reference density [kg/m^3]

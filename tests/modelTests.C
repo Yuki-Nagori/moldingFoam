@@ -1405,6 +1405,59 @@ void shrinkageTests()
          && sigma < 0
         );
     }
+
+    // Void (cavitation) fraction of a sealed melt (task 018a, stage 1):
+    // an isochore sealed at 40 MPa and 480 K develops voids once cooling
+    // raises rho(pv, T) above the sealed density
+    {
+        IStringStream tis(taitDictString);
+        dictionary tdict(tis);
+        Tait<specie> tait("melt", tdict);
+
+        const scalar p0 = 4e7;
+        const scalar T0 = 480;
+        const scalar T1 = 350;
+        const scalar rhoSealed = tait.rho(p0, T0);
+
+        const scalar void0 = shrink.voidFraction(rhoSealed, tait.rho(0, T0));
+        const scalar void1 = shrink.voidFraction(rhoSealed, tait.rho(0, T1));
+        const scalar expected1 = 1 - rhoSealed/tait.rho(0, T1);
+
+        Info<< "    void fraction, sealed at (40 MPa, 480 K): T=480 K "
+            << void0 << ", T=350 K " << void1 << endl;
+
+        checkBool
+        (
+            "shrinkage: no void while the sealed melt stays compressed, "
+            "void appears as rho(pv, T) exceeds the sealed density",
+            void0 < 1e-14
+         && relDiff(void1, expected1) < 1e-12
+         && void1 > 1e-3
+         && shrink.voidFraction(rhoSealed, 0.5*rhoSealed) < 1e-14
+        );
+    }
+
+    // The cavitation pressure is optional and defaults to vacuum
+    {
+        IStringStream vis(
+            "referenceDensity 950;"
+            "referenceTemperature 293.15;"
+            "elasticModulus 2e9;"
+            "poissonRatio 0.3;"
+            "thermalExpansion 7e-5;"
+            "voidPressure 1e5;"
+        );
+        dictionary vdict(vis);
+        moldingShrinkage vshrink(vdict);
+
+        checkBool
+        (
+            "shrinkage: cavitation pressure defaults to vacuum and reads "
+            "the optional voidPressure",
+            mag(shrink.pv()) < 1e-14
+         && relDiff(vshrink.pv(), 1e5) < 1e-12
+        );
+    }
 }
 
 

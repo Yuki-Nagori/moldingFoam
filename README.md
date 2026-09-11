@@ -366,6 +366,7 @@ $ xmake run test
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
+| `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille（`verify-fountain-flow.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -506,6 +507,15 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 喷泉流基准（任务 020 第一阶段）
+
+`tests/cases/fountainFlow`：40×4 mm 通道单浇口充填（绝热壁、远端
+排气、常黏度），前沿位置与 `Q t/(h w)` 偏差 **0.013%**；测站
+x=5.25 mm 的发展剖面与解析 Poiseuille 抛物线
+`u = 1.5·u_mean·(1−(2y/h−1)²)` 的 L2 误差 **1.64%**（阈值 10%）；
+细网格（152×16）对照为对称抛物线（L2 6.94%）。前沿形状与文献速度场
+对拍为后续阶段。
 
 ### 热流道温度（`moldingRunnerTemperature`，任务 026 第二阶段）
 

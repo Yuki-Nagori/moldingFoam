@@ -329,6 +329,32 @@ target("moldCHT")
     end)
 target_end()
 
+target("thermoelastic")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the thermoelastic cantilever validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-validation.sh")
+            .. " validation/thermoelastic")
+        if ok ~= 0 then
+            os.raise("thermoelastic validation failed; see "
+                .. "validation/thermoelastic/log.foamRun")
+        end
+    end)
+target_end()
+
 target("stefan")
     set_kind("phony")
     add_deps("moldingFoam")

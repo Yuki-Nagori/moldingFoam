@@ -65,6 +65,11 @@ jobs:
           set -o pipefail
           xmake run stefan 2>&1 | tee stefan.txt
 
+      - name: Thermoelastic cantilever validation
+        run: |
+          set -o pipefail
+          xmake run thermoelastic 2>&1 | tee thermoelastic.txt
+
       - name: Conjugate heat transfer validation
         run: |
           set -o pipefail
@@ -82,6 +87,7 @@ jobs:
           cp case-contract/log.foamRun case-contract/log.blockMesh acceptance.txt dist/ 2>/dev/null || true
           cp -r case-contract/postProcessing dist/ 2>/dev/null || true
           cp validation/stefan/log.foamRun stefan.txt dist/ 2>/dev/null || true
+          cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
           cp validation/moldCHT/log.foamRun moldcht.txt dist/ 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4

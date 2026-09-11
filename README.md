@@ -528,6 +528,14 @@ regionSolvers
 需在 fvSchemes 提供 `div(tau)`）；用例
 `tests/cases/viscoelasticFlow` 中剪切通道 max|tau_xy|=1.54e5 Pa。
 
+### 三维热弹性基准（任务 022 第四阶段）
+
+`validation/thermoelastic`（`solidDisplacement`）：30×1×1 悬臂、
+厚度线性温度剖面（300→320 K）、固定端 + 自由面；48×80 网格下自由端
+中性轴挠度与解析 `κL²/2` 误差 **5.46%**（阈值 10%，网格加密收敛）；
+`xmake run thermoelastic` 与夜间 CI 已接入。`alphav` 语义为线性膨胀
+系数（均匀 T 下 `D_x = alphav·T·x` 精确）。
+
 ### 双金属基准（任务 022 第三阶段）
 
 `moldingWarpage::bimetalCurvature`：Timoshenko 双层粘结曲率解析式

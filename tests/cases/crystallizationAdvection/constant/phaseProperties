@@ -6,52 +6,24 @@
      \\/     M anipulation |
 -------------------------------------------------------------------------------
 Description
-    Discretisation schemes.
+    Phase definition: melt (polymer, phase 1) and air (phase 2) with a
+    constant surface tension coefficient at the interface.
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      fvSchemes;
+    location    "constant";
+    object      phaseProperties;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
-{
-    default         Euler;
-}
+phases (melt air);
 
-gradSchemes
+sigma
 {
-    default         Gauss linear;
-}
-
-divSchemes
-{
-    div(phi,chi)    Gauss upwind;
-    div(phi,alpha)  Gauss interfaceCompression vanLeer 1;
-    div(rhoPhi,U)   Gauss linearUpwind grad(U);
-    div(alphaRhoPhi,e) Gauss upwind;
-    div(alphaRhoPhi,T) Gauss upwind;
-    div(rhoPhi,K)   Gauss upwind;
-    div(phi,p)      Gauss upwind;
-    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear uncorrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         uncorrected;
+    type    constant;
+    sigma   [1 0 -2 0 0 0 0] 0.025;
 }
 
 // ************************************************************************* //

@@ -6,7 +6,7 @@
      \\/     M anipulation |
 -------------------------------------------------------------------------------
 Description
-    Solver controls for the Stefan benchmark.
+    Solver controls for the Couette shear-heating validation.
 \*---------------------------------------------------------------------------*/
 FoamFile
 {

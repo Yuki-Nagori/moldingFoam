@@ -358,6 +358,7 @@ $ xmake run test
 | `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
 | `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
+| `crystallizationAdvection` | χ 随流输运：新鲜熔体（χ=0）驱替初始 χ=1，熔体加权均值 0.029（`verify-crystallization-advection.py`） |
 | `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
 | `shrinkage` | PVT 一致收缩指标：冷却致密使 max(S) 由 −0.008 增到 0.298（`verify-shrinkage.py`） |
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
@@ -603,7 +604,11 @@ K(T,p) = Kmax·exp(−4ln2·(T−Tmax(p))²/W²),  Tmax(p) = Tmax0 + dTdp·p
   有界性、潜热源 rtol 1e-12/1e-10；
 - 集成用例 `tests/cases/crystallization`：χ 单调有界增长到 0.99999，
   潜热使模温略高于无结晶工况；
-- 缺省不写时行为与 001 完全一致；χ 随流输运为后续扩展。
+- χ 随流输运（隐式 upwind + 限幅）：`tests/cases/crystallizationAdvection`
+  中初始 χ=1 的型腔被 χ=0 的新鲜熔体驱替，t=1.5 s 熔体加权均值
+  0.029（残量为壁面滞流熔体）；启用时需在 case 的 `fvSchemes` 加
+  `div(phi,chi)`、`fvSolution` 加 `(chi|chiFinal)`；
+- 缺省不写时行为与 001 完全一致；`η(χ)/ρ(χ)` 耦合为后续扩展。
 
 ### 1D 流道网络（`runner`，任务 016）
 

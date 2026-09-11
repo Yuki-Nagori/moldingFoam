@@ -27,6 +27,8 @@ License
 #include "moldingFoam.H"
 #include "moldingStage.H"
 #include "moldingCrystallization.H"
+#include "upwind.H"
+#include "zeroGradientFvPatchFields.H"
 #include "moldingFiberOrientation.H"
 #include "moldingShrinkage.H"
 #include "IOobject.H"
@@ -279,7 +281,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                         IOobject::AUTO_WRITE
                     ),
                     mesh,
-                    dimensionedScalar("chi", dimless, 0)
+                    dimensionedScalar("chi", dimless, 0),
+                    zeroGradientFvPatchField<scalar>::typeName
                 )
             );
 
@@ -1287,6 +1290,27 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     if (crystallization_.valid())
     {
         const scalar dt(runTime.deltaTValue());
+
+        // Advect the crystallinity with the mixture flux before applying
+        // the local kinetics, so a fresh melt front carries its own
+        // (zero) crystallinity into the cavity. Implicit upwind transport
+        // (the case's fvSchemes needs a div(phi,chi) entry); the result is
+        // clipped to [0, 1]
+        {
+            volScalarField& chi = *chi_;
+
+            fvScalarMatrix chiEqn
+            (
+                fvm::ddt(chi)
+              + fvm::div(phi, chi)
+              - fvm::Sp(fvc::div(phi), chi)
+            );
+
+            chiEqn.solve();
+
+            chi = min(max(chi, scalar(0)), scalar(1));
+            chi.correctBoundaryConditions();
+        }
         volScalarField& chi = *chi_;
         const volScalarField& T = mixture_.T();
         const volScalarField& p = mixture_.p();

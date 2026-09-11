@@ -1,9 +1,23 @@
 # 024 — 结晶动力学集成（014 落地）
 
-- 状态：planned
+- 状态：in-progress（2026-09-10：χ 随流输运已落地；η(χ)/ρ(χ) 耦合与 DSC 数据对拍待做）
 - 优先级：P2
 - 依赖：001/014
 - 预估规模：1–2 周
+
+验收记录（第一阶段：χ 随流输运）：
+
+- 求解器在局部 Nakamura/Avrami 演化前，用混合体积通量对 χ 做隐式
+  upwind 输运（`ddt(chi)+div(phi,chi)-Sp(div(phi),chi)`）并限幅
+  [0,1]；启用结晶的 case 需在 `fvSchemes` 加 `div(phi,chi)` 与
+  `fvSolution` 加 `(chi|chiFinal)` 求解器（已写入示例 case）；
+- 无 `0/chi` 时内部创建的 χ 场默认 `zeroGradient` 边界（隐式对流
+  需要可用的边界条件）；
+- 集成用例 `tests/cases/crystallizationAdvection`：初始 χ=1 的型腔被
+  χ=0 的新鲜熔体驱替，t=1.5 s 全充满后熔体加权平均 χ=0.029（阈值
+  0.05，残量为壁面滞流熔体）；原 `crystallization` 用例回归通过；
+- 待做：`η(χ)`（如 `(1−χ/χ∞)^-a`）与 `ρ(χ)` 修正接口、DSC 数据
+  对拍与参数标定流程。
 
 ## 1. 背景与现状
 

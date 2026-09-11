@@ -1,0 +1,36 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      moldingDict;
+}
+injection
+{
+    meltTemperature  480;
+}
+packing
+{
+    switchFraction   1;
+    switchPressure   1e9;
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+cooling
+{
+    ejectionTemperature  50;
+    releasePressure      1e5;
+}
+viscousDissipation  false;
+
+crystallization
+{
+    avramiExponent    2;
+    rateConstant      0.1;
+    peakTemperature   400;
+    windowWidth       40;
+    latentHeat        0;
+    rho               800;
+}

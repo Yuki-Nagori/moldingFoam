@@ -1811,13 +1811,15 @@ void Foam::solvers::moldingFoam::prePredictor()
 {
     compressibleVoF::prePredictor();
 
-    // Melt-gate/vent flux consistency: on the melt boundaries the phase
-    // fluxes must split the total volumetric flux by the local melt
-    // fraction, phi1 = alpha1*phi. The alpha transport's numerical
-    // transients otherwise create spurious outflow spikes and a mass
-    // imbalance at the gate during rapid pressure changes (measured up to
-    // 0.66 kg/s against a 7.5e-5 kg/s inflow in the 40 MPa calibration),
-    // corrupting the integrated polymer mass flux
+    // Melt-gate flux consistency: at the gate the melt fraction is 1, so
+    // the melt volumetric flux must equal the total volumetric flux. The
+    // alpha transport's numerical transients otherwise create spurious
+    // outflow spikes at the gate during rapid pressure changes (measured
+    // up to 0.66 kg/s against a 7.5e-5 kg/s inflow in the 40 MPa
+    // calibration), corrupting the integrated polymer mass flux.
+    // NOTE (task 031): extending this to the vent was tested and had no
+    // effect on the packing-window mass residual (the vent seals early),
+    // so only the gate is corrected here
     forAll(U.boundaryField(), patchi)
     {
         const word& uType = U.boundaryField()[patchi].type();
@@ -1825,7 +1827,6 @@ void Foam::solvers::moldingFoam::prePredictor()
         if
         (
             uType == moldingInletVelocityFvPatchVectorField::typeName
-         || uType == moldingVentVelocityFvPatchVectorField::typeName
         )
         {
             alphaPhi1.boundaryFieldRef()[patchi] ==

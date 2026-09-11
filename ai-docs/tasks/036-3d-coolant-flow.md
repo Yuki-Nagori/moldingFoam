@@ -1,6 +1,6 @@
 # 036 — 三维冷却水流动（019 遗留）
 
-- 状态：in-progress（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
+- 状态：planned（路线 C 设计已定稿，见下；实现待排期）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
 - 优先级：P3
 - 依赖：019（调研：v14 `incompressibleFluid` 等温，无温度场）、008
 - 预估规模：3–6 周

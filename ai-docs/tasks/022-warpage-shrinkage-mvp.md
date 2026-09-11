@@ -24,8 +24,16 @@
 - 双金属基准（第三阶段）：`moldingWarpage::bimetalCurvature` 实现
   Timoshenko 双层粘结曲率公式，等厚等模量极限退化为
   `3·Δα·ΔT/(2h)`（手算点 0.3 1/m 精确 rtol 1e-12）；
-- 待做：三维结构求解（线弹性/`solidDisplacement` 顺序耦合）、脱模
-  约束释放、平板/哑铃与文献 ±10% 对比。
+- **三维结构求解调研（2026-09-10）**：v14 二进制含 `solidDisplacement`
+  模块（`physicalProperties`：rho/nu/E/Cv/kappa/alphav/planeStress/
+  thermalStress；`tractionDisplacement`/`fixedValue` 边界；steadyState
+  d2dt2Schemes）。搭建悬臂热弹性骨架时发现其热载荷语义与“自由悬臂
+  κ=αΔT/h”解析不对应：稳态能量在零梯度边界下会把初始温度剖面均匀化；
+  改用上下定温维持线性剖面后 σ 非零但自由端中性轴挠度≈0、而 Dx 量级
+  异常。需要对模块的热应力公式/参考态（`threeKalpha*T` 的 Tref=0）与
+  边界语义做专项核对，再建立与解析一致的基准。骨架未通过验证，已撤除；
+- 待做：三维结构求解（先核对 `solidDisplacement` 热应力语义，或模块内
+  静态热弹性向量求解）、脱模约束释放、平板/哑铃与文献 ±10% 对比。
 
 ## 1. 背景与现状
 

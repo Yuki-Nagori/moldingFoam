@@ -1,9 +1,23 @@
 # 029 — 求解器性能优化（并行/内存/大规模算例）
 
-- 状态：planned
+- 状态：in-progress（2026-09-10：边界网络缓存已落地；大规模基准/弱扩展/profiling 待做）
 - 优先级：P1
 - 依赖：009/018
 - 预估规模：2–4 周
+
+验收记录（第一阶段：热点修复与工具化方向）：
+
+- **流道网络缓存**：`moldingInletVelocity` 与 `moldingPrghPressure` 此前
+  在**每次边界求值**时重新构造 `moldingRunnerNetwork`（解析字典 +
+  分配），改为构造时缓存（`network_`）；runner 相关 4 个用例回归全绿。
+  这是逐步求值路径上的最明显分配热点；
+- 其余已识别的潜在热点（待 profiler 确认）：
+  - `reportTrappedAir` 的全局连通域洪水填充（每 `trapAirInterval` 次，
+    大网格上可配间隔或改增量连通）；
+  - χ/a/shrinkage 的逐单元循环与场写出（I/O）；
+  - 线性求解器与并行分解（需大规模 case 的弱扩展测量）；
+- 工具化：建议新增 `scripts/perf-scaling.sh`（分解/并行/墙钟/加速比）
+  与大规模算例生成，作为后续阶段。
 
 ## 1. 背景与现状
 

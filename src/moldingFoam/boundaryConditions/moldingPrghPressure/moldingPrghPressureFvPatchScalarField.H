@@ -121,6 +121,9 @@ class moldingPrghPressureFvPatchScalarField
         //- Optional 1D runner network (kept for writing)
         autoPtr<dictionary> runner_;
 
+        //- Cached runner network
+        autoPtr<moldingRunnerNetwork> network_;
+
 
 public:
 

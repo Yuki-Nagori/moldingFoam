@@ -132,6 +132,10 @@ class moldingInletVelocityFvPatchVectorField
         //- Optional 1D runner network (kept for writing)
         autoPtr<dictionary> runner_;
 
+        //- Cached runner network (avoid re-parsing the dictionary on
+        //  every boundary evaluation)
+        autoPtr<moldingRunnerNetwork> network_;
+
         //- Gate name within the runner network
         word gate_;
 

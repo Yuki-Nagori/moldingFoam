@@ -51,6 +51,12 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         dict.found("runner")
       ? autoPtr<dictionary>(new dictionary(dict.subDict("runner")))
       : autoPtr<dictionary>()
+    ),
+    network_
+    (
+        runner_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*runner_))
+      : autoPtr<moldingRunnerNetwork>()
     )
 {
     if (dict.found("value"))
@@ -84,6 +90,12 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         mpppsf.runner_.valid()
       ? autoPtr<dictionary>(new dictionary(*mpppsf.runner_))
       : autoPtr<dictionary>()
+    ),
+    network_
+    (
+        mpppsf.network_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
+      : autoPtr<moldingRunnerNetwork>()
     )
 {}
 
@@ -100,6 +112,12 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         mpppsf.runner_.valid()
       ? autoPtr<dictionary>(new dictionary(*mpppsf.runner_))
       : autoPtr<dictionary>()
+    ),
+    network_
+    (
+        mpppsf.network_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
+      : autoPtr<moldingRunnerNetwork>()
     )
 {}
 
@@ -140,7 +158,7 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         // reduced by the runner pressure drop at the current gate flow.
         scalar pTarget(stage.pressure(patch().time().value()));
 
-        if (runner_.valid())
+        if (network_.valid())
         {
             const surfaceScalarField& phi =
                 db().lookupObject<surfaceScalarField>("phi");
@@ -148,9 +166,7 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
             const fvsPatchField<scalar>& phip =
                 patch().patchField<surfaceScalarField, scalar>(phi);
 
-            const moldingRunnerNetwork network(*runner_);
-
-            pTarget -= network.pressureDrop(mag(gSum(phip)));
+            pTarget -= network_->pressureDrop(mag(gSum(phip)));
         }
 
         valueFraction() = sealFactor;

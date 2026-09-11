@@ -84,6 +84,12 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
       ? autoPtr<dictionary>(new dictionary(dict.subDict("runner")))
       : autoPtr<dictionary>()
     ),
+    network_
+    (
+        runner_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*runner_))
+      : autoPtr<moldingRunnerNetwork>()
+    ),
     gate_(dict.lookupOrDefault<word>("gate", word::null)),
     gateIndex_(-1),
     totalFlowRate_(dict.lookupOrDefault<scalar>("totalFlowRate", 0))
@@ -105,11 +111,9 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
                 << totalFlowRate_ << exit(FatalIOError);
         }
 
-        const moldingRunnerNetwork network(*runner_);
-
-        for (label g = 0; g < network.nGates(); ++g)
+        for (label g = 0; g < network_->nGates(); ++g)
         {
-            if (network.gate(g).name == gate_)
+            if (network_->gate(g).name == gate_)
             {
                 gateIndex_ = g;
             }
@@ -151,6 +155,12 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
       ? autoPtr<dictionary>(new dictionary(*pivpvf.runner_))
       : autoPtr<dictionary>()
     ),
+    network_
+    (
+        pivpvf.network_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*pivpvf.network_))
+      : autoPtr<moldingRunnerNetwork>()
+    ),
     gate_(pivpvf.gate_),
     gateIndex_(pivpvf.gateIndex_),
     totalFlowRate_(pivpvf.totalFlowRate_)
@@ -172,6 +182,12 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
         pivpvf.runner_.valid()
       ? autoPtr<dictionary>(new dictionary(*pivpvf.runner_))
       : autoPtr<dictionary>()
+    ),
+    network_
+    (
+        pivpvf.network_.valid()
+      ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*pivpvf.network_))
+      : autoPtr<moldingRunnerNetwork>()
     ),
     gate_(pivpvf.gate_),
     gateIndex_(pivpvf.gateIndex_),
@@ -232,11 +248,9 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
             Q = flowRateProfile_->value(patch().time().value());
         }
 
-        if (runner_.valid())
+        if (network_.valid())
         {
-            const moldingRunnerNetwork network(*runner_);
-
-            Q = network.gateFlow(gateIndex_, totalFlowRate_);
+            Q = network_->gateFlow(gateIndex_, totalFlowRate_);
         }
 
         operator==(patch().nf()*(-Q/area_));

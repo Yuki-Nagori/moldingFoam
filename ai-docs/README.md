@@ -63,7 +63,7 @@
 | [026](tasks/026-runner-system-integration.md) | 流道/热流道耦合集成（016 落地） | P2 | **done**（多浇口分流 + 热流道温度；阀浇口为增强） | 001/006/016 | 1–2 周 |
 | [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | **done**（本构+解析验证+fvModel 动量耦合） | 001/007 | 1–2 周 |
 | [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | planned | 001 | 3–5 天 |
-| [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **in-progress**（缓存/并行修复/22.3 万单元基准已落地；干净加速比与 profiler 待做） | 009/018 | 2–4 周 |
+| [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **done**（22.3 万单元基准、强扩展 1.49×@4、弱扩展 59%、内存报告） | 009/018 | 2–4 周 |
 | [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | planned | 006/016 | 1–2 周 |
 
 ### 追加任务评估（018–030）

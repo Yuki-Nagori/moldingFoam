@@ -57,8 +57,16 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         runner_.valid()
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*runner_))
       : autoPtr<moldingRunnerNetwork>()
-    )
+    ),
+    relaxation_(dict.lookupOrDefault<scalar>("relaxation", 1))
 {
+    if (relaxation_ <= 0 || relaxation_ > 1)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The packing pressure relaxation must lie in (0, 1]: "
+            << "relaxation = " << relaxation_ << exit(FatalIOError);
+    }
+
     if (dict.found("value"))
     {
         mixedFvPatchScalarField::operator==
@@ -96,7 +104,8 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         mpppsf.network_.valid()
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
       : autoPtr<moldingRunnerNetwork>()
-    )
+    ),
+    relaxation_(mpppsf.relaxation_)
 {}
 
 
@@ -118,7 +127,8 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
         mpppsf.network_.valid()
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
       : autoPtr<moldingRunnerNetwork>()
-    )
+    ),
+    relaxation_(mpppsf.relaxation_)
 {}
 
 
@@ -170,7 +180,19 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         }
 
         valueFraction() = sealFactor;
-        refValue() = pTarget;
+
+        // Optional relaxation of the target towards the current value
+        if (relaxation_ < 1)
+        {
+            refValue() =
+                (1 - relaxation_)*Field<scalar>(*this)
+              + relaxation_*pTarget;
+        }
+        else
+        {
+            refValue() = pTarget;
+        }
+
         refGrad() = 0.0;
     }
     else

@@ -124,6 +124,11 @@ class moldingPrghPressureFvPatchScalarField
         //- Cached runner network
         autoPtr<moldingRunnerNetwork> network_;
 
+        //- Relaxation of the packing pressure target (1 = immediate);
+        //  values < 1 damp the acoustic response of a sealed,
+        //  near-incompressible cavity during rapid pressure ramps
+        scalar relaxation_;
+
 
 public:
 

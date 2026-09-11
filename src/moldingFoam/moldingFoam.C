@@ -1650,6 +1650,38 @@ void Foam::solvers::moldingFoam::postSolve()
     reduce(m, sumOp<scalar>());
     reduce(flux, sumOp<scalar>());
 
+    // Optional flux breakdown: the volumetric, alpha and melt mass boundary
+    // fluxes (their mismatch localises the mass-balance inconsistency)
+    scalar fluxVol = 0;
+    scalar fluxAlpha = 0;
+
+    if (massBudget_)
+    {
+        forAll(phi.boundaryField(), patchi)
+        {
+            fluxVol += gSum(phi.boundaryField()[patchi]);
+        }
+
+        const surfaceScalarField::Boundary& abfA =
+            alphaPhi1.boundaryField();
+
+        forAll(abfA, patchi)
+        {
+            fluxAlpha += gSum(abfA[patchi]);
+
+            if (gSum(mag(abf[patchi])) > small)
+            {
+                Info<< "moldingFoam: mass budget patch " << mesh.boundary()[patchi].name()
+                    << ": alphaRhoPhi1 = " << gSum(abf[patchi])
+                    << " kg/s, alphaPhi1 = " << gSum(abfA[patchi])
+                    << " m^3/s" << endl;
+            }
+        }
+
+        reduce(fluxVol, sumOp<scalar>());
+        reduce(fluxAlpha, sumOp<scalar>());
+    }
+
     const scalar dt = runTime.deltaTValue();
 
     if (runTime.timeIndex() == 1 || !massBudgetInit_)
@@ -1694,6 +1726,13 @@ void Foam::solvers::moldingFoam::postSolve()
                 << " kg, dm+flux*dt = " << (dm + flux*dt)
                 << " kg, dm-(psi+dalpha) = " << (dm - psiDm - alphaDm)
                 << " kg" << endl;
+
+            Info<< "moldingFoam: mass budget fluxes: vol*dt = "
+                << fluxVol*dt << " kg, alpha*dt = " << fluxAlpha*dt
+                << " kg, alphaRho*dt = " << flux*dt
+                << " kg, alpha/vol = "
+                << (mag(fluxVol) > small ? fluxAlpha/fluxVol : 1)
+                << endl;
         }
 
     }
@@ -1772,18 +1811,21 @@ void Foam::solvers::moldingFoam::prePredictor()
 {
     compressibleVoF::prePredictor();
 
-    // Melt-gate flux consistency: at the gate the melt fraction is 1, so
-    // the melt volumetric flux must equal the total volumetric flux. The
-    // alpha transport's numerical transients otherwise create spurious
-    // outflow spikes at the gate during rapid pressure changes (measured
-    // up to 0.66 kg/s against a 7.5e-5 kg/s inflow in the 40 MPa
-    // calibration), corrupting the integrated polymer mass flux
+    // Melt-gate/vent flux consistency: on the melt boundaries the phase
+    // fluxes must split the total volumetric flux by the local melt
+    // fraction, phi1 = alpha1*phi. The alpha transport's numerical
+    // transients otherwise create spurious outflow spikes and a mass
+    // imbalance at the gate during rapid pressure changes (measured up to
+    // 0.66 kg/s against a 7.5e-5 kg/s inflow in the 40 MPa calibration),
+    // corrupting the integrated polymer mass flux
     forAll(U.boundaryField(), patchi)
     {
+        const word& uType = U.boundaryField()[patchi].type();
+
         if
         (
-            U.boundaryField()[patchi].type()
-         == moldingInletVelocityFvPatchVectorField::typeName
+            uType == moldingInletVelocityFvPatchVectorField::typeName
+         || uType == moldingVentVelocityFvPatchVectorField::typeName
         )
         {
             alphaPhi1.boundaryFieldRef()[patchi] ==

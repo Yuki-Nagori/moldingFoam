@@ -38,6 +38,17 @@
   `dm≈ψ·dp` 一致）。因此拆分误差不在 stale psi，而在压缩项的
   显隐式处理（`correction(fvm::ddt(p_rgh))` + 显式 `ddt/div` 用步初
   rho）与通量插值（`ddtCorr`）的组合；
+- **通量分项仪表（2026-09-12）**：新增 dry-run 记录边界
+  `phi/alphaPhi1/alphaRhoPhi1` 积分。hpdiag（高压标定，基线无修正器）：
+  - 充填早段（界面活跃）`alphaPhi1/phi = 1.09…1.15`（压缩通量），充填后
+    段恢复 1.0000；**保压斜坡期再偏离至 0.91…1.04**，并与每步残差
+    `dm+flux·dt`（±1e-7 量级）同步——边界 alpha 通量与体积通量的分裂
+    是残差的直接关联项；
+  - 逐 patch 日志（gate/vent）已加入 `massBudget`；
+- **gate+vent 通量一致性实验（2026-09-12）**：把既有的 gate 一致性修正
+  （`alphaPhi1 = alpha1·phi`，`alphaRhoPhi1 = rho1·alpha1·phi`）扩展到
+  vent 边界；全套 18 求解器用例绿（熔接痕对称性 0.554%→0.854%，
+  阈值内）；高压标定残差复测进行中；
 - 下一实验（建议顺序）：
   1. 在求解器内逐项记录压力方程的显式/隐式贡献与最终 phi 的通量积分
      （与 `massBudget` 同口径），定位哪一项与守恒不一致；

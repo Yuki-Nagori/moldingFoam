@@ -108,6 +108,19 @@ public:
         //- Free deflection of a strip of length L [m]
         scalar deflection(const scalar kappa, const scalar L) const;
 
+        //- Timoshenko bimetal curvature of two bonded layers with
+        //  different expansion coefficients [1/m]
+        static scalar bimetalCurvature
+        (
+            const scalar h1,      //- Layer 1 thickness [m]
+            const scalar h2,      //- Layer 2 thickness [m]
+            const scalar E1,      //- Layer 1 modulus [Pa]
+            const scalar E2,      //- Layer 2 modulus [Pa]
+            const scalar alpha1,  //- Layer 1 expansion [1/K]
+            const scalar alpha2,  //- Layer 2 expansion [1/K]
+            const scalar dT       //- Temperature change [K]
+        );
+
         //- Out-of-plane deflection profile of a simply supported strip
         //  from a curvature distribution: w'' = -kappa with w(0) = w(L) = 0
         //  (the curvature and deflection samples are uniformly spaced)

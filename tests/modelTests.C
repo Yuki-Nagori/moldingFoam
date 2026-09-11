@@ -1817,6 +1817,28 @@ void warpageTests()
         );
     }
 
+    // Timoshenko bimetal curvature: equal layers of equal modulus reduce
+    // to kappa = 3 dAlpha dT/(2h)
+    {
+        const scalar h1 = 0.001;
+        const scalar h2 = 0.001;
+        const scalar kappa = moldingWarpage::bimetalCurvature
+        (
+            h1, h2, 2e9, 2e9, 2.5e-5, 0.5e-5, 20
+        );
+        const scalar expected = 1.5*2e-5*20/(h1 + h2);
+
+        Info<< "    bimetal kappa = " << kappa
+            << " 1/m (expected " << expected << ")" << endl;
+
+        checkBool
+        (
+            "warpage: bimetal curvature reduces to 3 dAlpha dT/(2h) for "
+            "equal layers",
+            relDiff(kappa, expected) < 1e-12
+        );
+    }
+
     // Simply supported strip deflection profile from a uniform curvature
     {
         const label n = 65;

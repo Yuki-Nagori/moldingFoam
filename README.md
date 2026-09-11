@@ -524,6 +524,11 @@ regionSolvers
 需在 fvSchemes 提供 `div(tau)`）；用例
 `tests/cases/viscoelasticFlow` 中剪切通道 max|tau_xy|=1.54e5 Pa。
 
+### 双金属基准（任务 022 第三阶段）
+
+`moldingWarpage::bimetalCurvature`：Timoshenko 双层粘结曲率解析式
+（等厚等模量退化为 `3·Δα·ΔT/(2h)`，model test rtol 1e-12）。
+
 ### 翘曲形状（任务 022 第二阶段）
 
 `moldingWarpage::deflectionProfile`：由曲率分布沿流向求简支条带的

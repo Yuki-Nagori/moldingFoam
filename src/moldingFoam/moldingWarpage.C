@@ -166,6 +166,34 @@ Foam::scalar Foam::moldingWarpage::deflection
 }
 
 
+Foam::scalar Foam::moldingWarpage::bimetalCurvature
+(
+    const scalar h1,
+    const scalar h2,
+    const scalar E1,
+    const scalar E2,
+    const scalar alpha1,
+    const scalar alpha2,
+    const scalar dT
+)
+{
+    const scalar num
+    (
+        6*E1*E2*h1*h2*(h1 + h2)*(alpha1 - alpha2)*dT
+    );
+
+    const scalar den
+    (
+        E1*E1*h1*h1*h1*h1
+      + E2*E2*h2*h2*h2*h2
+      + 2*E1*E2*h1*h2
+       *(2*h1*h1 + 2*h2*h2 + 3*h1*h2)
+    );
+
+    return num/max(den, small);
+}
+
+
 Foam::scalar Foam::moldingWarpage::constrainedStress(const scalar T) const
 {
     return E_/(1 - nu_)*alpha_*(Tref_ - T);

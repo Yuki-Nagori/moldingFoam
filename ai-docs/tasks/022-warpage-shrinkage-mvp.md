@@ -21,6 +21,9 @@
   由曲率分布求简支条带的 1D 板方程 `w''=-kappa`、`w(0)=w(L)=0` 解；
   model test：均匀曲率下剖面 `w(x)=kappa·x(L-x)/2`（中点 `kappa L²/8`
   精确，最大误差 4e-19 m）；
+- 双金属基准（第三阶段）：`moldingWarpage::bimetalCurvature` 实现
+  Timoshenko 双层粘结曲率公式，等厚等模量极限退化为
+  `3·Δα·ΔT/(2h)`（手算点 0.3 1/m 精确 rtol 1e-12）；
 - 待做：三维结构求解（线弹性/`solidDisplacement` 顺序耦合）、脱模
   约束释放、平板/哑铃与文献 ±10% 对比。
 

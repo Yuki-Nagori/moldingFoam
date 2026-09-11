@@ -72,6 +72,36 @@ def main():
         print("FAIL: the mould did not warm across the cycles")
         sys.exit(1)
 
+    # Per-cycle increments must decrease towards a periodic steady state
+    ends = [float(x) for x in re.findall(
+        r"cycle \d+ complete; starting cycle \d+/\d+ at t = "
+        r"([-+0-9.eE]+)", log)]
+    if len(ends) >= 3:
+        cycleMean = []
+        for t in ends:
+            best = min(means, key=lambda m: abs(m[0] - t))
+            cycleMean.append(best[1])
+
+        incs = [
+            cycleMean[i + 1] - cycleMean[i]
+            for i in range(len(cycleMean) - 1)
+        ]
+        print("  per-cycle mould-mean increments = " + ", ".join(
+            "{:.3f} K".format(v) for v in incs))
+
+        decreasing = all(
+            incs[i + 1] <= incs[i] + 1e-6 for i in range(len(incs) - 1))
+
+        if not decreasing:
+            print("FAIL: the per-cycle mould-mean increments do not "
+                  "decrease")
+            sys.exit(1)
+
+        if len(incs) >= 2 and incs[-1] > 0.6*incs[0]:
+            print("FAIL: the per-cycle mould-mean increment has not "
+                  "halved (no clear periodic-steady trend)")
+            sys.exit(1)
+
     # Interface continuity at the final time
     tlast = max(times)
     tdir = os.path.join(case_dir, time_dir(tlast))

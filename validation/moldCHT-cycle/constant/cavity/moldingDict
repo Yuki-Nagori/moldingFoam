@@ -43,7 +43,7 @@ cooling
 }
 
 // Three moulding cycles: the cavity resets, the mould temperature is kept
-nCycles 3;
+nCycles 4;
 
 // The vent stays open for the whole benchmark so that the cavity never
 // pressurises after filling (the pressure-work contribution to the energy

@@ -27,6 +27,7 @@ License
 #include "moldingFoam.H"
 #include "moldingStage.H"
 #include "moldingCrystallization.H"
+#include "moldingFiberOrientation.H"
 #include "IOobject.H"
 #include "moldingPrghPressureFvPatchScalarField.H"
 #include "moldingVentVelocityFvPatchVectorField.H"
@@ -106,6 +107,9 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     crystallization_(),
     chi_(),
     chiInitial_(),
+    fiberOrientation_(),
+    a_(),
+    aInitial_(),
     nCycles_(1),
     cycle_(1),
     deltaTInitial_(runTime.deltaTValue()),
@@ -258,6 +262,38 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             );
 
             chiInitial_.reset(new volScalarField(*chi_));
+        }
+
+        // Optional fibre orientation: the Folgar-Tucker equation evolves
+        // the second-order orientation tensor a = <p p>
+        if (moldingDict.found("fiberOrientation"))
+        {
+            fiberOrientation_.reset
+            (
+                new moldingFiberOrientation
+                (
+                    moldingDict.subDict("fiberOrientation")
+                )
+            );
+
+            a_.reset
+            (
+                new volSymmTensorField
+                (
+                    IOobject
+                    (
+                        "a",
+                        runTime.name(),
+                        mesh,
+                        IOobject::READ_IF_PRESENT,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mesh,
+                    dimensionedSymmTensor("a", dimless, symmTensor::I/3)
+                )
+            );
+
+            aInitial_.reset(new volSymmTensorField(*a_));
         }
 
         // The stage object registers itself on the mesh and is shared with
@@ -760,6 +796,12 @@ void Foam::solvers::moldingFoam::resetCycle()
         chi_->primitiveFieldRef() = chiInitial_->primitiveField();
         chi_->correctBoundaryConditions();
     }
+
+    if (a_.valid())
+    {
+        a_->primitiveFieldRef() = aInitial_->primitiveField();
+        a_->correctBoundaryConditions();
+    }
     p.primitiveFieldRef() = pInitial_->primitiveField();
     p_rgh_.primitiveFieldRef() = p_rghInitial_->primitiveField();
 
@@ -999,6 +1041,39 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     // matrix diagonal, and the Picard linearisation of the steep plateau
     // can overshoot; correctThermo's Newton needs a positive starting
     // temperature.
+
+    // Explicit fibre-orientation update: the Folgar-Tucker equation is
+    // advanced per cell with the local velocity gradient (RK2 + trace
+    // normalisation). Advection of the orientation tensor is a planned
+    // extension; the current model is local
+    if (fiberOrientation_.valid())
+    {
+        const scalar dt(runTime.deltaTValue());
+        const volTensorField gradU(fvc::grad(U));
+
+        volSymmTensorField& a = *a_;
+        symmTensorField& ac = a.primitiveFieldRef();
+        const tensorField& gc = gradU.primitiveField();
+
+        scalar maxA12 = 0;
+        scalar maxTrErr = 0;
+
+        forAll(ac, i)
+        {
+            ac[i] = fiberOrientation_->advance(ac[i], gc[i], dt);
+
+            maxA12 = max(maxA12, mag(ac[i].xy()));
+            maxTrErr = max(maxTrErr, mag(tr(ac[i]) - 1));
+        }
+
+        a.correctBoundaryConditions();
+
+        if (runTime.timeIndex() % 50 == 0)
+        {
+            Info<< "moldingFoam: fiber orientation: max|a12| = " << maxA12
+                << ", max|tr(a)-1| = " << maxTrErr << endl;
+        }
+    }
 
     const volScalarField& rho1(mixture_.rho1());
     const volScalarField& rho2(mixture_.rho2());

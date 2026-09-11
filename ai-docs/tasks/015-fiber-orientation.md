@@ -1,6 +1,7 @@
 # 015 — 纤维取向与各向异性（纤维增强材料）
 
-- 状态：planned
+- 状态：done（2026-09-10：Folgar-Tucker 取向张量模型 + 求解器 a 场演化
+  已落地并解析验证；各向异性黏度耦合与 a 随流输运为后续扩展）
 - 优先级：P3
 - 依赖：001/002（基础流动求解）
 - 预估规模：2–4 周
@@ -44,6 +45,25 @@ CrossWlf 为各向同性广义牛顿模型。
 - 取向场有界、守恒（迹为 1）；
 - 缺省不启用时与现有行为一致；
 - CI 双架构绿。
+
+验收记录：
+
+- `Foam::moldingFiberOrientation`：Folgar-Tucker 方程
+  `Da/Dt=(Wa−aW)+λ(Da+aD−2A:D)+2CIγ̇(I−3a)`，形状因子
+  `λ=(r²−1)/(r²+1)`，二次/Hybrid（`f=1−27det(a)`）闭合；RK2 推进 +
+  迹归一化，tr(a)=1 机器精度保持；
+- model tests：形状因子；迹不变性与归一化；球体（λ=0）各向同性平衡；
+  剪切下特征值有界 [0,1]；**二次闭合对单纤维精确**——rank-1 初值下
+  与独立 RK4 积分的 Jeffery 角方程
+  `dθ/dt=(γ̇/2)[(λ−1)cos²θ−(1+λ)sin²θ]` 对拍，最大误差 <1e-6；
+- 求解器：`constant/moldingDict` 可选 `fiberOrientation` 子字典，
+  创建并写出二阶取向张量场 `a`（缺省各向同性 I/3），每步按局部速度
+  梯度推进并归一化；周期重置时复位；
+- 求解器用例 `tests/cases/fiberOrientation`：剪切 Couette 下
+  max|a12| 由各向同性增长到 0.147，max|tr(a)−1| = 2.2e-16；
+  `xmake run test-solver` 8 用例全绿；
+- 缺省不写 `fiberOrientation` 时行为不变；
+- 后续扩展：a 随流输运（当前为局部演化）、Lipscomb 各向异性黏度。
 
 ## 6. 风险与缓解
 

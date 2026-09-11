@@ -63,6 +63,7 @@ namespace Foam
 {
 
 class moldingCrystallization;
+class moldingFiberOrientation;
 
 namespace solvers
 {
@@ -132,6 +133,18 @@ class moldingFoam
 
         //- Initial crystallinity field for the cycle reset
         autoPtr<volScalarField> chiInitial_;
+
+        //- Optional fibre orientation: Folgar-Tucker model and second
+        //  order orientation tensor field, active when
+        //  constant/moldingDict contains a fiberOrientation
+        //  sub-dictionary
+        autoPtr<moldingFiberOrientation> fiberOrientation_;
+
+        //- Second-order fibre orientation tensor field
+        autoPtr<volSymmTensorField> a_;
+
+        //- Initial orientation tensor field for the cycle reset
+        autoPtr<volSymmTensorField> aInitial_;
 
         //- Number of moulding cycles to run [-]; each ejection criterion
         //  met resets the flow fields and starts the next cycle, keeping

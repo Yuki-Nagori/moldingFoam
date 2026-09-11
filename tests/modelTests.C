@@ -72,6 +72,15 @@ Description
     - with many small cross-sections the march converges to the analytic
       plug-flow exponential within 1e-3.
 
+    Fibre orientation (moldingFiberOrientation):
+    - the shape factor reproduces (r^2 - 1)/(r^2 + 1);
+    - tr(a) is invariant and the advance keeps tr(a) = 1 and the
+      eigenvalues in [0, 1];
+    - the isotropic state is an equilibrium;
+    - the quadratic closure reproduces the Jeffery orbit of a single
+      fibre exactly (compared with an independent RK4 integration of the
+      Jeffery angle equation).
+
     Crystallisation kinetics (moldingCrystallization):
     - the Gaussian rate window reproduces K(Tmax) = Kmax and the half
       width K(Tmax +/- W/2) = Kmax/2, with the pressure shift;
@@ -100,6 +109,7 @@ Description
 #include "moldingCoolantChannel.H"
 #include "moldingRunnerNetwork.H"
 #include "moldingCrystallization.H"
+#include "moldingFiberOrientation.H"
 #include "ventOrifice.H"
 #include "dictionary.H"
 #include "IFstream.H"
@@ -1159,6 +1169,170 @@ void crystallizationTests()
 }
 
 
+
+const char* fiberDictString = R"(
+aspectRatio 3;
+interactionCoefficient 0.01;
+closure quadratic;
+)";
+
+const char* fiberSphereDictString = R"(
+aspectRatio 1;
+interactionCoefficient 0.01;
+closure quadratic;
+)";
+
+const char* fiberJefferyDictString = R"(
+aspectRatio 3;
+interactionCoefficient 0;
+closure quadratic;
+)";
+
+
+void fiberOrientationTests()
+{
+    IStringStream is(fiberDictString);
+    dictionary dict(is);
+    moldingFiberOrientation fibers(dict);
+
+    const scalar lambda = 0.8;
+    const scalar gammaDot = 1.0;
+    const scalar theta0 = 0.3;
+
+    tensor gradU(tensor::zero);
+    gradU(0, 1) = gammaDot;
+
+    // Shape factor
+    checkBool
+    (
+        "fiberOrientation: shape factor (r^2 - 1)/(r^2 + 1)",
+        relDiff(moldingFiberOrientation::shapeFactor(3), 0.8) < 1e-14
+     && moldingFiberOrientation::shapeFactor(1) == 0
+     && relDiff(fibers.lambda(), lambda) < 1e-14
+    );
+
+    // tr(a) is an invariant of the evolution; the advance keeps it at 1
+    {
+        const symmTensor a0(0.6, 0.2, 0, 0.4, 0, 0);
+        const symmTensor da(fibers.dadt(a0, gradU));
+        const symmTensor a1(fibers.advance(a0, gradU, 1e-3));
+
+        Info<< "    tr(da/dt) = " << tr(da) << ", tr(a_new) = " << tr(a1)
+            << endl;
+
+        checkBool
+        (
+            "fiberOrientation: trace invariance and normalisation",
+            mag(tr(da)) < 1e-14 && relDiff(tr(a1), 1.0) < 1e-14
+        );
+    }
+
+    // Isotropic state is an equilibrium for spheres (lambda = 0): the
+    // vorticity and closure terms vanish and the diffusion term is zero
+    {
+        IStringStream isSphere(fiberSphereDictString);
+        dictionary sphereDict(isSphere);
+        moldingFiberOrientation spheres(sphereDict);
+
+        const symmTensor iso(symmTensor::I/3);
+        const symmTensor da(spheres.dadt(iso, gradU));
+
+        checkBool
+        (
+            "fiberOrientation: isotropic state is an equilibrium for "
+            "spheres",
+            mag(da.xx()) < 1e-14 && mag(da.xy()) < 1e-14
+         && mag(da.yy()) < 1e-14
+        );
+    }
+
+    // Boundedness under shear: eigenvalues in [0, 1], trace 1
+    {
+        symmTensor a(symmTensor::I/3);
+
+        for (label i = 0; i < 20000; ++i)
+        {
+            a = fibers.advance(a, gradU, 1e-4);
+        }
+
+        const vector eigs(eigenValues(a));
+
+        Info<< "    eigenvalues after shear = " << eigs << endl;
+
+        checkBool
+        (
+            "fiberOrientation: orientation tensor stays bounded",
+            relDiff(tr(a), 1.0) < 1e-12
+         && eigs.x() > -1e-9 && eigs.z() < 1 + 1e-9
+        );
+    }
+
+    // Single-fibre Jeffery orbit: the quadratic closure is exact for a
+    // rank-one tensor, so a must follow a = n n with the Jeffery angle
+    // equation dtheta/dt = (gdot/2)((lambda-1)cos^2 - (1+lambda)sin^2)
+    {
+        IStringStream isJeffery(fiberJefferyDictString);
+        dictionary jefferyDict(isJeffery);
+        moldingFiberOrientation jeffery(jefferyDict);
+
+        const scalar c0(std::cos(theta0));
+        const scalar s0(std::sin(theta0));
+        const symmTensor a0(c0*c0, c0*s0, 0, s0*s0, 0, 0);
+
+        // Jeffery angle equation, RK4 with a fine step
+        const scalar dtRef = 1e-6;
+        const label nRef = 200000;
+        const scalar dt = 1e-5;
+        const label n = nRef*dtRef/dt;
+
+        scalar theta = theta0;
+        symmTensor a = a0;
+
+        const auto dtheta = [&](const scalar th)
+        {
+            const scalar c(std::cos(th));
+            const scalar s(std::sin(th));
+
+            return 0.5*gammaDot*((lambda - 1)*c*c - (1 + lambda)*s*s);
+        };
+
+        scalar maxErr = 0;
+
+        for (label step = 0; step < n; ++step)
+        {
+            // RK4 reference
+            for (label r = 0; r < label(dt/dtRef); ++r)
+            {
+                const scalar k1 = dtheta(theta);
+                const scalar k2 = dtheta(theta + 0.5*dtRef*k1);
+                const scalar k3 = dtheta(theta + 0.5*dtRef*k2);
+                const scalar k4 = dtheta(theta + dtRef*k3);
+
+                theta += dtRef*(k1 + 2*k2 + 2*k3 + k4)/6;
+            }
+
+            a = jeffery.advance(a, gradU, dt);
+
+            const scalar c(std::cos(theta));
+            const scalar s(std::sin(theta));
+
+            maxErr = max(maxErr, mag(a.xx() - c*c));
+            maxErr = max(maxErr, mag(a.xy() - c*s));
+            maxErr = max(maxErr, mag(a.yy() - s*s));
+        }
+
+        Info<< "    max Jeffery orbit error = " << maxErr << endl;
+
+        checkBool
+        (
+            "fiberOrientation: quadratic closure reproduces the Jeffery "
+            "orbit",
+            maxErr < 1e-6
+        );
+    }
+}
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main()
@@ -1171,6 +1345,7 @@ int main()
     moldThermalTests();
     coolantChannelTests();
     crystallizationTests();
+    fiberOrientationTests();
     runnerNetworkTests();
     ventOrificeTests();
     crossWlfTests();

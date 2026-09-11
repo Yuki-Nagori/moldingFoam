@@ -358,6 +358,7 @@ $ xmake run test
 | `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
 | `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
+| `fiberOrientation` | Folgar-Tucker 纤维取向：剪切下 max|a12|→0.147，tr(a) 保持 1（`verify-fiber-orientation.py`） |
 | 双区域 CHT（`xmake run moldCHT`） | 腔体 `moldingFoam` + 模具 `solid`（`foamMultiRun`）：导热基准 `moldCHT` 界面温度与一维两层参考对拍 0.19%、腔体平均 1.33%；充填基准 `moldCHT-fill` 能量守恒 0.24%、注入/充填体积偏差 0.43%、界面连续误差 0 |
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
@@ -498,6 +499,30 @@ regionSolvers
   顶部模具传热；模具外壁全绝热使熔体+模具成为仅经浇口/排气口开放的
   封闭系统，全局能量平衡实测 **0.24%**（阈值 2%），注入体积与充填
   体积偏差 **0.43%**（阈值 1%），界面温度连续误差 0。
+
+### 纤维取向（`fiberOrientation`，任务 015）
+
+`constant/moldingDict` 可选 `fiberOrientation` 子字典：启用后求解器
+创建并写出二阶取向张量场 `a = <p p>`（缺省各向同性 `I/3`），按
+Folgar-Tucker 方程在局部速度梯度下演化
+
+```
+Da/Dt = (W·a − a·W) + λ(D·a + a·D − 2A:D) + 2·CI·γ̇·(I − 3a)
+```
+
+其中 `λ = (r²−1)/(r²+1)` 为形状因子，`CI` 为纤维相互作用系数，闭合
+可选 `quadratic`（`A=aa`，对单纤维精确）或 `hybrid`
+（`f=1−27det(a)`）。每步 RK2 推进并做迹归一化，`tr(a)=1` 保持到机器
+精度、特征值有界于 `[0,1]`。
+
+- 参数：`aspectRatio`（或直接 `lambda`）、`interactionCoefficient`、
+  可选的 `closure`；
+- 验证（`xmake run test`）：形状因子、迹不变性、球体各向同性平衡、
+  有界性、**Jeffery 轨道**（二次闭合与独立 RK4 的 Jeffery 角方程对拍
+  <1e-6）；
+- 集成用例 `tests/cases/fiberOrientation`：剪切 Couette 下
+  `max|a12|` 增长到 0.147，`tr(a)−1 = 2.2e-16`；
+- 缺省不写时行为不变；各向异性黏度与 a 随流输运为后续扩展。
 
 ### 结晶动力学（`crystallization`，任务 014）
 
@@ -743,6 +768,12 @@ thermoType
 
 ### 契约变更日志
 
+**v1.15**（纤维取向，任务 015）：
+
+- `constant/moldingDict` 新增可选 `fiberOrientation` 子字典
+  （Folgar-Tucker + 二次/Hybrid 闭合）：求解器创建并写出取向张量场
+  `a`。缺省不写时行为与 v1.14 一致。
+
 **v1.14**（结晶动力学，任务 014）：
 
 - `constant/moldingDict` 新增可选 `crystallization` 子字典（Nakamura/
@@ -914,6 +945,7 @@ moldingFoam/
                              verify-coolant-channel.py
                              verify-runner-network.py
                              verify-crystallization.py
+                             verify-fiber-orientation.py
 ```
 
 ---

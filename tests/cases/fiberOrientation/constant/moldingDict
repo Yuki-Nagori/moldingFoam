@@ -1,0 +1,66 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Couette shear-heating validation: the process groups are present only
+    because moldingFoam requires them. The packing group never drives a
+    boundary here (there are no molding inlet/vent patches); the ejection
+    temperature is set below any reachable value so the run stops at
+    endTime. The viscous-dissipation source is enabled explicitly.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      moldingDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+injection
+{
+    meltTemperature  480;
+}
+
+packing
+{
+    switchFraction   1;
+    switchPressure   1e9;
+
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+
+cooling
+{
+    ejectionTemperature  50;
+    releasePressure      1e5;
+}
+
+viscousDissipation  false;
+
+// Folgar-Tucker fibre orientation: the quadratic closure is exact for a
+// single fibre and reproduces the Jeffery orbit
+fiberOrientation
+{
+    aspectRatio            20;      // [-]
+    interactionCoefficient 0.01;    // [-]
+    closure                quadratic;
+}
+
+// Two cycles; the ejection criterion triggers on the first check
+nCycles 1;
+
+// Gate freezes once its mass-weighted melt temperature drops to this
+// value; the cycleReset base starts at 480 K so the seal triggers at the
+// first packing step
+gateFreezeTemperature 485;
+
+// ************************************************************************* //

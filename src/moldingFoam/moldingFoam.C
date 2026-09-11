@@ -72,23 +72,35 @@ namespace
 
 //- Path of a constant dictionary that is region aware: in a multi-region
 //  case the mesh registry's dbDir carries the region name, so the
-//  dictionary is read from constant/<region>/<name>; for a single-region
-//  case the dbDir is empty and the path is constant/<name>
+//  dictionary is read from constant/<region>/<name>. A decomposed mesh
+//  reports the default region ("region0") even for a single-region case,
+//  so fall back to the case-level constant/<name> when the region path
+//  does not exist
 Foam::fileName constantDictPath
 (
     const Foam::objectRegistry& obr,
     const Foam::word& name
 )
 {
-    return Foam::IOobject
+    const Foam::fileName regionPath
     (
-        name,
-        obr.time().constant(),
-        obr,
-        Foam::IOobject::NO_READ,
-        Foam::IOobject::NO_WRITE,
-        false
-    ).filePath(false);
+        Foam::IOobject
+        (
+            name,
+            obr.time().constant(),
+            obr,
+            Foam::IOobject::NO_READ,
+            Foam::IOobject::NO_WRITE,
+            false
+        ).filePath(false)
+    );
+
+    if (Foam::isFile(regionPath))
+    {
+        return regionPath;
+    }
+
+    return obr.time().constant()/Foam::fileName(name);
 }
 
 } // End anonymous namespace

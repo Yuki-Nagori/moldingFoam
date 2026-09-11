@@ -1075,6 +1075,7 @@ moldingFoam/
                              verify-stefan.py、verify-moldcht.py
                              verify-coolant-channel.py
                              verify-runner-network.py
+                             perf-scaling.sh（弱扩展基准）
                              verify-crystallization.py
                              verify-fiber-orientation.py
                              verify-shrinkage.py

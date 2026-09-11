@@ -16,8 +16,15 @@
     大网格上可配间隔或改增量连通）；
   - χ/a/shrinkage 的逐单元循环与场写出（I/O）；
   - 线性求解器与并行分解（需大规模 case 的弱扩展测量）；
-- 工具化：建议新增 `scripts/perf-scaling.sh`（分解/并行/墙钟/加速比）
-  与大规模算例生成，作为后续阶段。
+- **并行回归修复**：区域感知字典路径在**分解网格**（dbDir=region0）
+  下找不到 `constant/moldingDict`，导致并行单区域运行不创建
+  `moldingStage`、需要 stage 的边界（入口/保压）报错；已加回退
+  （区域路径不存在则用 case 级 `constant/<name>`）。修复后 fountainFlow
+  2 进程运行并与串行一致（重构验证通过）；
+- **弱扩展脚本**：`scripts/perf-scaling.sh <case> <np...>` 逐进程数
+  运行（scotch 分解、mpirun、墙钟与加速比），在小用例上验证机制
+  （640 cell 用例并行开销主导：1.2 s → 1.6 s，符合预期）；
+- 大规模算例生成与 profiler 热点分析作为后续阶段。
 
 ## 1. 背景与现状
 

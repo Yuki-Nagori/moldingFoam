@@ -34,7 +34,7 @@ stopAt          endTime;
 // The acceptance window ends just after the gate seal: once the gate
 // is sealed the cooling melt would shrink and cavitate, which the current
 // Tait thermodynamics cannot represent (no void model) - see task 018a
-endTime         1.35;
+endTime         1.6;
 
 deltaT          1e-05;
 

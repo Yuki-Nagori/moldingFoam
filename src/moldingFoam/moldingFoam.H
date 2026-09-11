@@ -140,6 +140,12 @@ class moldingFoam
         //  pressure-density feedback of the correction)
         scalar massFixRelaxation_;
 
+        //- Use the uniform (global) variant of the mass correction: the
+        //  running budget residual is scaled out of the whole density
+        //  field instead of being corrected cell by cell (a gentler,
+        //  shape-preserving fixer that avoids local pressure noise)
+        bool massFixGlobal_;
+
         //- Previous-step mass-budget state for the term decomposition
         bool massBudgetInit_;
         scalarField massBudgetAlpha1Prev_;

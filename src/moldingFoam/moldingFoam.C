@@ -124,6 +124,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetInterval_(50),
     massFix_(false),
     massFixRelaxation_(1),
+    massFixGlobal_(false),
     massBudgetInit_(false),
     massBudgetAlpha1Prev_(),
     massBudgetRho1Prev_(),
@@ -247,6 +248,11 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         (
             "massFixRelaxation",
             1
+        );
+        massFixGlobal_ = moldingDict.lookupOrDefault<Switch>
+        (
+            "massFixGlobal",
+            false
         );
 
         // Optional trapped-air diagnostic (see reportTrappedAir)
@@ -1604,12 +1610,14 @@ void Foam::solvers::moldingFoam::postSolve()
 {
     compressibleVoF::postSolve();
 
-    // Optional discrete mass-budget diagnostic (task 018): the domain
-    // melt mass and the accumulated boundary melt flux are formed with
-    // the same discretisation, so their residual isolates any mass
-    // inconsistency of the solve (the function-object accounting can be
-    // confused by the sub-step variation of the boundary flux)
-    if (!massBudget_)
+    // Optional discrete mass-budget diagnostic / conservative mass fixer
+    // (task 018): the domain melt mass and the accumulated boundary melt
+    // flux are formed with the same discretisation, so their residual
+    // isolates any mass inconsistency of the solve (the function-object
+    // accounting can be confused by the sub-step variation of the
+    // boundary flux). The fixer maintains the same running budget, so the
+    // accounting must run whenever either option is active
+    if (!massBudget_ && !massFix_ && !massFixGlobal_)
     {
         return;
     }
@@ -1638,9 +1646,6 @@ void Foam::solvers::moldingFoam::postSolve()
 
     const scalar dt = runTime.deltaTValue();
 
-    const scalarField& psip = mixture_.thermo1().psi().primitiveField();
-    const scalarField& prghc = p_rgh_.primitiveField();
-
     if (runTime.timeIndex() == 1 || !massBudgetInit_)
     {
         // Back out the first step to express the initial mass at t = 0
@@ -1649,8 +1654,11 @@ void Foam::solvers::moldingFoam::postSolve()
         massBudgetIn_ = 0;
         massBudgetInit_ = true;
     }
-    else
+    else if (massBudget_)
     {
+        const scalarField& psip = mixture_.thermo1().psi().primitiveField();
+        const scalarField& prghc = p_rgh_.primitiveField();
+
         // Step decomposition: the mass change, the boundary flux and
         // the first-order pressure/alpha contributions
         scalar dm = 0;
@@ -1681,15 +1689,20 @@ void Foam::solvers::moldingFoam::postSolve()
                 << " kg, dm-(psi+dalpha) = " << (dm - psiDm - alphaDm)
                 << " kg" << endl;
         }
-    }
 
-    massBudgetAlpha1Prev_ = alphac;
-    massBudgetRho1Prev_ = rhoc;
-    massBudgetPrghPrev_ = prghc;
+        massBudgetAlpha1Prev_ = alphac;
+        massBudgetRho1Prev_ = rhoc;
+        massBudgetPrghPrev_ = prghc;
+    }
 
     massBudgetIn_ += flux*dt;
 
-    if (massBudgetInterval_ > 0 && runTime.timeIndex() % massBudgetInterval_ == 0)
+    if
+    (
+        massBudget_
+     && massBudgetInterval_ > 0
+     && runTime.timeIndex() % massBudgetInterval_ == 0
+    )
     {
         Info<< "moldingFoam: mass budget: m = " << m
             << " kg, accumulated boundary flux = " << massBudgetIn_
@@ -1698,9 +1711,28 @@ void Foam::solvers::moldingFoam::postSolve()
     }
 
     // Optional conservative mass correction (task 018 experiment): fold
-    // the local discrete mass residual back into the phase-1 density so
-    // that ddt(alpha1,rho1) + div(alphaRhoPhi1) = 0 holds exactly
-    if (massFix_)
+    // the discrete mass residual back into the phase-1 density so that
+    // ddt(alpha1,rho1) + div(alphaRhoPhi1) = 0 holds exactly. The global
+    // variant scales the whole field (no local gradient noise); the local
+    // variant corrects each cell by its own residual
+    if (massFixGlobal_)
+    {
+        volScalarField& rho1 = mixture_.thermo1().rho();
+
+        const scalar residualNow = m - massBudgetInitial_ + massBudgetIn_;
+        const scalar scale =
+            1 - massFixRelaxation_*residualNow/max(m, small);
+
+        scalarField& rc = rho1.primitiveFieldRef();
+
+        forAll(rc, i)
+        {
+            rc[i] *= scale;
+        }
+
+        mixture_.correct();
+    }
+    else if (massFix_)
     {
         volScalarField& rho1 = mixture_.thermo1().rho();
 

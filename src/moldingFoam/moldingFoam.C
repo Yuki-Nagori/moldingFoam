@@ -122,6 +122,10 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetIn_(0),
     massBudgetInitial_(0),
     massBudgetInterval_(50),
+    massBudgetInit_(false),
+    massBudgetAlpha1Prev_(),
+    massBudgetRho1Prev_(),
+    massBudgetPrghPrev_(),
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
     viscousDissipation_(false),
@@ -1626,13 +1630,54 @@ void Foam::solvers::moldingFoam::postSolve()
 
     const scalar dt = runTime.deltaTValue();
 
-    if (runTime.timeIndex() == 1)
+    const scalarField& psip = mixture_.thermo1().psi().primitiveField();
+    const scalarField& prghc = p_rgh_.primitiveField();
+
+    if (runTime.timeIndex() == 1 || !massBudgetInit_)
     {
         // Back out the first step to express the initial mass at t = 0
         // (m_after = m_before - flux*dt for an outward-positive flux)
         massBudgetInitial_ = m + flux*dt;
         massBudgetIn_ = 0;
+        massBudgetInit_ = true;
     }
+    else
+    {
+        // Step decomposition: the mass change, the boundary flux and
+        // the first-order pressure/alpha contributions
+        scalar dm = 0;
+        scalar psiDm = 0;
+        scalar alphaDm = 0;
+
+        forAll(Vc, i)
+        {
+            dm += Vc[i]
+               *  (alphac[i]*rhoc[i] - massBudgetAlpha1Prev_[i]*massBudgetRho1Prev_[i]);
+            psiDm += Vc[i]*alphac[i]*psip[i]
+               *  (prghc[i] - massBudgetPrghPrev_[i]);
+            alphaDm += Vc[i]
+               *  (alphac[i] - massBudgetAlpha1Prev_[i])*massBudgetRho1Prev_[i];
+        }
+
+        reduce(dm, sumOp<scalar>());
+        reduce(psiDm, sumOp<scalar>());
+        reduce(alphaDm, sumOp<scalar>());
+
+        if (massBudgetInterval_ > 0 && runTime.timeIndex() % massBudgetInterval_ == 0)
+        {
+            Info<< "moldingFoam: mass budget terms: dm = " << dm
+                << " kg, flux*dt = " << flux*dt
+                << " kg, psi*dp = " << psiDm
+                << " kg, dalpha = " << alphaDm
+                << " kg, dm+flux*dt = " << (dm + flux*dt)
+                << " kg, dm-(psi+dalpha) = " << (dm - psiDm - alphaDm)
+                << " kg" << endl;
+        }
+    }
+
+    massBudgetAlpha1Prev_ = alphac;
+    massBudgetRho1Prev_ = rhoc;
+    massBudgetPrghPrev_ = prghc;
 
     massBudgetIn_ += flux*dt;
 

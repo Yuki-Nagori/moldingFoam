@@ -130,6 +130,12 @@ class moldingFoam
         //- Mass-budget logging interval [time steps]
         label massBudgetInterval_;
 
+        //- Previous-step mass-budget state for the term decomposition
+        bool massBudgetInit_;
+        scalarField massBudgetAlpha1Prev_;
+        scalarField massBudgetRho1Prev_;
+        scalarField massBudgetPrghPrev_;
+
         //- Trapped-air diagnostic interval [time steps]; zero disables it
         label trapAirInterval_;
 

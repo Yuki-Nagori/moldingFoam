@@ -1,0 +1,107 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Mesh of a 60 x 20 x 2 mm plaque cavity with a 6 mm gate centred on the
+    bottom edge and a 2 mm vent on the top edge. Vertex coordinates are in
+    mm (see scale).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   0.001;
+
+vertices
+(
+    // z = 0 plane
+    (0 0 0)     // 0
+    (27 0 0)    // 1
+    (33 0 0)    // 2
+    (55 0 0)    // 3
+    (57 0 0)    // 4
+    (60 0 0)    // 5
+    (0 20 0)    // 6
+    (27 20 0)   // 7
+    (33 20 0)   // 8
+    (55 20 0)   // 9
+    (57 20 0)   // 10
+    (60 20 0)   // 11
+    // z = 2 plane
+    (0 0 2)     // 12
+    (27 0 2)    // 13
+    (33 0 2)    // 14
+    (55 0 2)    // 15
+    (57 0 2)    // 16
+    (60 0 2)    // 17
+    (0 20 2)    // 18
+    (27 20 2)   // 19
+    (33 20 2)   // 20
+    (55 20 2)   // 21
+    (57 20 2)   // 22
+    (60 20 2)   // 23
+);
+
+blocks
+(
+    hex (0 1 7 6 12 13 19 18) (108 40 2) simpleGrading (1 1 1)
+    hex (1 2 8 7 13 14 20 19) (12 40 2) simpleGrading (1 1 1)
+    hex (2 3 9 8 14 15 21 20) (44 40 2) simpleGrading (1 1 1)
+    hex (3 4 10 9 15 16 22 21) (4 40 2) simpleGrading (1 1 1)
+    hex (4 5 11 10 16 17 23 22) (6 40 2) simpleGrading (1 1 1)
+);
+
+defaultPatch
+{
+    type empty;
+}
+
+boundary
+(
+    inlet
+    {
+        type wall;
+        faces
+        (
+            (1 2 14 13)
+        );
+    }
+
+    vent
+    {
+        type patch;
+        faces
+        (
+            (9 10 22 21)
+        );
+    }
+
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 1 13 12)     // bottom left of the gate
+            (2 3 15 14)     // bottom right of the gate
+            (3 4 16 15)     // bottom of the vent column
+            (4 5 17 16)     // bottom far right
+            (0 6 18 12)     // left
+            (5 11 23 17)    // right
+            (6 7 19 18)     // top left
+            (7 8 20 19)     // top gate column
+            (8 9 21 20)     // top mid
+            (10 11 23 22)   // top far right
+        );
+    }
+);
+
+// ************************************************************************* //

@@ -1,0 +1,109 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Molding process contract dictionary. The layout of this file is the
+    external case-generation contract of the moldingFoam project: keyword
+    names are frozen once released and any change is documented in the
+    project README.
+
+    The solver validates this dictionary at start-up. Stage M2 (packing)
+    switches from velocity to pressure control when the filled cavity
+    volume fraction reaches packing.switchFraction and holds the gate
+    pressure following packing.pressure; stage M3 (cooling) stops the run
+    once the average melt temperature falls below
+    cooling.ejectionTemperature (the mould wall temperature is the
+    fixedValue of the T boundary condition on the walls patch).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      moldingDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+injection
+{
+    // Melt temperature at the gate [K] (informational; the actual inlet
+    // temperature is set by the T boundary condition)
+    meltTemperature  480;
+}
+
+packing
+{
+    // Stage M2: switch from velocity (filling) to pressure (packing)
+    // control when this fraction of the cavity volume is filled [-]
+    switchFraction   1;
+
+    // Stage M2: switch to pressure control when the gate pressure reaches
+    // this value (the holding pressure), so there is no pressure step at
+    // the V/P switch; the filled fraction is a fallback criterion [Pa]
+    // 40 MPa packing plateau, pressure-continuous V/P switch: the switch
+    // fires when the filling gate pressure reaches 7 MPa, which happens at
+    // about 98.5% fill, so the residual air is small but still provides
+    // enough compressibility for the sealed cavity to stay stable. The
+    // case is the calibration vehicle of tasks 009/018: the sealed
+    // cooling contraction currently leaves a ~4.6e-2 mass conservation
+    // error, which task 018 closes
+    switchPressure   7e6;
+
+    // Stage M2: time after the V/P switch at which the gate freezes off
+    // [s]; the gate then holds zero flow, so the packing-pressure release
+    // cannot drain the cavity
+    gateSealTime   0.51;
+
+    // Stage M2: packing pressure profile as a function of time [s], [Pa].
+    // It starts at the V/P switch pressure so there is no pressure step
+    // at the switch; the modest hold pressure of this contract case
+    // bounds the Courant-limited time step during packing
+    // Stage M2: packing pressure profile as a function of time [s], [Pa].
+    // Continuous at the switch and a half-cosine ramp to 40 MPa: the zero
+    // end slopes avoid the flux transient of a linear ramp
+    pressure
+    {
+        type            table;
+        values
+        (
+            (0.000 7000000)
+            (0.050 9210580.8)
+            (0.100 15250000)
+            (0.150 23500000)
+            (0.200 31750000)
+            (0.250 37789419)
+            (0.300 40000000)
+            (0.5  4e7)
+            (0.65 1e5)
+        );
+    }
+}
+
+// Melt volume fraction on the vent patch above which the vent is sealed
+// (the vent passes air but not polymer)
+ventSealAlpha   0.9;
+
+// Trapped-air diagnostic interval [time steps] (0 disables it)
+trapAirInterval 200;
+
+// Viscous-dissipation (shear heating) source in the energy equation
+viscousDissipation true;
+
+cooling
+{
+    // Stage M3: average melt temperature below which the part can be
+    // ejected [K]. Below the Tait solidification temperature
+    // (Tt = 390.65 K at atmospheric pressure) so the part has released
+    // its latent heat before ejection
+    ejectionTemperature  383.15;
+
+    // Stage M3: the ejection check only starts once the packing pressure
+    // target has been released down to this value [Pa]
+    releasePressure  1e5;
+}
+
+// ************************************************************************* //

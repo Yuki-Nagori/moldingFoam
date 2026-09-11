@@ -222,6 +222,32 @@ target("case-contract")
     end)
 target_end()
 
+target("highPressure")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the 40 MPa packing case")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-case.sh")
+            .. " validation/highPressure 1")
+        if ok ~= 0 then
+            os.raise("high-pressure case failed; see"
+                .. " validation/highPressure/log.foamRun")
+        end
+    end)
+target_end()
+
 target("couette")
     set_kind("phony")
     add_deps("moldingFoam")

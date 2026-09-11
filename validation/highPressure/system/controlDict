@@ -1,0 +1,120 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam contract case
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    controlDict. The solver entry selects the moldingFoam solver module and
+    the libs entry loads it; both are part of the moldingFoam case
+    contract.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     foamRun;
+
+solver          moldingFoam;
+
+libs            ("libmoldingFoam.so");
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         3;
+
+deltaT          1e-05;
+
+writeControl    adjustableRunTime;
+
+writeInterval   0.1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  7;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  on;
+
+maxCo           0.5;
+
+maxAlphaCo      0.03;
+
+maxDeltaT       1;
+
+functions
+{
+    inletMassFlow
+    {
+        // Polymer mass flow rate through the gate [kg/s]; the boundary
+        // values of alphaRhoPhi.melt are face mass fluxes
+        type            surfaceFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             yes;
+        patch           inlet;
+        operation       sum;
+        fields          (alphaRhoPhi.melt);
+    }
+
+    ventMassFlow
+    {
+        type            surfaceFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             yes;
+        patch           vent;
+        operation       sum;
+        fields          (alphaRhoPhi.melt);
+    }
+
+    alphaMeltRho
+    {
+        // Polymer mass concentration field alpha.melt*rho.melt [kg/m^3]
+        type            multiply;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     no;
+        fields          (alpha.melt rho.melt);
+        result          alphaMeltRho;
+    }
+
+    polymerMass
+    {
+        // Polymer mass in the cavity [kg]
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             yes;
+        cellZone        all;
+        operation       volIntegrate;
+        fields          (alphaMeltRho);
+    }
+}
+
+// ************************************************************************* //

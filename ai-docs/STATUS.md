@@ -33,19 +33,14 @@
     1.5e-2 kg/s 尖峰**（近不可压 ψ 极小、rAUf 大 → 边界局部通量误差）。
     下一步候选：质量通量一致的压力入口、ψ 隐式/参考压力正则化、
     声学松弛；封冻后空洞/负压另见 018a。
-  - **019 三维 CHT（四阶段完成）**：多周期、Robin 对流冷却
-    （`moldingConvectiveCooling`）、002 集总极限（1.05e-4）、周期稳态
-    趋势（增量 22.7→12.3→11.3 K）。**剩下：模具内 3D 水区**
-    （`incompressibleFluid` 第三区域，或固体侧等效更强冷却）。
-  - **022 翘曲/结构**：自由翘曲、条带挠度（w''=−κ）、1D 自平衡残余
-    应力、Timoshenko 双金属全部解析验证通过。**剩下：三维结构求解**。
-    已核 `solidDisplacement`（v14 二进制可用）：热应力 `sigma =
-    sigmaD − I·threeKalpha·T`（参考态 **T=0**）、`tractionDisplacement`
-    自由面、`ddtSchemes/d2dt2Schemes steadyState`、需要
-    `T/e/D` 与 `TFinal/eFinal` 求解器条目。骨架 case 曾出现非物理模式
-    （max|Dx|=8.4e-3 vs 解析 2.2e-3），需以
-    `/opt/openfoam14/tutorials/solidDisplacement/*` 为基逐项核对
-    （网格/BC/accelerationFactor）。
+  - ~~019~~（done）：四基准完成；三维水区调研结论——v14
+    `incompressibleFluid` 为等温模块（无 T），需自研非等温求解器；
+    等效冷却已由 `moldingCoolantChannel` + `moldingConvectiveCooling`
+    覆盖（任务允许的 1D 对流路径）。
+  - ~~022~~（done）：自由翘曲/残余应力/双金属 + **三维热弹性悬臂
+    基准**（`validation/thermoelastic`，`xmake run thermoelastic`，
+    48×80 挠度误差 5.46% < 10%，网格收敛）；`alphav` 语义=线性膨胀
+    系数、参考态 T=0。
   - **029 性能**：流道网络缓存、并行单区域 constant 字典回退
     （重要回归修复）、`scripts/perf-scaling.sh` 弱扩展脚本。
     **剩下：大规模 profiling 与线性求解/通信优化**。

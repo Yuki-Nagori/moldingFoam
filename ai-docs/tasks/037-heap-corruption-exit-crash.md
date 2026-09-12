@@ -80,12 +80,35 @@ bundle 内环境树——两者合起来刚好绕开。
    `Duplicate entry` 检查（它比退出期堆破坏出现得早、易定位）——
    `Duplicate entry` 即失败。
 
-**本地同类事件（混合版本对象）**：第九次实验覆写 `moldingFoam.H` 后
-`git checkout` 回退并增量重建，wmake 未全部重编（类布局/内联不一致）
-→ `modelTests` 在 `runnerNetworkTests` 返回时 `*** stack smashing
-detected ***`；`wclean libso src && wclean tests` 后全量重建即
-`All tests passed`。教训：**头文件回退后必须干净重建**再跑套件；
-CI 每次全新 checkout 构建，天然规避。
+**修复后 bundle 端到端复测（本 VM，按用户 §验证 步骤）**：解包修复后
+的 bundle（`xmake run bundle`，staging 中先植入一个陈旧
+`libmoldingFoamSolver.so` 以验证清理逻辑），在 **bundle 自含环境**中：
+
+- 树内 `lib/` 只有一份 `libmoldingFoam.so` + `libmoldingFoamSolver.so`
+  符号链接（inode 相同；断言 `stat -L -c %i` 通过，陈旧文件被清除）；
+- 零步（`endTime 0`、`MALLOC_CHECK_=3 foamRun`）：**exit 0**，
+  `Duplicate entry` 0 处、堆报告 0 处，`End` 正常打印；
+- 完整并行链（`decomposePar -force` → `mpirun --oversubscribe -np 4
+  foamRun -parallel` → `reconstructPar -latestTime`）：**三步 exit 0**，
+  时间目录 `0`、`0.000197989` 齐全，两日志均无 Duplicate/堆报告。
+
+**本地同类事件（混合版本对象，已定位并加守卫）**：第九次实验覆写
+`moldingFoam.H` 后 `git checkout` 回退并增量重建，`modelTests` 在
+`runnerNetworkTests` 返回时 `*** stack smashing detected ***`。
+机制：wmake 经 `src/lnInclude` 的**符号链接**跟踪头文件依赖，回退时
+`cp` 只更新了真实头文件的 mtime，链接自身 mtime 不变 → 依赖该链接的
+部分 TU 未重编，同一库内混入两种类布局/内联定义（ODR 破坏）。
+处理与验证：
+
+- xmake 构建脚本加守卫：编译前扫描 `src/lnInclude/*.H`，用
+  `stat`（**不跟随**）比较链接与目标 mtime，仅对过期链接
+  `touch -h` 刷新（已实测触发“refreshed N stale lnInclude header
+  link(s)”并正确重编）；
+- 干净重建后 `All tests passed`；**ASan 重建（lib+tests）跑
+  `modelTests`：0 处 ASan 错误、全部通过**——确认当前源码无潜伏
+  越界，事件纯属混合对象构建态；
+- 教训：头文件级实验回退后，先干净重建（或依赖本守卫）再跑套件；
+  CI 每次全新 checkout 构建，天然规避。
 
 ## 3b. 取证结果（2026-09-12）
 

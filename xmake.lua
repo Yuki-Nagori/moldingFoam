@@ -135,6 +135,33 @@ chmod +x "$HOME/.moldingFoam-bin/g++"
 export PATH="$HOME/.moldingFoam-bin:$PATH"
 
 cd %s
+
+# wmake tracks dependencies through src/lnInclude, whose entries are
+# SYMLINKS: overwriting a real header (e.g. git checkout after a
+# header-level experiment) does not change the symlink mtime, so wmake
+# can miss the recompile and link objects built against different class
+# layouts - a mixed-object corruption (observed: stack smashing at the
+# end of modelTests after a header revert). Refresh the stale symlink
+# mtimes first: only headers whose target is newer than the link are
+# touched, so incremental builds stay incremental
+stale=0
+for l in src/lnInclude/*.H
+do
+    [ -h "$l" ] || continue
+    t=$(readlink -f "$l")
+    # stat without -L reports the LINK's own mtime; test -nt would
+    # dereference and always compare the target with itself
+    if [ -f "$t" ] && [ "$(stat -c %%Y "$t")" -gt "$(stat -c %%Y "$l")" ]
+    then
+        touch -h "$l"
+        stale=$((stale + 1))
+    fi
+done
+if [ "$stale" -gt 0 ]
+then
+    echo "[moldingFoam] refreshed $stale stale lnInclude header link(s)"
+fi
+
 wmake libso src
 wmake tests
 ln -sf libmoldingFoam.so "$FOAM_USER_LIBBIN/libmoldingFoamSolver.so"
@@ -558,10 +585,11 @@ target("bundle")
             "ln -sf libmoldingFoam.so '%s'libmoldingFoamSolver.so", libdir))
 
         -- The two names must share one inode: packaging bug guard
+        -- (-L: follow the symlink so both resolve to the same file)
         local ino1 = in_of_env_out(envdir, string.format(
-            "stat -c %%i '%s'libmoldingFoam.so", libdir))
+            "stat -L -c %%i '%s'libmoldingFoam.so", libdir))
         local ino2 = in_of_env_out(envdir, string.format(
-            "stat -c %%i '%s'libmoldingFoamSolver.so", libdir))
+            "stat -L -c %%i '%s'libmoldingFoamSolver.so", libdir))
         if ino1 ~= ino2 or ino1 == "" then
             os.raise("bundle lib check failed: libmoldingFoam*.so are not "
                 .. "the same file (inodes " .. ino1 .. " vs " .. ino2 .. ")")

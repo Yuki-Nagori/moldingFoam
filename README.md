@@ -764,9 +764,13 @@ flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
   （时间步崩溃），不推荐；
 - `massFixGlobal true`：**全局均匀**修正，按运行残差对整场密度缩放
   `rho1 *= 1 − relax·residual/m`（保形、无局部压力反馈）。
-  `massFixRelaxation`（缺省 1）为松弛因子。高压保压校准 case
-  `validation/highPressure` 启用本项后，保压窗口离散质量守恒误差由
-  ~4.5e-2 降到 **1.1e-5**（Euler 一致积分口径）。
+  `massFixRelaxation`（缺省 1）为松弛因子。保压窗口离散质量守恒误差
+  由 ~4.5e-2 降到 **1.1e-5**（Euler 一致积分口径）。
+
+注：高压保压的质量误差根因是**时间截断**（实测 ∝ dt^1.6，见任务
+031）；官方 `validation/highPressure` 现以 `maxDeltaT 1e-4` 从源头
+消除（无修正器守恒 **2.6e-4**）。`massFixGlobal` 保留为可选路径，
+适合需要加大时间步的算例。
 
 ### 困气诊断（`trapAirInterval`，任务 003 选项 B）
 

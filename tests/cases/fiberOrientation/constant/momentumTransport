@@ -31,9 +31,10 @@ laminar
         n           0.393539;   // [-]
         tauStar     64568.9;
 
-    // Lipscomb orientation correction (task 034): the apparent
-    // viscosity follows the alignment of the strain rate with the fibres
-    lipscombRatio  3;            // [-]
+        // Lipscomb orientation correction (task 034): the apparent
+        // viscosity follows the alignment of the strain rate with the
+        // fibres
+        lipscombRatio  3;            // [-]
         D1          3.76174e15; // [Pa s]
         D2          153.15;     // [K]
         D3          0;          // [K/Pa]

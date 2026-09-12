@@ -769,7 +769,9 @@ flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
 `constant/physicalProperties`（nu 之外加 rho/Cp/kappa）。
 `xmake run coolantWater`（`validation/coolantWater`）：层流通道
 （入口 300 K、壁 350 K）稳态能量平衡误差 **2.7e-6**、出口 ṁ 与解析
-一致。可与 `solid` 模具区经 `coupledTemperature` 组多区域 CHT。
+一致。多区域 CHT：`validation/coolantWaterMold`（水+模具
+`coupledTemperature`，界面传热 38.2 W、能量平衡 **1.2e-7**，
+随 `xmake run moldCHT` 套件运行）。
 
 ### 空洞闭锁工具（`scripts/void_cooling.py`，任务 033）
 

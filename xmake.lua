@@ -340,7 +340,7 @@ target("moldCHT")
         if envdir == nil then
             os.raise(err)
         end
-        for _, case in ipairs({"moldCHT", "moldCHT-fill", "moldCHT-cycle", "moldCHT-cooled", "moldCHT-lumped"}) do
+        for _, case in ipairs({"moldCHT", "moldCHT-fill", "moldCHT-cycle", "moldCHT-cooled", "moldCHT-lumped", "coolantWaterMold"}) do
             print("[moldingFoam] running the two-region CHT validation: "
                 .. case)
             local ok = in_of_env(envdir,

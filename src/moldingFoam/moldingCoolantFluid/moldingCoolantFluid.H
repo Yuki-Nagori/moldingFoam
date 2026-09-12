@@ -49,6 +49,8 @@ SourceFiles
 #define moldingCoolantFluid_H
 
 #include "incompressibleFluid.H"
+#include "solidThermo.H"
+#include "solidThermophysicalTransportModel.H"
 #include "volFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -68,23 +70,17 @@ class moldingCoolantFluid
 {
     // Private Data
 
+        //- Constant-property thermo holding the coolant rho/Cv/kappa and
+        //  the temperature field (also provides the registered
+        //  thermophysicalTransport required by the coupledTemperature
+        //  conjugate boundaries)
+        autoPtr<solidThermo> thermo_;
+
+        //- Thermophysical transport (kappaEff for the conjugate coupling)
+        autoPtr<solidThermophysicalTransportModel> thermophysicalTransport;
+
         //- Temperature field [K]
-        volScalarField T_;
-
-        //- Coolant density [kg/m^3]
-        dimensionedScalar rho_;
-
-        //- Coolant heat capacity [J/kg/K]
-        dimensionedScalar Cp_;
-
-        //- Coolant thermal conductivity [W/m/K]
-        dimensionedScalar kappa_;
-
-
-    // Private Member Functions
-
-        //- Read the physical properties
-        void readProperties(const fvMesh& mesh);
+        volScalarField& T_;
 
 
 public:

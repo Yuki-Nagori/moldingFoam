@@ -1,6 +1,6 @@
 # 036 — 三维冷却水流动（019 遗留）
 
-- 状态：in-progress（2026-09-13：路线 C 完整落地验证；**路线 A 首里程碑达成**——`moldingCoolantFluid` 三维水模块 + `validation/coolantWater`（能量平衡 2.7e-6）；剩多区域 CHT 集成）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
+- 状态：done（2026-09-13：路线 C 完整落地；**路线 A 完成**——`moldingCoolantFluid` 模块 + 单区域能量守恒 2.7e-6 + **多区域 CHT 集成**（水+模具 coupledTemperature，能量平衡 1.2e-7）；Nu 关联式定量对拍列为增强）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
 - 优先级：P3
 - 依赖：019（调研：v14 `incompressibleFluid` 等温，无温度场）、008
 - 预估规模：3–6 周
@@ -55,6 +55,22 @@
 - 待做：**多区域 CHT 集成**（水区与模具固体区经 `coupledTemperature`
   耦合、`regionSolvers { water moldingCoolantFluid; mold solid; ... }`），
   以及圆管换热 Nu 关联式定量对拍。
+
+## 2e. 路线 A 多区域 CHT 集成（2026-09-13，已完成）
+
+- **模块扩展**：`moldingCoolantFluid` 内构造 `constSolidThermo`
+  （常物性 rho/Cv/kappa，子字典格式）+ `solidThermophysicalTransport`，
+  提供 `coupledTemperature` 共轭边界所需的 `kappaEff`（水的动量仍由
+  incompressibleFluid 求解，温度为其被动场）；
+- **多区域 case `validation/coolantWaterMold`**（moldCHT 结构：水区
+  20×2 mm + 模具 20×5 mm）：`regionSolvers { water moldingCoolantFluid;
+  mold solid; }`，水-模具界面 `coupledTemperature`，模具顶面 400 K；
+  水入口 300 K/0.01 m/s；
+- **结果**（`xmake run moldCHT` 套件含此案例，经 runner 归一化验收）：
+  - 水的净边界热 = **38.2244 W**、出口 bulk T = 322.85 K；
+  - **能量平衡误差 1.176e-07** ✓；界面连续性由 coupledTemperature 保证；
+- **036 路线 A 完成**：三维非等温水区可参与多区域 CHT（层流强制对流、
+  无浮力）。增强项：Nu 关联式定量对拍（发展段层流）、湍流/浮力。
 
 ## 2c. 路线 C 完整落地（2026-09-13）
 

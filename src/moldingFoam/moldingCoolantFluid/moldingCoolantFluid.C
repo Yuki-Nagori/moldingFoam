@@ -34,28 +34,19 @@ namespace solvers
 Foam::solvers::moldingCoolantFluid::moldingCoolantFluid(fvMesh& mesh)
 :
     incompressibleFluid(mesh),
-    T_
+    thermo_(solidThermo::New(mesh)),
+    thermophysicalTransport
     (
-        IOobject
-        (
-            "T",
-            mesh.time().name(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh
+        solidThermophysicalTransportModel::New(thermo_())
     ),
-    rho_("rho", dimDensity, 0),
-    Cp_("Cp", dimEnergy/dimMass/dimTemperature, 0),
-    kappa_("kappa", dimPower/dimLength/dimTemperature, 0)
+    T_(thermo_->T())
 {
-    readProperties(mesh);
-    T_.correctBoundaryConditions();
+    thermo_->validate("moldingCoolantFluid", "e", "h");
 
-    Info<< "moldingCoolantFluid: rho = " << rho_.value()
-        << " kg/m^3, Cp = " << Cp_.value()
-        << " J/kg/K, kappa = " << kappa_.value() << " W/m/K" << endl;
+    Info<< "moldingCoolantFluid: rho = " << gAverage(thermo_->rho())
+        << " kg/m^3, Cp = " << gAverage(thermo_->Cp())
+        << " J/kg/K, kappa = " << gAverage(thermo_->kappa())
+        << " W/m/K" << endl;
 }
 
 
@@ -65,70 +56,35 @@ Foam::solvers::moldingCoolantFluid::~moldingCoolantFluid()
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::solvers::moldingCoolantFluid::readProperties(const fvMesh& mesh)
-{
-    const IOdictionary props
-    (
-        IOobject
-        (
-            "physicalProperties",
-            mesh.time().constant(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        )
-    );
-
-    rho_ = dimensionedScalar("rho", dimDensity, props);
-    Cp_ = dimensionedScalar
-    (
-        "Cp",
-        dimEnergy/dimMass/dimTemperature,
-        props
-    );
-    kappa_ = dimensionedScalar
-    (
-        "kappa",
-        dimPower/dimLength/dimTemperature,
-        props
-    );
-
-    if
-    (
-        rho_.value() <= 0
-     || Cp_.value() <= 0
-     || kappa_.value() <= 0
-    )
-    {
-        FatalIOErrorInFunction(props)
-            << "The coolant properties must be positive: rho = "
-            << rho_.value() << ", Cp = " << Cp_.value()
-            << ", kappa = " << kappa_.value() << exit(FatalIOError);
-    }
-}
-
-
 void Foam::solvers::moldingCoolantFluid::thermophysicalPredictor()
 {
     // Passive temperature: advection with the incompressible volumetric
-    // flux and constant-property conduction
-    const dimensionedScalar alphaEff(kappa_/(rho_*Cp_));
+    // flux and constant-property conduction. The properties come from the
+    // constant-property thermo.
+    const volScalarField& rho = thermo_->rho();
+    const volScalarField& Cp = thermo_->Cp();
+
+    const tmp<volScalarField> tAlphaEff
+    (
+        thermophysicalTransport->kappaEff()/(rho*Cp)
+    );
 
     fvScalarMatrix TEqn
     (
         fvm::ddt(T_)
       + fvm::div(phi, T_)
-      - fvm::laplacian(alphaEff, T_)
+      - fvm::laplacian(tAlphaEff, T_)
     );
 
     TEqn.solve();
 
-    // Diagnostic: the net boundary heat input (the sum of the conductive
-    // fluxes over every patch) and the mass-flow weighted outlet
-    // temperature, so the energy balance can be checked against the
+    // Diagnostic: the net boundary heat input and the mass-flow weighted
+    // outlet temperature, so the energy balance can be checked against the
     // enthalpy rise
     if (mesh_.time().timeIndex() % 100 == 0)
     {
+        const volScalarField& kappa = thermo_->kappa();
+
         scalar qNet = 0;
 
         forAll(T_.boundaryField(), patchi)
@@ -137,14 +93,15 @@ void Foam::solvers::moldingCoolantFluid::thermophysicalPredictor()
 
             qNet += gSum
             (
-                kappa_.value()*Tp.snGrad()*Tp.patch().magSf()
+                kappa.boundaryField()[patchi]
+               *Tp.snGrad()
+               *Tp.patch().magSf()
             );
         }
 
         scalar mdot = 0;
         scalar mdotT = 0;
 
-        // Outflow patches are those with a positive net volumetric flux
         forAll(phi_.boundaryField(), patchi)
         {
             const fvsPatchScalarField& phip = phi_.boundaryField()[patchi];
@@ -158,7 +115,7 @@ void Foam::solvers::moldingCoolantFluid::thermophysicalPredictor()
         }
 
         Info<< "moldingCoolantFluid: net boundary heat = " << qNet
-            << " W, outlet mdot = " << rho_.value()*mdot
+            << " W, outlet mdot = " << gAverage(rho)*mdot
             << " kg/s, outlet bulk T = "
             << (mag(mdot) > small ? mdotT/mdot : scalar(0)) << " K" << endl;
     }

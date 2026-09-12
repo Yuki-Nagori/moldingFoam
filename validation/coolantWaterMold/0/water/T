@@ -1,0 +1,16 @@
+FoamFile { format ascii; class volScalarField; object T; }
+dimensions [0 0 0 1 0 0 0];
+internalField uniform 300;
+boundaryField
+{
+    inlet  { type fixedValue; value uniform 300; }
+    outlet { type zeroGradient; }
+    waterBottom { type zeroGradient; }
+    water_to_mold
+    {
+        type            coupledTemperature;
+        Tnbr            T;
+        value           $internalField;
+    }
+    defaultFaces { type empty; }
+}

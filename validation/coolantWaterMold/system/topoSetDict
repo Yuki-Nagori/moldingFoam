@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Cell zones for the two CHT regions. The mesh is exactly two stacked
+    blocks, so the zones are non-overlapping boxes and no subtraction is
+    needed; splitMeshRegions turns them into region meshes.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+actions
+(
+    {
+        name    water;
+        type    cellZoneSet;
+        action  new;
+        source  boxToCell;
+        box     (0 0 -0.001) (0.02 0.002 0.021);
+    }
+
+    {
+        name    mold;
+        type    cellZoneSet;
+        action  new;
+        source  boxToCell;
+        box     (0 0.002 -0.001) (0.02 0.008 0.021);
+    }
+);
+
+// ************************************************************************* //

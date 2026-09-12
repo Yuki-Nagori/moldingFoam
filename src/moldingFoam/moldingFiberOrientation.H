@@ -146,6 +146,34 @@ public:
             const scalar dt
         ) const;
 
+        //- Lipscomb-type anisotropic viscosity factor (task 034): the
+        //  apparent viscosity of a fibre suspension relative to its
+        //  transverse value, driven by the alignment of the strain rate
+        //  with the orientation,
+        //      factor = 1 + (ratio - 1) * 3/2 * (A:D):D / (D:D)
+        //  clamped to [1, ratio]. Fully aligned fibres give the axial
+        //  value "ratio" for extension along them and 1 for shear across
+        //  them; an isotropic orientation gives the base (transverse)
+        //  value 1 (engineering model, see the task 034 notes)
+        scalar lipscombFactor
+        (
+            const symmTensor& a,        //- Orientation tensor
+            const symmTensor& D,        //- Strain rate tensor [1/s]
+            const scalar axialRatio     //- eta_axial/eta_transverse >= 1
+        ) const
+        {
+            const scalar DD = (D && D);
+
+            if (DD < small)
+            {
+                return 1;
+            }
+
+            const scalar f = 1.5*(AcolonD(a, D) && D)/DD;
+
+            return min(max(1 + (axialRatio - 1)*f, scalar(1)), axialRatio);
+        }
+
         //- Fibre shape factor [-]
         scalar lambda() const
         {

@@ -1879,6 +1879,44 @@ void warpageTests()
         );
     }
 
+    // Lipscomb-type anisotropic viscosity factor (task 034)
+    {
+        IStringStream lis(
+            "aspectRatio 20; interactionCoefficient 0.01; "
+            "closure quadratic;"
+        );
+        dictionary ldict(lis);
+        moldingFiberOrientation lfibers(ldict);
+
+        const symmTensor aIso(1.0/3, 0, 0, 1.0/3, 0, 1.0/3);
+        const symmTensor aAligned(1, 0, 0, 0, 0, 0);   // diag(1, 0, 0)
+
+        // Axial extension along the fibres: the maximum factor
+        const symmTensor Daxi(1, 0, 0, -0.5, 0, -0.5);
+        const scalar fAxi = lfibers.lipscombFactor(aAligned, Daxi, 5.0);
+
+        // Shear across the fibres: the base factor
+        const symmTensor Dshear(0, 0.5, 0, 0, 0, 0);
+        const scalar fShear =
+            lfibers.lipscombFactor(aAligned, Dshear, 5.0);
+
+        // Isotropic orientation: the base factor
+        const scalar fIso = lfibers.lipscombFactor(aIso, Daxi, 5.0);
+
+        Info<< "    lipscomb factor: axial = " << fAxi
+            << ", cross shear = " << fShear << ", isotropic = " << fIso
+            << endl;
+
+        checkBool
+        (
+            "fiberOrientation: the Lipscomb factor is the axial ratio for "
+            "axial extension, 1 for cross shear and isotropic orientation",
+            relDiff(fAxi, 5.0) < 1e-12
+         && relDiff(fShear, 1.0) < 1e-12
+         && relDiff(fIso, 1.0) < 1e-12
+        );
+    }
+
     // Symmetric parabolic profile: no curvature by symmetry and the
     // analytical membrane strain alpha c h^2/12
     {

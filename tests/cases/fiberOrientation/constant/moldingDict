@@ -55,6 +55,19 @@ fiberOrientation
     closure                quadratic;
 }
 
+// Fibre-coupled anisotropic shrinkage (task 034): the shrinkage tensor
+// trace is the volumetric shrinkage and the aligned direction shrinks
+// less (orientationShrinkage = beta)
+shrinkage
+{
+    referenceDensity         950;
+    referenceTemperature     293.15;
+    elasticModulus           2e9;
+    poissonRatio             0.3;
+    thermalExpansion         7e-5;
+    orientationShrinkage      0.5;
+}
+
 // Two cycles; the ejection criterion triggers on the first check
 nCycles 1;
 

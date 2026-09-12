@@ -36,9 +36,18 @@
   取向方向收缩小、横向大；
 - 模型测试：a=diag(1,0,0)、S=0.05、β=0.5 → 对角
   (2/3, 7/6, 7/6)·e0、迹 0.05（rtol 1e-12）；β=0 → 各向同性；
-- 待做（阶段 2b）：求解器写出各向异性收缩张量场（与 a 场联动）；
-  结构端各向异性本征应变的施加（`solidDisplacement` 热应变是各向
-  同性，需自定义源项）；Lipscomb 黏度 `η(a, AR)`。
+## 3c. 阶段 2b（2026-09-13，已完成：张量场输出与回归）
+
+- 求解器：a 场与 `orientationShrinkage != 0` 同时激活时创建并写出
+  `shrinkageTensor`（volSymmTensorField，AUTO_WRITE），逐单元
+  `anisotropicShrinkage(rho, chi, a)`；周期重置归零；
+- `tests/cases/fiberOrientation` 启用 shrinkage（β=0.5）；
+  `verify-fiber-orientation.py` 新增检查：末态
+  `max|tr(tensor) − S| = 9.0e-9`，且最取向单元 `T_xx < T_yy`
+  （取向方向收缩小）；18/18 求解器用例全绿；
+- 待做（阶段 3）：结构端各向异性本征应变施加（`solidDisplacement`
+  热应变为各向同性，需自定义源项或顺序映射工具）；Lipscomb 黏度
+  `η(a, AR)`；哑铃/平板基准对拍。
 
 ## 3. 技术方案
 

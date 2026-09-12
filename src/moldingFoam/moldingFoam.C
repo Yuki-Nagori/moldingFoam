@@ -144,6 +144,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     shrinkageField_(),
     shrinkageInitial_(),
     voidField_(),
+    shrinkageTensor_(),
     voidEos_(),
     writeFillTime_(false),
     fillTime_(),
@@ -450,6 +451,33 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                     (
                         mixture_.phase1Name(),
                         meltPropsDict.subDict("mixture")
+                    )
+                );
+            }
+
+            // Optional anisotropic shrinkage tensor (task 034): needs the
+            // fibre orientation field and a non-zero anisotropy
+            if (a_.valid() && shrinkage_->orientationShrinkage() != 0)
+            {
+                shrinkageTensor_.reset
+                (
+                    new volSymmTensorField
+                    (
+                        IOobject
+                        (
+                            "shrinkageTensor",
+                            runTime.name(),
+                            mesh,
+                            IOobject::READ_IF_PRESENT,
+                            IOobject::AUTO_WRITE
+                        ),
+                        mesh,
+                        dimensionedSymmTensor
+                        (
+                            "shrinkageTensor",
+                            dimless,
+                            symmTensor::zero
+                        )
                     )
                 );
             }
@@ -1048,6 +1076,12 @@ void Foam::solvers::moldingFoam::resetCycle()
         voidField_->correctBoundaryConditions();
     }
 
+    if (shrinkageTensor_.valid())
+    {
+        shrinkageTensor_->primitiveFieldRef() = symmTensor::zero;
+        shrinkageTensor_->correctBoundaryConditions();
+    }
+
     if (fillTime_.valid())
     {
         fillTime_->primitiveFieldRef() = fillTimeInitial_->primitiveField();
@@ -1552,6 +1586,26 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         }
 
         s.correctBoundaryConditions();
+
+        // Optional anisotropic shrinkage tensor (task 034)
+        if (shrinkageTensor_.valid())
+        {
+            volSymmTensorField& st = *shrinkageTensor_;
+            symmTensorField& stc = st.primitiveFieldRef();
+            const symmTensorField& ac = a_->primitiveField();
+
+            forAll(stc, i)
+            {
+                stc[i] = shrinkage_->anisotropicShrinkage
+                (
+                    rhoc[i],
+                    chicPtr ? (*chicPtr)[i] : 0,
+                    ac[i]
+                );
+            }
+
+            st.correctBoundaryConditions();
+        }
 
         if (runTime.timeIndex() % 50 == 0)
         {

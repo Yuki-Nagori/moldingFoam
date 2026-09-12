@@ -54,6 +54,44 @@ def main():
         print("FAIL: the trace of the orientation tensor drifted")
         fail = True
 
+    # Fibre-coupled anisotropic shrinkage (task 034): when the case has
+    # the shrinkage dictionary the tensor field must have the volumetric
+    # shrinkage as its trace and shrink less along the aligned direction
+    times = sorted(
+        (d for d in os.listdir(case_dir)
+         if d[0].isdigit() and os.path.isdir(os.path.join(case_dir, d))),
+        key=float,
+    )
+    if times:
+        tp = os.path.join(case_dir, times[-1], "shrinkageTensor")
+        sp = os.path.join(case_dir, times[-1], "shrinkage")
+        if os.path.exists(tp) and os.path.exists(sp):
+            with open(tp) as f:
+                tt = f.read()
+            with open(sp) as f:
+                st = f.read()
+            Ts = [
+                [float(x) for x in g.split()]
+                for g in re.findall(
+                    r"\(([^()]*)\)",
+                    re.search(
+                        r"List<symmTensor>\s*\n\s*\d+\s*\n\((.*?)\)\s*;",
+                        tt, re.S).group(1))
+            ]
+            Ss = [
+                float(x) for x in re.search(
+                    r"List<scalar>\s*\n\s*\d+\s*\n\((.*?)\)\s*;",
+                    st, re.S).group(1).split()
+            ]
+            dtr = max(abs(T[0] + T[3] + T[5] - S)
+                      for T, S in zip(Ts, Ss))
+            print("  anisotropic shrinkage: max |tr(tensor) - S| = "
+                  "{:.2e}".format(dtr))
+            if dtr > 1e-6*max(1.0, max(abs(x) for x in Ss)):
+                print("FAIL: the shrinkage tensor trace is not the "
+                      "volumetric shrinkage")
+                fail = True
+
     if fail:
         sys.exit(1)
 

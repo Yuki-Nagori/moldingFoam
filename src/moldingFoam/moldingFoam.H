@@ -210,6 +210,11 @@ class moldingFoam
         //  enables it with `voidFraction true`
         autoPtr<volScalarField> voidField_;
 
+        //- Optional anisotropic shrinkage tensor (task 034): written when
+        //  the fibre orientation tensor and a non-zero orientation
+        //  shrinkage anisotropy are both active
+        autoPtr<volSymmTensorField> shrinkageTensor_;
+
         //- Melt equation of state used by the void-fraction indicator:
         //  rho(pv, T) is evaluated exactly with the Tait coefficients of
         //  the case's physicalProperties.melt (task 018a, stage 3)

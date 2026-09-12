@@ -1,0 +1,87 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Two-region CHT mesh for the conduction benchmark: a 20 x 2 mm melt
+    cavity (region cavity) with a 20 x 5 mm mould block above it (region
+    mould). The shared face at y = 2 mm becomes the conjugate interface
+    after splitMeshRegions; the front/back faces are empty (2D).
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+vertices
+(
+    (0    0     0)       // 0
+    (0.02 0     0)       // 1
+    (0.02 0.002 0)       // 2
+    (0    0.002 0)       // 3
+    (0    0     0.02)    // 4
+    (0.02 0     0.02)    // 5
+    (0.02 0.002 0.02)    // 6
+    (0    0.002 0.02)    // 7
+    (0    0.007 0)       // 8
+    (0.02 0.007 0)       // 9
+    (0    0.007 0.02)    // 10
+    (0.02 0.007 0.02)    // 11
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7)     (10 8  1) simpleGrading (1 1 1)
+    hex (3 2 9 8 7 6 11 10)   (10 10 1) simpleGrading (1 1 1)
+);
+
+defaultPatch
+{
+    type empty;
+}
+
+boundary
+(
+    cavityBottom
+    {
+        type wall;
+        faces ((0 1 5 4));
+    }
+
+    cavitySides
+    {
+        type wall;
+        faces
+        (
+            (0 3 7 4)
+            (1 2 6 5)
+        );
+    }
+
+    moldSides
+    {
+        type wall;
+        faces
+        (
+            (3 8 10 7)
+            (2 9 11 6)
+        );
+    }
+
+    moldTop
+    {
+        type wall;
+        faces ((8 9 11 10));
+    }
+);
+
+// ************************************************************************* //

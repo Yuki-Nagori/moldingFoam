@@ -300,6 +300,32 @@ target("couetteSlip")
     end)
 target_end()
 
+target("coolantMold")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the mould cooling-channel validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-moldcht.sh")
+            .. " validation/coolantMold")
+        if ok ~= 0 then
+            os.raise("coolantMold validation failed; see "
+                .. "validation/coolantMold/log.foamRun")
+        end
+    end)
+target_end()
+
 target("moldCHT")
     set_kind("phony")
     add_deps("moldingFoam")

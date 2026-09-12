@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Cavity temperature: initially 480 K; the top face is the conjugate
+    interface to the mould. All other walls are adiabatic.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0/cavity";
+    object      T;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 1 0 0 0];
+
+internalField   uniform 480;
+
+boundaryField
+{
+    cavityBottom
+    {
+        type            zeroGradient;
+    }
+
+    cavitySides
+    {
+        type            zeroGradient;
+    }
+
+    cavity_to_mold
+    {
+        type            coupledTemperature;
+        Tnbr            T;
+        value           $internalField;
+    }
+
+    defaultFaces
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

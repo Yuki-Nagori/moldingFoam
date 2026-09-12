@@ -1,6 +1,6 @@
 # 036 — 三维冷却水流动（019 遗留）
 
-- 状态：in-progress（2026-09-13：路线 C 已基本实现——`moldingMoldTemperature.coolant` 1D 沿程推进 + 用例；剩定量 Nu 基准/多区域能量守恒/梯度验收）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
+- 状态：in-progress（2026-09-13：**路线 C 完整落地并验证**——`moldingChannelCooling` 多区域通道壁 BC + `validation/coolantMold` 验收 + 模型测试（Nu/推进/ε-NTU）；剩路线 A 三维水区）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
 - 优先级：P3
 - 依赖：019（调研：v14 `incompressibleFluid` 等温，无温度场）、008
 - 预估规模：3–6 周
@@ -38,6 +38,24 @@
 3. 沿程模具温度梯度：**受限于集总模具表述**（单个模具热质量；只有
    冷却水沿程温度分组）——真正的三维模具梯度需路线 A（三维水区），
    作为长期项保留并已在限制中记录。
+
+## 2c. 路线 C 完整落地（2026-09-13）
+
+- **新 BC `moldingChannelCooling`**：固体区域通道壁的隐式 Robin 边界，
+  环境温度 = 1D 通道沿程推进的局部水温（`moldingCoolantChannel::group`
+  全局分组 + `march`；逐面按轴向坐标映射到截面）；并行下分组全局一致、
+  截面壁温经 `returnReduce` 汇总；
+- **验证用例 `validation/coolantMold`**（多区域 CHT：模具顶面 =
+  通道 BC）：水 350 K 入口 → 出口 **350.274 K**、吸热 **+11.45 W**
+  （正确加热）；`xmake run coolantMold` 全验收通过；
+- **修复**：`patchInternalField()` 返回 `tmp`，初版绑定 const 引用导致
+  悬垂（读到垃圾/500）——改为拷贝（这是本次定位到的真实缺陷）；
+- 模型层验证（既有）：Nu 幂律手算、`h=Nu·k/D`、截面分组、精确离散
+  推进、**ε-NTU 收敛到解析指数**；
+- 回归：模型测试 + 18 求解器用例 + moldCHT 5/5 全绿；xmake/夜间 CI
+  已接入 `coolantMold`；
+- **待做（路线 A）**：自研非等温不可压水区求解器（三维水流动/热点），
+  路线 C 的限制（无三维回流、模具梯度仅由区域求解提供）已在文档记录。
 
 ## 2a. 路线 C 设计（2026-09-12，第一实现目标）
 

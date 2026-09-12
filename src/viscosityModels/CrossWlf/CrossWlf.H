@@ -181,6 +181,15 @@ public:
 
         //- Crystallinity correction exponent [-]
         scalar chiExponent;
+
+        //- Apply the Lipscomb orientation correction (optional, task 034)
+        bool useOrientation;
+
+        //- Axial/transverse viscosity ratio [-]
+        scalar lipscombRatio;
+
+        //- Orientation-tensor field name
+        word orientationField;
     };
 
 

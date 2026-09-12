@@ -25,6 +25,8 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "CrossWlf.H"
+#include "fvcGrad.H"
+#include "symmTensorField.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -145,6 +147,13 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::readCoeffs
     c.etaMax = coeffsDict.lookup<scalar>("etaMax");
     c.gammaDotMin =
         coeffsDict.lookupOrDefault<scalar>("gammaDotMin", 1e-6);
+
+    // Optional Lipscomb orientation correction (task 034): the viscosity
+    // gains (ratio - 1) * 3/2 * (a:D)^2/(D:D) up to the axial ratio
+    c.lipscombRatio = coeffsDict.lookupOrDefault<scalar>("lipscombRatio", 1);
+    c.orientationField =
+        coeffsDict.lookupOrDefault<word>("orientationField", "a");
+    c.useOrientation = c.lipscombRatio > 1;
 
     // Optional crystallinity correction: eta *= (1 - chi/chiInf)^(-a)
     c.useCrystallinity = coeffsDict.found("crystallinity");
@@ -294,6 +303,50 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
         forAll(nuc, i)
         {
             nuc[i] = etaValue(coeffs_, pc[i], Tc[i], gammadotc[i])/rhoc[i];
+        }
+
+        // Optional Lipscomb orientation correction (task 034): the
+        // apparent viscosity follows the alignment of the strain rate
+        // with the fibre orientation (quadratic closure: (A:D):D = (a:D)^2)
+        if
+        (
+            coeffs_.useOrientation
+         && mesh.foundObject<volSymmTensorField>(coeffs_.orientationField)
+        )
+        {
+            const symmTensorField& ac =
+                mesh.lookupObject<volSymmTensorField>
+                (
+                    coeffs_.orientationField
+                ).primitiveField();
+
+            const volSymmTensorField D(symm(fvc::grad(U_)));
+            const symmTensorField& Dc = D.primitiveField();
+
+            forAll(nuc, i)
+            {
+                const scalar aD = ac[i] && Dc[i];
+                const scalar DD = Dc[i] && Dc[i];
+
+                if (DD > small)
+                {
+                    const scalar f
+                    (
+                        min
+                        (
+                            max
+                            (
+                                1 + (coeffs_.lipscombRatio - 1)
+                                   *1.5*aD*aD/DD,
+                                scalar(1)
+                            ),
+                            coeffs_.lipscombRatio
+                        )
+                    );
+
+                    nuc[i] *= f;
+                }
+            }
         }
 
         // Optional crystallinity correction: the viscosity rises sharply

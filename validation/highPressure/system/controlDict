@@ -62,7 +62,12 @@ maxCo           0.5;
 
 maxAlphaCo      0.03;
 
-maxDeltaT       1;
+// The packing-window melt mass conservation error is a temporal
+// truncation of the compressible coupling (measured order dt^1.6): with
+// an unbounded step the near-static packing runs at dt ~6.5e-4 and the
+// window error reaches ~4.5e-2. Capping the step at 1e-4 restores it to
+// ~2.6e-4 (task 018/031) at a comparable runtime
+maxDeltaT       1e-4;
 
 functions
 {

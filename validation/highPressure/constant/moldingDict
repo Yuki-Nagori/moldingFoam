@@ -94,14 +94,12 @@ trapAirInterval 200;
 // Viscous-dissipation (shear heating) source in the energy equation
 viscousDissipation true;
 
-// Conservative global mass fixer (task 018): the discrete melt mass
-// budget of the compressible packing ramp is closed by scaling the whole
-// phase density with the running residual (shape-preserving, no local
-// pressure feedback). Together with the Euler-consistent flux integral
-// in scripts/verify-highpressure.py the packing-window conservation
-// error drops from ~4.5e-2 to ~1.1e-5, and the clean packing ramp no
-// longer diverges at ~39 MPa
-massFixGlobal true;
+// Optional conservative global mass fixer (task 018): scales the phase
+// density with the running discrete mass residual. It closes the window
+// to ~1.1e-5 at a comparable cost; the acceptance path used here relies
+// on the maxDeltaT temporal cap instead (see system/controlDict), which
+// removes the root cause. Uncomment to trade the dt cap for the fixer
+// massFixGlobal true;
 
 cooling
 {

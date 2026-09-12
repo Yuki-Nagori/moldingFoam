@@ -146,6 +146,23 @@ public:
             const scalar dt
         ) const;
 
+        //- Anisotropic thermal conductivity tensor (task 034):
+        //      lambda = kappa (I + anisotropy (a - I/3))
+        //  trace-preserving (the isotropic conductivity is recovered for
+        //  an isotropic orientation tensor); the aligned direction
+        //  conducts by kappa (1 + 2/3 anisotropy)
+        static symmTensor conductivityTensor
+        (
+            const symmTensor& a,
+            const scalar kappa,
+            const scalar anisotropy
+        )
+        {
+            const symmTensor I(1, 0, 0, 1, 0, 1);
+
+            return kappa*(I + anisotropy*(a - I/3));
+        }
+
         //- Lipscomb-type anisotropic viscosity factor (task 034): the
         //  apparent viscosity of a fibre suspension relative to its
         //  transverse value, driven by the alignment of the strain rate

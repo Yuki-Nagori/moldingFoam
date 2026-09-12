@@ -140,6 +140,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     fiberOrientation_(),
     a_(),
     aInitial_(),
+    condAniso_(0),
     shrinkage_(),
     shrinkageField_(),
     shrinkageInitial_(),
@@ -337,6 +338,12 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // the second-order orientation tensor a = <p p>
         if (moldingDict.found("fiberOrientation"))
         {
+            condAniso_ =
+                moldingDict.subDict("fiberOrientation").lookupOrDefault<scalar>
+                (
+                    "conductivityAnisotropy",
+                    0
+                );
             fiberOrientation_.reset
             (
                 new moldingFiberOrientation
@@ -1444,7 +1451,25 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
       + fvc::ddt(alpha2, rho2, e2) + fvc::div(alphaRhoPhi2, e2)
       - contErr2()*e2
 
-      - fvm::laplacian(thermophysicalTransport.kappaEff(), T)
+      - (
+            a_.valid() && condAniso_ != 0
+          ?
+            fvm::laplacian
+            (
+                volSymmTensorField
+                (
+                    "lambdaEff",
+                    thermophysicalTransport.kappaEff()
+                   *(
+                        symmTensor(1, 0, 0, 1, 0, 1)
+                      + condAniso_*(a_() - symmTensor(1, 0, 0, 1, 0, 1)/3)
+                    )
+                ),
+                T
+            )
+          :
+            fvm::laplacian(thermophysicalTransport.kappaEff(), T)
+        )
 
       + (
             mixture_.totalInternalEnergy()

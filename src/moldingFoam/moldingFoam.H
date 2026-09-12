@@ -182,6 +182,11 @@ class moldingFoam
         //- Initial crystallinity field for the cycle reset
         autoPtr<volScalarField> chiInitial_;
 
+        //- Optional anisotropic thermal conductivity factor (task 034):
+        //  lambda = kappaEff (I + anisotropy (a - I/3)) in the energy
+        //  equation, active with the fibre orientation field
+        scalar condAniso_;
+
         //- Optional fibre orientation: Folgar-Tucker model and second
         //  order orientation tensor field, active when
         //  constant/moldingDict contains a fiberOrientation

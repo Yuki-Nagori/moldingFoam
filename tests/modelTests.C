@@ -1907,6 +1907,28 @@ void warpageTests()
             << ", cross shear = " << fShear << ", isotropic = " << fIso
             << endl;
 
+        // Anisotropic thermal conductivity tensor (task 034)
+        const symmTensor lambdaAligned =
+            moldingFiberOrientation::conductivityTensor(aAligned, 1.0, 0.5);
+
+        const symmTensor lambdaIso =
+            moldingFiberOrientation::conductivityTensor(aIso, 1.0, 0.5);
+
+        Info<< "    conductivity (aligned, anis 0.5) diag = ("
+            << lambdaAligned.xx() << ", " << lambdaAligned.yy() << ", "
+            << lambdaAligned.zz() << ")" << endl;
+
+        checkBool
+        (
+            "fiberOrientation: the conductivity tensor follows the "
+            "orientation and preserves its trace",
+            relDiff(lambdaAligned.xx(), 1.0 + 0.5*2.0/3) < 1e-12
+         && relDiff(lambdaAligned.yy(), 1.0 - 0.5/3) < 1e-12
+         && relDiff(tr(lambdaAligned), 3.0) < 1e-12
+         && relDiff(lambdaIso.xx(), 1.0) < 1e-12
+         && relDiff(lambdaIso.yy(), 1.0) < 1e-12
+        );
+
         checkBool
         (
             "fiberOrientation: the Lipscomb factor is the axial ratio for "

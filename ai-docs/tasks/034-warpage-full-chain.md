@@ -74,8 +74,21 @@
 - 模型测试：全取向 + 轴向拉伸 → factor = ratio（5.0）；横剪 → 1；
   各向同性取向 → 1（基值）；全部 rtol 1e-12；
 - 极限含义：纤维方向拉伸黏度最大（ratio 倍）、跨纤维剪切最小（基值）；
-- 待做：该因子接入动量输运（取向相关表观黏度模型）、哑铃各向异性
-  收缩对拍、各向异性热导率。
+## 3g. 阶段 3d（2026-09-13，已完成：各向异性热导率）
+
+- `moldingFiberOrientation::conductivityTensor(a, kappa, anisotropy)`：
+  `lambda = kappa(I + anisotropy(a−I/3))`，**迹守恒**（各向同性取向恢复
+  标量导热）；模型测试：全取向 diag(1.333, 0.833, 0.833)、tr=3、各向
+  同性 → 1（rtol 1e-12）；
+- 求解器：能量方程导热项在 `a` 场与 `conductivityAnisotropy != 0` 时
+  改用张量 `fvm::laplacian(lambdaEff, T)`（`fiberOrientation` 子字典
+  新键）；`tests/cases/fiberOrientation` 启用 0.5（等温 → 数值无差但
+  覆盖代码路径；18 用例回归全绿）；
+- 待做：带温度梯度 + 取向的定量验证（如冷却通道内纤维取向对导热的
+  影响对拍）、该因子与结构映射的联动。
+
+- 待做：Lipscomb 因子接入动量输运（取向相关表观黏度模型）、哑铃
+  各向异性收缩对拍。
 
 ## 3. 技术方案
 

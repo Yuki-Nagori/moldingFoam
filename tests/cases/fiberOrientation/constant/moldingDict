@@ -53,6 +53,10 @@ fiberOrientation
     aspectRatio            20;      // [-]
     interactionCoefficient 0.01;    // [-]
     closure                quadratic;
+
+    // Anisotropic thermal conductivity (task 034): lambda follows the
+    // fibre orientation, trace-preserving
+    conductivityAnisotropy 0.5;
 }
 
 // Fibre-coupled anisotropic shrinkage (task 034): the shrinkage tensor

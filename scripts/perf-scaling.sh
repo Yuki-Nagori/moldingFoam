@@ -67,17 +67,34 @@ DICT
         decomposePar -force > log.decomposePar 2>&1
         start=$(date +%s.%N)
         mpirun --allow-run-as-root -np "$np" foamRun -parallel \
-            > log.foamRun 2>&1
-        end=$(date +%s.%N)
+            > log.foamRun 2>&1 &
+        runPid=$!
     else
         start=$(date +%s.%N)
-        foamRun > log.foamRun 2>&1
-        end=$(date +%s.%N)
+        foamRun > log.foamRun 2>&1 &
+        runPid=$!
     fi
+
+    # Sample the total resident set of the running solver processes so
+    # the report carries the memory budget alongside the timings
+    peak=0
+    while kill -0 "$runPid" 2>/dev/null; do
+        rss=$(ps -eo rss=,comm= | awk '$2=="foamRun" {s+=$1} END {print s+0}')
+        if [ "$rss" -gt "$peak" ]; then
+            peak=$rss
+        fi
+        sleep 1
+    done
+    wait "$runPid"
+    end=$(date +%s.%N)
 
     wall=$(echo "$end $start" | awk '{printf "%.1f", $1 - $2}')
     execTime=$(grep "ExecutionTime" log.foamRun | tail -1 | \
         sed -n 's/.*ExecutionTime = \([0-9.eE+-]*\) s.*/\1/p')
+    steps=$(grep -c "^Time = " log.foamRun || true)
+    peakMB=$(echo "$peak" | awk '{printf "%.0f", $1/1024}')
+    perRankMB=$(echo "$peak $np" | awk '{printf "%.0f", $1/1024/$2}')
+    perStep=$(echo "$wall $steps" | awk '{if ($2>0) printf "%.4f", $1/$2; else print "n/a"}')
 
     if [ -z "$base" ]; then
         base="$wall"
@@ -85,5 +102,7 @@ DICT
 
     speedup=$(echo "$base $wall" | awk '{printf "%.2f", $1/$2}')
 
-    echo "np=$np wall=${wall}s executionTime=${execTime}s speedup=${speedup}"
+    echo "np=$np wall=${wall}s executionTime=${execTime}s steps=${steps}" \
+         "perStep=${perStep}s peakRSS=${peakMB}MB (${perRankMB}MB/rank)" \
+         "speedup=${speedup}"
 done

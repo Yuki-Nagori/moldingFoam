@@ -142,3 +142,20 @@
 | `src/moldingFoam/moldingFiberOrientation.*` | Lipscomb/热导 |
 | `scripts/free_strain.py` | 各向异性/张量映射 |
 | `validation/warpageDumbbell/`（新） | 基准 |
+
+## 7. 自由收缩条尝试谱系（2026-09-13）
+
+均匀自由收缩条（30×1、ε=1% 均匀本征应变）作为第三个基准，三次尝试
+均因结构模块的约束/刚体模态问题受阻：
+
+| # | `fixedEnd` 约束 | 结果 |
+|---|----------------|------|
+| 1 | `symmetryPlane` | 段错误 |
+| 2 | `directionMixed` | 稳态超时 |
+| 3 | `slip`（法向零、切向自由） | **超时**（900 s 未收敛）：切向刚体平移模态完全无约束 → 系统奇异，GAMG 停滞 |
+
+**结论**：自由收缩条需要“滚轴 + 单点切向约束”的部分约束 BC（既去掉
+切向刚体模态、又不过约束自由收缩），属结构模块 BC 级增强，超出
+当前 `solidDisplacement` 能力；本项留档，基准改用已验证的
+`warpagePlate`/`warpageAniso`（2.7–4.2%，阈值 8%）。第 3 次尝试的
+case/验证器未入库（未通过）。

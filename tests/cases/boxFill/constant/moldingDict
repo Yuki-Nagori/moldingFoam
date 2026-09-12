@@ -1,0 +1,38 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object moldingDict;
+}
+injection
+{
+    meltTemperature  503.1500;
+}
+packing
+{
+    switchFraction   0.9600;
+    switchPressure  6.000000e7;
+    pressure
+    {
+        type            table;
+        values
+        (
+            (0.0000 6.000000e7)
+            (8.0000 4.000000e7)
+        );
+    }
+}
+// The melt must not escape through the vent (task 038): the vent
+// passes air and is sealed once the melt covers the patch
+ventSealAlpha   0.9;
+
+// Melt mass budget: the injected mass must be accounted (no escape)
+massBudget         true;
+massBudgetInterval 10;
+
+cooling
+{
+    ejectionTemperature  363.1500;
+    releasePressure  1e5;
+}

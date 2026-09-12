@@ -1,0 +1,29 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object momentumTransport;
+}
+simulationType  laminar;
+
+laminar
+{
+    model           generalisedNewtonian;
+
+    viscosityModel  CrossWlf;
+
+    CrossWlfCoeffs
+    {
+        n           0.320000;
+        tauStar     2.000000e4;
+        D1          1.100000e13;
+        D2          263.0000;
+        D3          0.000000e0;
+        A1          31.4000;
+        A2          51.6000;
+        etaMin      5;
+        etaMax      1e6;
+        gammaDotMin 1e-06;
+    }
+}

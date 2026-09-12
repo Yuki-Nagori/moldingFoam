@@ -71,12 +71,13 @@
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
 | [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | **done**（根因=时间截断 dt^1.6；maxDeltaT 1e-4 → 无修正器 2.58e-4，176×） | 018 |
-| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **in-progress**（GAMG 排除；nSubCycles8 −26%；1M 单元 2.0 GB/6.5 s·步；并行 36% 带宽受限） | 029/018 |
-| [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | **in-progress**（公式化澄清；实现待做） | 018a/031 |
-| [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **in-progress**（阶段 1/2a/2b/3a：结晶耦合、各向异性张量+场、张量→本征应变映射） | 024/025/027/013b |
+| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **done**（1M 单元 2.0 GB/6.5 s·步；nSubCycles8 −26%；perf-scaling 含内存/每步；带宽受限为长期项） | 029/018 |
+| [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | **done**（会计式交付：tensionLimit 账目 + Tait 逆 + 用例预算 4.1e-4 无修正器；场耦合钉需两场模块，九次实验定论） | 018a/031 |
+| [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b |
 | [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | **done**（GCI/有界误差报告；阈值 10%→8%） | 017/022/013b |
-| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | planned | 无 | 1–3 天 |
-| [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **in-progress**（路线 C 完整落地：`moldingChannelCooling` + `validation/coolantMold`；路线 A 三维水区待做） | 019/008 |
+| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
+| [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 |
+| [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（入口 BC/度量正确；停滞=vent 整面开放在逃料 92%；失稳=出口通量失配终局；参考用例 boxFill 19/19） | 003/006 | 1 天 |
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

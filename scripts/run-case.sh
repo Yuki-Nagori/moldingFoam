@@ -70,6 +70,11 @@ fi
 
 scriptDir=$(cd "$(dirname "$0")" && pwd)
 
+if grep -qi "Duplicate entry" log.foamRun; then
+    echo "error: duplicate runtime-selection entries (multiple module " \
+         "copies loaded)" >&2
+    exit 1
+fi
 # Heap-integrity guard: glibc reports at exit must fail the run even when
 # the solver printed its End marker
 if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \

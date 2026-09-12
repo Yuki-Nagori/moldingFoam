@@ -46,6 +46,15 @@ wmake（含 `-mcpu=native` 剥离 shim）构建。
   本 VM 结果：`zero-step exit = 0`、`fatal-path exit = 1`、PASS。
 - 建议接入：CI（快）或夜间（`bash scripts/smoke-exit.sh case-contract`）。
 
+## 3c. 根因确认（bundle 实测，2026-09-13）
+
+bundle 的 lib/ 下有两份独立构建（新 `libmoldingFoam.so` + 陈旧
+`libmoldingFoamSolver.so`，inode 不同），运行期 `libs` 与
+`solver::load` 两条路径各加载一份 → 18 条 Duplicate entry → 退出期
+堆破坏；陈旧份单独加载还会 SIGILL（M4 不支持的指令）。把 Solver 名
+改为符号链接后全链路 exit 0。仓库侧修复：bundle 目标清残留+符号链接+
+inode 断言；runner/冒烟加 Duplicate-entry 金丝雀。详见任务文档 037 §3a。
+
 ## 4. 给 Kairos/打包侧的排查假设（按优先级）
 
 1. **构建 ISA/工具链**：CD runner 的 arm64 `-mcpu=native` 已知会注入

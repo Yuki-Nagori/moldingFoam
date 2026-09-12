@@ -49,6 +49,11 @@ if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\\(\\): invalid" \
     echo "FAIL: heap corruption reported at exit" >&2
     fail=1
 fi
+if grep -qi "Duplicate entry" log.zero; then
+    echo "FAIL: duplicate runtime-selection entries (multiple copies of " \
+         "the module loaded)" >&2
+    fail=1
+fi
 
 # FATAL path: an unknown solver must exit non-zero without heap corruption
 sed -i "s/^solver .*/solver          noSuchSolver;/" system/controlDict

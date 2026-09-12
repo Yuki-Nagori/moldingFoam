@@ -48,8 +48,11 @@ do
 
     rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
     blockMesh > log.blockMesh 2>&1
+
+    caseFailed=0
+
     if ! foamRun > log.foamRun 2>&1; then
-        echo "FAIL: $name: foamRun exited with $? (see log.foamRun)"
+        echo "FAIL: $name: foamRun exited non-zero (see log.foamRun)"
         caseFailed=1
     fi
 
@@ -59,7 +62,12 @@ do
         caseFailed=1
     fi
 
-    caseFailed=0
+    if grep -qi "Duplicate entry" log.foamRun; then
+        echo "FAIL: $name: duplicate runtime-selection entries (multiple " \
+             "module copies loaded)"
+        caseFailed=1
+    fi
+
     while IFS= read -r pattern
     do
         case "$pattern" in

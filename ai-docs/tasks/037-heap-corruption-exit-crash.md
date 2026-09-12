@@ -39,7 +39,55 @@ libOpenFOAM.so(Foam::argList::~argList) -> dictionary::~dictionary -> free
 3. 重点排查构造路径：`new[]/delete` 配对、字典解析定长缓冲区写越界、
    注册场/边界条件越界写、EOS/黏度模型构造中的静态表。
 
-## 3a. 取证结果（2026-09-12）
+## 3a. bundle 根因确认与修复（2026-09-13，用户 A/B 实证）
+
+**根因（已在真实 v0.2.0 linuxArm64 bundle 上 A/B 验证）**：bundle 的
+`platforms/linuxArm64GccDPInt32Opt/lib/` 下有**两份独立构建的同一模块**：
+
+| 文件 | 大小 | 构建时间 | 来源 |
+|------|------|----------|------|
+| `libmoldingFoam.so` | 3,375,448 B | 09-12 14:01 | v0.2.0 新构建 |
+| `libmoldingFoamSolver.so` | 1,774,664 B | 09-10 00:46 | 上一轮陈旧产物 |
+
+两者 inode 不同、各自注册同一批选择表（`"moldingInletVelocity"` 分别
+出现 71/67 次）。运行期两条加载路径同时生效：case 的
+`libs ("libmoldingFoam.so")` 与 `foamRun` 的模块探测
+`Foam::solver::load("moldingFoam")` → `lib<Solver>Solver.so`。同一模块
+代码在进程内存在两份 → 18 条 `Duplicate entry … in runtime selection
+table` → 退出期 `~argList` 堆破坏（`malloc_consolidate`，exit 134/139）。
+
+A/B：删除 case 的 libs 行（只加载陈旧份）→ **exit 132 SIGILL**（陈旧份
+含 M4 不支持的指令）；把 `libmoldingFoamSolver.so` 改为指向
+`libmoldingFoam.so` 的符号链接（只加载一份）→ **exit 0**，完整链路
+（`decomposePar -force` → `mpirun -np 4 foamRun -parallel` →
+`reconstructPar`，Time=2s）全通。
+
+本地为何不复现：本地 `libmoldingFoamSolver.so` 本就是符号链接（glibc
+按 inode 去重只加载一份），且本地实验用 apt openfoam14 二进制而非
+bundle 内环境树——两者合起来刚好绕开。
+
+**仓库侧修复（本次落地）**：
+
+1. `xmake.lua` bundle 目标：staging 后先
+   `rm -f <tree>/platforms/<wmo>/lib/libmoldingFoam*.so` 清掉环境树里
+   可能残留的陈旧安装，再拷贝新构建的 `libmoldingFoam.so` 并建立
+   `libmoldingFoamSolver.so -> libmoldingFoam.so` 符号链接；随后用
+   `stat -c %i` 断言两者 **inode 相同**，否则打包失败；
+2. 发布产物检查（人工/CI）：同一平台 `lib/` 下不得有两份独立构建的
+   同一模块（核对 inode/时间戳）；清理 runner 上 09-10 那份陈旧
+   `libmoldingFoamSolver.so`，避免再次被打包；
+3. CI 金丝雀：`scripts/smoke-exit.sh` 及全部 runner 增加
+   `Duplicate entry` 检查（它比退出期堆破坏出现得早、易定位）——
+   `Duplicate entry` 即失败。
+
+**本地同类事件（混合版本对象）**：第九次实验覆写 `moldingFoam.H` 后
+`git checkout` 回退并增量重建，wmake 未全部重编（类布局/内联不一致）
+→ `modelTests` 在 `runnerNetworkTests` 返回时 `*** stack smashing
+detected ***`；`wclean libso src && wclean tests` 后全量重建即
+`All tests passed`。教训：**头文件回退后必须干净重建**再跑套件；
+CI 每次全新 checkout 构建，天然规避。
+
+## 3b. 取证结果（2026-09-12）
 
 - 详见 `ai-docs/report-037-heap-crash.md`：当前与上一版源码（0b22ce9）
   本地重建后，零步/并行/FATAL + `MALLOC_CHECK_=3` 全部干净

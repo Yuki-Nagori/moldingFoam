@@ -540,12 +540,33 @@ target("bundle")
 
         -- merge the moldingFoam products into the tree: FOAM_LIBBIN and
         -- the platform bin dir are on LD_LIBRARY_PATH/PATH via bashrc.
-        -- NOTE: libmoldingFoamSolver.so is deliberately NOT included:
-        -- the contract controlDict loads libmoldingFoam.so via libs(),
-        -- and shipping the solver-name alias as well makes foamRun load
-        -- the same library twice (Duplicate entry warnings)
-        os.cp(string.format("%s/libmoldingFoam.so", userlib),
-            string.format("%s/platforms/%s/lib/", treedir, wmo))
+        --
+        -- Defensive: the staged environment tree may carry stale
+        -- libmoldingFoam*.so artifacts from an earlier installation (the
+        -- release v0.2.0 did, and the stale solver-name copy both broke
+        -- the run - a different build with unsupported instructions - and
+        -- made foamRun load the module twice, corrupting the heap at
+        -- exit). Remove every stale copy, install the freshly built
+        -- libmoldingFoam.so and provide libmoldingFoamSolver.so as a
+        -- symlink (the module-discovery name of the local build), so
+        -- exactly one inode is ever loaded
+        local libdir = string.format("%s/platforms/%s/lib/", treedir, wmo)
+        os.exec(string.format(
+            "rm -f '%s'libmoldingFoam*.so", libdir))
+        os.cp(string.format("%s/libmoldingFoam.so", userlib), libdir)
+        os.exec(string.format(
+            "ln -sf libmoldingFoam.so '%s'libmoldingFoamSolver.so", libdir))
+
+        -- The two names must share one inode: packaging bug guard
+        local ino1 = in_of_env_out(envdir, string.format(
+            "stat -c %%i '%s'libmoldingFoam.so", libdir))
+        local ino2 = in_of_env_out(envdir, string.format(
+            "stat -c %%i '%s'libmoldingFoamSolver.so", libdir))
+        if ino1 ~= ino2 or ino1 == "" then
+            os.raise("bundle lib check failed: libmoldingFoam*.so are not "
+                .. "the same file (inodes " .. ino1 .. " vs " .. ino2 .. ")")
+        end
+
         os.cp(string.format("%s/modelTests", userbin),
             string.format("%s/platforms/%s/bin/", treedir, wmo))
 

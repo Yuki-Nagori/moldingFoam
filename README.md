@@ -762,6 +762,14 @@ moldingFoam: mass budget: m = 8.1012857e-05 kg, accumulated boundary
 flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
 ```
 
+### 空洞闭锁工具（`scripts/void_cooling.py`，任务 033）
+
+密封单元的 0D 空洞闭锁：Tait 等容压力解析反演 + 互补条件
+`p=max(p_iso,pv)`、`phi=max(0,1−rho/rho(pv,T))`。
+`--selftest` 校验互补性/PVT/反演；`--case <caseDir>` 与求解器的
+`voidFraction` 场逐单元对拍（018a 用例一致到 **1.6e-6**）。该闭锁是
+两场空洞求解器模块的本构核。
+
 ### 保守质量修正器（`massFix`/`massFixGlobal`，任务 018）
 
 `constant/moldingDict` 可选（缺省 false）：

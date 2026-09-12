@@ -130,6 +130,9 @@ class moldingFoam
         //- Mass-budget logging interval [time steps]
         label massBudgetInterval_;
 
+        //- Time at the previous postSolve call [s] (for the actual step dt)
+        scalar massBudgetPrevTime_;
+
         //- Enable the conservative phase-1 mass correction at the end of
         //  each time step (task 018 experiment): the local discrete mass
         //  residual is fed back into the phase density so the mass budget

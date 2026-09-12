@@ -122,6 +122,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetIn_(0),
     massBudgetInitial_(0),
     massBudgetInterval_(50),
+    massBudgetPrevTime_(0),
     massFix_(false),
     massFixRelaxation_(1),
     massFixGlobal_(false),
@@ -1682,7 +1683,13 @@ void Foam::solvers::moldingFoam::postSolve()
         reduce(fluxAlpha, sumOp<scalar>());
     }
 
-    const scalar dt = runTime.deltaTValue();
+    // The actual step length from the solved times: runTime.deltaTValue()
+    // can already hold the next (adaptive) step when postSolve runs
+    const scalar dt =
+        runTime.timeIndex() == 1
+      ? runTime.value() - runTime.startTime().value()
+      : runTime.value() - massBudgetPrevTime_;
+    massBudgetPrevTime_ = runTime.value();
 
     if (runTime.timeIndex() == 1 || !massBudgetInit_)
     {

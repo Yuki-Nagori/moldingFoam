@@ -1,6 +1,6 @@
 # 036 — 三维冷却水流动（019 遗留）
 
-- 状态：planned（路线 C 设计已定稿，见下；实现待排期）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
+- 状态：in-progress（2026-09-13：路线 C 已基本实现——`moldingMoldTemperature.coolant` 1D 沿程推进 + 用例；剩定量 Nu 基准/多区域能量守恒/梯度验收）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
 - 优先级：P3
 - 依赖：019（调研：v14 `incompressibleFluid` 等温，无温度场）、008
 - 预估规模：3–6 周
@@ -18,6 +18,20 @@
 2. 基准：圆管/矩形管对流换热（Gnielinski/Dittus-Boelter）偏差 ≤10%；
    模具温度场受水道影响定性正确；
 3. 缺省不影响现有 case；CI 双架构绿。
+
+## 2b. 现状核对（2026-09-13）
+
+**路线 C 的核心已存在**：`moldingMoldTemperature`（008/019 落地）的
+`coolant` 子字典已实现 1D 塞流通道：沿 `direction` 分组润湿面、
+冷却水从入口沿程推进并与模具换热（`moldingCoolantChannel`：
+`mdot Cp (Tc_out − Tc_in) = Σ htc A (Twall − Tc_in)`），且为能量方程
+的隐式部分；`tests/cases/coolantChannel` + `verify-coolant-channel.py`
+做了有界验收（模温从 300 K 升到 <355 K）。**缺口**：
+1. 定量基准：直通道等壁温的解析解 `Tc_out = Tw + (Tin−Tw)exp(−hA/ṁcp)`
+   （或 ε-NTU）逐段对拍；Nu 关联式（Dittus-Boelter/Gnielinski 输入）
+   与参考值 ≤10%；
+2. 多区域 CHT 能量守恒 <1%（冷却水吸热 = 模具放热）；
+3. 沿程模具温度梯度定性验收（与均匀冷却对比）。
 
 ## 2a. 路线 C 设计（2026-09-12，第一实现目标）
 

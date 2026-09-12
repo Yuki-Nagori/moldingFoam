@@ -90,6 +90,11 @@ jobs:
           set -o pipefail
           xmake run warpagePlate 2>&1 | tee warpagePlate.txt
 
+      - name: Free-shrinkage quarter bar validation
+        run: |
+          set -o pipefail
+          xmake run shrinkBar 2>&1 | tee shrinkBar.txt
+
       - name: Conjugate heat transfer validation
         run: |
           set -o pipefail
@@ -109,6 +114,7 @@ jobs:
           cp validation/stefan/log.foamRun stefan.txt dist/ 2>/dev/null || true
           cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
           cp validation/warpagePlate/log.foamRun warpagePlate.txt dist/ 2>/dev/null || true
+          cp validation/shrinkBar/log.foamRun shrinkBar.txt dist/ 2>/dev/null || true
           cp validation/coolantMold/log.foamRun coolantMold.txt dist/ 2>/dev/null || true
           cp validation/coolantWater/log.foamRun coolantWater.txt dist/ 2>/dev/null || true
           cp validation/warpageAniso/log.foamRun warpageAniso.txt dist/ 2>/dev/null || true

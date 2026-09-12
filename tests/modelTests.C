@@ -1435,6 +1435,35 @@ void shrinkageTests()
          && void1 > 1e-3
          && shrink.voidFraction(rhoSealed, 0.5*rhoSealed) < 1e-14
         );
+
+        // Melt-branch EOS inverse (task 033): pMeltIso(rho(p, T), T)
+        // recovers p across the packing-to-cavitation range, so the
+        // void/tension accounting can evaluate the isochoric tension
+        // pv - pMeltIso(rho, T) exactly
+        const scalar pPoints[3] = {4e7, 1e5, 0};
+        const scalar TPoints[3] = {480, 470, 450};
+
+        scalar invErr = 0;
+
+        for (label i = 0; i < 3; ++i)
+        {
+            const scalar rho = tait.rho(pPoints[i], TPoints[i]);
+            const scalar pBack = tait.pMeltIso(rho, TPoints[i]);
+            invErr = max
+            (
+                invErr,
+                mag(pBack - pPoints[i])/max(mag(pPoints[i]), scalar(1e5))
+            );
+        }
+
+        Info<< "    melt EOS inverse roundtrip: max rel. error = "
+            << invErr << endl;
+
+        checkBool
+        (
+            "shrinkage: melt-branch isochoric pressure inverts the EOS",
+            invErr < 1e-10
+        );
     }
 
     // Crystallinity coupling (task 034): the shrinkage gains

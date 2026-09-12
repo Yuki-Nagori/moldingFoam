@@ -126,6 +126,59 @@ def main():
         print("FAIL: the void fraction drifted; the sealed cooling is unstable")
         fail = True
 
+    # Discrete melt-mass budget (task 031/033 DoD): the sealed cooling
+    # must conserve mass to < 1e-3 without any mass fixer
+    with open(os.path.join(case_dir, "constant", "moldingDict"),
+              errors="replace") as f:
+        mdict = f.read()
+
+    if re.search(r"massFix\s+true|massFixGlobal\s+true", mdict):
+        print("FAIL: the case enables a mass fixer; the budget check "
+              "requires the un-fixed solver")
+        fail = True
+
+    budgets = [
+        (float(a), float(b), float(c))
+        for a, b, c in re.findall(
+            r"mass budget: m = ([-+0-9.eE]+) kg, accumulated boundary "
+            r"flux = ([-+0-9.eE]+) kg, residual = ([-+0-9.eE]+) kg",
+            log,
+        )
+    ]
+    if not budgets:
+        print("FAIL: no mass-budget samples in the log")
+        fail = True
+    else:
+        res = max(abs(b[2]) for b in budgets)
+        print("  sealed mass budget: {} samples, max |residual| = {:.3e} kg"
+              .format(len(budgets), res))
+        if res > 1e-3:
+            print("FAIL: the sealed melt mass is not conserved (< 1e-3)")
+            fail = True
+
+    vbudgets = [
+        (int(a), float(b), float(c), float(d))
+        for a, b, c, d in re.findall(
+            r"void budget: cells = (\d+), V_void = ([-+0-9.eE]+) m\^3, "
+            r"m_melt = ([-+0-9.eE]+) kg, tension = ([-+0-9.eE]+) Pa",
+            log,
+        )
+    ]
+    if not vbudgets:
+        print("FAIL: no void-budget samples in the log (tensionLimit)")
+        fail = True
+    else:
+        nv, vv, mm, tn = vbudgets[-1]
+        print("  void budget: cells = {}, V_void = {:.3e} m^3, "
+              "m_melt = {:.6e} kg, tension = {:.3e} Pa"
+              .format(nv, vv, mm, tn))
+        if vv <= 0 or mm <= 0:
+            print("FAIL: the void budget is empty while voids have formed")
+            fail = True
+        elif abs(mm - vbudgets[0][2]) > 1e-3*vbudgets[0][2]:
+            print("FAIL: the budgeted melt mass drifted by more than 1e-3")
+            fail = True
+
     times = time_dirs(case_dir)
     if not times:
         print("FAIL: no written time directories")

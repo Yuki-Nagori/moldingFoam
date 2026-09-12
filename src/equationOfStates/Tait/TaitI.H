@@ -87,6 +87,33 @@ inline Foam::scalar Foam::Tait<Specie>::vhatm(scalar p, scalar T) const
 
 
 template<class Specie>
+inline Foam::scalar Foam::Tait<Specie>::pMeltIso(scalar rho, scalar T) const
+{
+    // Invert vhatm(p, T) = v0m(p, T)*fm(p, T) = 1/rho for p. fm is
+    // explicit in p; v0m depends on p only through Tt(p) = b5 + b6 p,
+    // so the fixed-point iteration below contracts quickly (b6 is
+    // tiny) and is iterated to round-off
+    scalar p = 0;
+
+    for (label i = 0; i < 20; ++i)
+    {
+        const scalar pPrev = p;
+        const scalar v0 = v0m(p, T);
+
+        p = Bm(T)
+           *(exp((1 - 1/max(rho*v0, scalar(small)))/C_) - 1);
+
+        if (mag(p - pPrev) < 1e-14*max(mag(p), scalar(1)))
+        {
+            break;
+        }
+    }
+
+    return p;
+}
+
+
+template<class Specie>
 inline Foam::scalar Foam::Tait<Specie>::vhats(scalar p, scalar T) const
 {
     return v0s(p, T)*fs(p, T);

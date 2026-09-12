@@ -318,6 +318,12 @@ public:
         //- Return density [kg/m^3]
         inline scalar rho(scalar p, scalar T) const;
 
+        //- Isochoric pressure of the melt branch [Pa]: the inverse of
+        //  rho(p, T) on the melt branch. The zero-pressure volume shifts
+        //  with p through Tt(p), so the inverse is resolved by a few
+        //  fixed-point iterations (task 033: void/tension accounting)
+        inline scalar pMeltIso(scalar rho, scalar T) const;
+
         //- Return enthalpy contribution to the equation of state [J/kg]
         inline scalar h(scalar p, scalar T) const;
 

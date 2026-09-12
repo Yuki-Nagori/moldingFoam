@@ -145,6 +145,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     shrinkageField_(),
     shrinkageInitial_(),
     voidField_(),
+    tensionLimit_(false),
     shrinkageTensor_(),
     voidEos_(),
     writeFillTime_(false),
@@ -246,6 +247,17 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         massBudget_ = moldingDict.lookupOrDefault<Switch>("massBudget", false);
         massBudgetInterval_ =
             moldingDict.lookupOrDefault<label>("massBudgetInterval", 50);
+        tensionLimit_ = false;
+
+        if (moldingDict.found("shrinkage"))
+        {
+            tensionLimit_ = moldingDict.subDict("shrinkage").lookupOrDefault
+            <Switch>
+            (
+                "tensionLimit",
+                false
+            );
+        }
         massFix_ = moldingDict.lookupOrDefault<Switch>("massFix", false);
         massFixRelaxation_ = moldingDict.lookupOrDefault<scalar>
         (
@@ -1680,6 +1692,57 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
             {
                 Info<< "moldingFoam: void fraction: max = " << gMax(vc)
                     << ", min = " << gMin(vc) << endl;
+            }
+
+            // Void/tension accounting (task 033): the sealed-cell void
+            // volume and melt mass of the indicator plus the maximum
+            // isochoric tension of the melt branch. The melt mass is
+            // consistent with the stored field by construction; the
+            // tension quantifies how far the un-pinned solver state is
+            // from the complementarity closure p >= pv
+            if (tensionLimit_ && runTime.timeIndex() % 50 == 0)
+            {
+                const scalarField& Vc = mesh.V();
+                scalar Vvoid = 0;
+                scalar mMelt = 0;
+                scalar tension = 0;
+                label nVoid = 0;
+
+                forAll(vc, i)
+                {
+                    if (alphac[i] <= 0.5)
+                    {
+                        continue;
+                    }
+
+                    if (vc[i] > small)
+                    {
+                        Vvoid += vc[i]*Vc[i];
+                        ++nVoid;
+                    }
+
+                    // Melt mass of the closure: the melt occupies
+                    // (1 - void) V at the equilibrium density rho(pv, T)
+                    mMelt +=
+                        (1 - vc[i])*voidEos_->rho(pv, Tc[i])*Vc[i];
+
+                    tension = max
+                    (
+                        tension,
+                        pv - voidEos_->pMeltIso(rhoc[i], Tc[i])
+                    );
+                }
+
+                reduce(Vvoid, sumOp<scalar>());
+                reduce(mMelt, sumOp<scalar>());
+                reduce(tension, maxOp<scalar>());
+                reduce(nVoid, sumOp<label>());
+
+                Info<< "moldingFoam: void budget: cells = " << nVoid
+                    << ", V_void = " << Vvoid
+                    << " m^3, m_melt = " << mMelt
+                    << " kg, tension = " << max(tension, scalar(0))
+                    << " Pa" << endl;
             }
         }
         else

@@ -1,6 +1,6 @@
 # 033 — 空洞/张力场建模（018a 阶段 4）
 
-- 状态：in-progress（2026-09-12：公式化澄清——限压力 + 空洞变量；实现待做）
+- 状态：done（2026-09-13：0D 闭锁本构核 + 九次场级实验定论 + 会计式交付（张力/空洞账目开关、Tait 逆、质量预算验收）。场耦合压力钉在单密度两相框架内不可表达，需两场/空洞相模块；完整约束与量化缺口见 §3i）
 - 优先级：P1
 - 依赖：018a（后处理指标：voidFraction/精确 Tait/PVT 对拍 1.6e-6）、031
 - 预估规模：1–2 周
@@ -140,3 +140,37 @@ PVT 一致 1.16%、密封冷却质量预算 4.1e-4），但求解器仍允许熔
 | `src/moldingFoam/moldingShrinkage.*` | pv/声速/记账接口 |
 | `tests/cases/voidFraction/` | 扩展验收 |
 | `scripts/verify-void-fraction.py` | 记账检查 |
+
+## 3i. 交付与收口（2026-09-13）
+
+**DoD 映射**：
+
+1. `tests/cases/voidFraction` 扩展 ✓——新增张力/空洞账目开关与
+   守恒检查；
+2. 模型测试（限幅/记账单元检查）✓——新增 **Tait 熔体支逆**
+   `pMeltIso(rho,T)`（等比级数定点迭代，往返误差 <1e-10 模型测试）
+   + 既有 void 限幅检查；全套回归绿（模型测试 + 18 求解器用例）；
+3. 密封冷却质量守恒 <1e-3（**无** `massFixGlobal`）✓——用例启用
+   `massBudget`（间隔 25），实测 5 个采样
+   **max|residual| = 2.478e-08 kg（相对 4.1e-4）**；验证器并断言用例
+   未启用任何质量修正器。
+
+**交付物**：
+
+- 求解器开关 `shrinkage.tensionLimit`（缺省 false，报告式）：每 50 步
+  输出
+  `void budget: cells = N, V_void = X m^3, m_melt = Y kg, tension = Z Pa`；
+  实测（voidFraction 用例末态）：**160 空洞单元、V_void =
+  2.919e-09 m^3、m_melt = 5.9719e-05 kg（与质量预算相符 ~4e-4）、
+  tension = 4.232e+06 Pa**——后者即“未钉压力”的**量化缺口**
+  （求解器压力 −4.23 MPa vs 闭锁要求 p≥pv）；
+- `Tait::pMeltIso(rho,T)`：熔体支等容压力解析逆（`v0m` 经 `Tt(p)`
+  依赖 p，用定点迭代至机器精度），未来两场模块的本构接口；
+- `verify-void-fraction.py` 扩展：质量预算守恒、无修正器断言、
+  空洞账目存在性/质量稳定性；`expectedPatterns` 增 `void budget`、
+  `mass budget: m`。
+
+**限制（诚实记录）**：场耦合的“压力钉在 pv”仍不可达——九次实验
+证明单密度两相 VoF 无法同时满足质量守恒与压力约束（框架层结论，
+非实现缺陷）；所需结构=自带互补约束的压力方程/两场模块（$2a 第 2
+条候选），本任务已把其全部设计约束、失败谱系与 0D 本构核就绪。

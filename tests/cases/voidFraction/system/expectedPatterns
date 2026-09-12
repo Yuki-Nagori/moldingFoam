@@ -1,2 +1,4 @@
 moldingFoam: void fraction: max
+moldingFoam: void budget
+moldingFoam: mass budget: m
 End

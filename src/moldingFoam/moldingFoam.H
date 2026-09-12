@@ -215,6 +215,14 @@ class moldingFoam
         //  enables it with `voidFraction true`
         autoPtr<volScalarField> voidField_;
 
+        //- Void/tension accounting (task 033): when enabled in the
+        //  shrinkage sub-dictionary, log the sealed-cell void volume,
+        //  the melt mass and the maximum isochoric tension
+        //  pv - pMeltIso(rho, T) at the mass-budget interval. Reporting
+        //  only: the field-coupled pressure pinning is not expressible
+        //  in the single-density two-phase framework (see task 033)
+        bool tensionLimit_;
+
         //- Optional anisotropic shrinkage tensor (task 034): written when
         //  the fibre orientation tensor and a non-zero orientation
         //  shrinkage anisotropy are both active

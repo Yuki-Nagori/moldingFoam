@@ -37,9 +37,18 @@ shrinkage
     // Void-fraction indicator of the sealed melt (task 018a)
     voidFraction           true;
     voidPressure           0;       // [Pa] cavitation pressure
+
+    // Void/tension accounting (task 033): report the sealed void volume,
+    // melt mass and maximum isochoric tension (reporting only)
+    tensionLimit           true;
 }
 
 // Seal the gate while the melt is still hot so that the subsequent
 // cooling runs on a fixed mass; the isochoric pressure then falls and
 // voids form (the voidFraction indicator)
 gateFreezeTemperature 465;
+
+// Discrete melt-mass budget (task 031/033): the sealed cooling must
+// conserve mass to < 1e-3 without any mass fixer
+massBudget         true;
+massBudgetInterval 25;

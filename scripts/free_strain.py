@@ -43,6 +43,42 @@ def equivalent_temperature(eps, alphav):
     return eps/alphav
 
 
+def patch_types(txt):
+    """Return [(name, type)] for the boundaryField patches of a field."""
+    m = re.search(r"boundaryField\s*\{(.*)\}", txt, re.S)
+    if m is None:
+        return []
+
+    out = []
+    for blk in re.finditer(
+        r"(\w+)\s*\{([^}]*)\}", m.group(1), re.S
+    ):
+        tm = re.search(r"type\s+(\w+)", blk.group(2))
+        out.append((blk.group(1), tm.group(1) if tm else "zeroGradient"))
+
+    return out
+
+
+def read_symm_tensor_xx_yy(path):
+    with open(path, errors="replace") as f:
+        txt = f.read()
+
+    m = re.search(
+        r"internalField\s+nonuniform\s+List<symmTensor>\s*\n\s*\d+\s*\n\((.*?)\)\s*;",
+        txt,
+        re.S,
+    )
+    if m is None:
+        return None, txt
+
+    vals = []
+    for g in re.findall(r"\(([^()]*)\)", m.group(1)):
+        c = [float(x) for x in g.split()]
+        vals.append(0.5*(c[0] + c[3]))   # (eps_xx + eps_yy)/2
+
+    return vals, txt
+
+
 def read_scalar_field(path):
     with open(path, errors="replace") as f:
         txt = f.read()
@@ -64,13 +100,22 @@ def read_scalar_field(path):
 
 def patch_names(txt):
     """Return the boundary patch names of a field file."""
-    m = re.search(r"boundaryField\s*\{(.*)\}\s*$", txt, re.S)
+    m = re.search(r"boundaryField\s*\{(.*)\}", txt, re.S)
     if m is None:
         return []
     return re.findall(r"^\s*(\w+)\s*$", m.group(1), re.M)
 
 
-def write_field(path, name, values):
+def write_field(path, name, values, patches=None):
+    if patches is None:
+        patches = [("\".*\"", "zeroGradient")]
+
+    bc = "\n".join(
+        "    %s\n    {\n        type            %s;\n    }"
+        % (n, t if "empty" in t else "zeroGradient")
+        for n, t in patches
+    )
+
     with open(path, "w") as f:
         f.write("""/*--------------------------------*- C++ -*----------------------------------*\\
 | =========                 |                                                 |
@@ -94,12 +139,9 @@ internalField   nonuniform List<scalar>
 ;
 boundaryField
 {
-    ".*"
-    {
-        type            zeroGradient;
-    }
+%s
 }
-""" % (name, len(values), "\n".join("%.10g" % v for v in values)))
+""" % (name, len(values), "\n".join("%.10g" % v for v in values), bc))
 
 
 def selftest():
@@ -149,17 +191,32 @@ def main():
     rho_name = arg("--rho", "rho")
     out = arg("--output", "0/T_eq")
 
-    rho, txt = read_scalar_field(os.path.join(case, time, rho_name))
-    if rho is None:
-        print("FAIL: cannot read the %s field" % rho_name)
-        sys.exit(1)
+    tensor_name = arg("--tensor")
+    patches = None
+    if tensor_name:
+        # Anisotropic mode (task 034): the in-plane mean of the shrinkage
+        # tensor is the isotropic-equivalent eigenstrain for the frozen-T
+        # structural load
+        tn, txt = read_symm_tensor_xx_yy(
+            os.path.join(case, time, tensor_name))
+        eps = tn
+        if eps is None:
+            print("FAIL: cannot read the %s field" % tensor_name)
+            sys.exit(1)
+        patches = patch_types(txt)
+    else:
+        rho, txt = read_scalar_field(os.path.join(case, time, rho_name))
+        if rho is None:
+            print("FAIL: cannot read the %s field" % rho_name)
+            sys.exit(1)
 
-    eps = [free_linear_strain(r, rho_ref) for r in rho]
+        eps = [free_linear_strain(r, rho_ref) for r in rho]
+
     Teq = [equivalent_temperature(e, alphav) for e in eps]
 
-    write_field(os.path.join(case, out), "T_eq", Teq)
+    write_field(os.path.join(case, out), "T_eq", Teq, patches)
 
-    print("  cells              = %d" % len(rho))
+    print("  cells              = %d" % len(eps))
     print("  eps range          = %.6e .. %.6e" % (min(eps), max(eps)))
     print("  T_eq range [K]     = %.6e .. %.6e" % (min(Teq), max(Teq)))
     print("  wrote %s" % out)

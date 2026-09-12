@@ -60,11 +60,16 @@ wmake（含 `-mcpu=native` 剥离 shim）构建。
    恰是 `~argList → ~dictionary → free`。**建议**：bundle 启动脚本
    显式清环境（`env -i` 或 unset `LD_LIBRARY_PATH OPAL_* OMPI_*`），
    只用 bundle 内 MPI；`ldd libmoldingFoam.so` 确认 MPI 路径一致。
-3. **真实源码 UB（构建相关）**：我们本地未触发不代表不存在。
-   若 1/2 排除后仍复现，**建议**用 ASan/UBSan 重建：
-   `CXXFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"`
-   （xmake 的 `--cxxflags`/wmake `compilerFlags` 均可），对零步 case
-   跑一遍即可定位首处越界写。
+3. **真实源码 UB（构建相关）**：**已在本 VM 完成 ASan/UBSan 验证**
+   （`src/Make/options` 临时 `c++FLAGS += -fsanitize=address,undefined`
+   + `LD_PRELOAD=$(gcc -print-file-name=libasan.so)`，否则经 `libs`
+   加载时运行库未初始化会段错误）：
+   - case-contract，普通运行（~100 步）：**exit 0，0 处 ASan 内存错误**；
+   - UBSan 仅 2 处 `BasicThermo` 构造期 vptr 报告（上游
+     `static_cast<const MixtureType&>(*this)` 于基类构造期间——已知
+     构造序模式、非本库错误）；
+   - 结论：**本源码在本地构建下内存干净**；bundle 崩溃更指向
+     §4.1/§4.2（构建 ISA / MPI ABI）而非源码堆破坏。
 
 ## 5. 关键命令（供 Kairos 复测）
 

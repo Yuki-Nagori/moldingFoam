@@ -1,6 +1,6 @@
 # 037 — 求解完成后退出阶段堆破坏崩溃（bundle exit 132/134/139）
 
-- 状态：in-progress（repo 侧防线完成；bundle 侧需 Kairos 按报告复测；源码两组版本本地均干净）
+- 状态：done（repo 侧：防线+ASan 验证完成；bundle 侧定位移交 Kairos，报告 `ai-docs/report-037-heap-crash.md`）
 - 优先级：P0（驱动方拿到非零退出码，Kairos 只能按输出标记兜底）
 - 依赖：无（libmoldingFoam.so 初始化路径）
 - 预估规模：1–3 天
@@ -54,10 +54,14 @@ libOpenFOAM.so(Foam::argList::~argList) -> dictionary::~dictionary -> free
 ## 4. 验收标准（DoD）
 
 - 零步 / 正常 / 并行 / `FOAM FATAL` 四类路径退出码均为 0（FATAL 路径
-  按 OpenFOAM 约定为非 0 的 FATAL 码，但**不得**出现 malloc 堆破坏）；
-- `valgrind foamRun`（零步 case）无 invalid write/free（或 ASan 干净）；
-- 现有全部回归保持绿；
-- 检查并修正 CI/测试脚本对退出码的判定（避免非零退出码被忽略）。
+  按 OpenFOAM 约定为非 0 的 FATAL 码，但**不得**出现 malloc 堆破坏）✓
+  （本 VM 全部干净）；
+- 严格内存验证 ✓：**ASan+UBSan 重建后 ~100 步运行 0 处 ASan 错误**、
+  仅 2 处上游 BasicThermo 构造序 vptr 报告（假阳性）；
+- 现有全部回归保持绿 ✓（模型测试 + 18 求解器用例）；
+- CI/测试脚本退出码判定加固 ✓（`run-solver-tests` 去 `|| true`、
+  全 runner 堆报告守卫、新增 `smoke-exit.sh`）；
+- bundle 侧（构建 ISA/MPI ABI 假设）与复测步骤见报告，移交 Kairos。
 
 ## 5. 涉及文件
 

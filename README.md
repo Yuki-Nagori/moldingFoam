@@ -528,6 +528,14 @@ regionSolvers
 需在 fvSchemes 提供 `div(tau)`）；用例
 `tests/cases/viscoelasticFlow` 中剪切通道 max|tau_xy|=1.54e5 Pa。
 
+### 冷却通道壁边界（任务 036 路线 C）
+
+`moldingChannelCooling`：固体区域通道壁的隐式 Robin 边界，环境温度
+为 1D 塞流通道沿程推进的局部水温（全局截面分组 + 并行汇总）。示例：
+`validation/coolantMold`（模具顶面 = 通道；水 350→350.27 K、吸热
++11.45 W，`xmake run coolantMold`）。模型层由 `moldingCoolantChannel`
+的 Nu 手算/精确推进/ε-NTU 收敛测试覆盖。
+
 ### 收缩翘曲板基准（任务 013b）
 
 `scripts/free_strain.py` 把 PVT 自由收缩映射为等效热本征应变

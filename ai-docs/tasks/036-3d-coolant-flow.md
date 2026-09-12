@@ -27,11 +27,12 @@
 `mdot Cp (Tc_out − Tc_in) = Σ htc A (Twall − Tc_in)`），且为能量方程
 的隐式部分；`tests/cases/coolantChannel` + `verify-coolant-channel.py`
 做了有界验收（模温从 300 K 升到 <355 K）。**缺口核对（2026-09-13）**：
-1. 定量基准：**模型测试已覆盖**——`coolantChannelTests` 含
+1. 定量基准：**模型测试已完整覆盖**——`coolantChannelTests` 含
    Nu 幂律手算值（0.023·Re^0.8·Pr^0.4，Re=1e4/Pr=7 → 79.3902）、
-   `h=Nu·k/D`、截面分组、**精确离散推进与能量平衡**（手算组温）；
-   剩余可选：与连续解 `Tc_out = Tw+(Tin−Tw)exp(−hA/ṁcp)`（ε-NTU）
-   的离散误差收敛研究（已由精确离散平衡间接覆盖）；
+   `h=Nu·k/D`、截面分组、**精确离散推进与能量平衡**（手算组温）、
+   以及 **ε-NTU 收敛测试**（n=200、NTU=1 的离散出口温度对
+   `T = Ts−(Ts−Tin)exp(−hA/ṁcp)`，见 modelTests「Many small
+   cross-sections converge to the analytic plug-flow exponential」）；
 2. 多区域 CHT 能量守恒 <1%（冷却水吸热 = 模具放热）：待做（现有
    `coolantChannel` 用例为有界验收；需加能量账）；
 3. 沿程模具温度梯度：**受限于集总模具表述**（单个模具热质量；只有

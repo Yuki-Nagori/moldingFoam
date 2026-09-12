@@ -95,6 +95,10 @@ class moldingShrinkage
         //  (task 034): S_total = S(rho) + chiShrinkage*chi
         scalar chiShrinkage_;
 
+        //- Fibre-orientation shrinkage anisotropy [-]
+        //  (task 034): eps = S/3 (I - beta (a - I/3))
+        scalar orientationShrinkage_;
+
 
 public:
 
@@ -124,6 +128,29 @@ public:
         scalar chiShrinkage() const
         {
             return chiShrinkage_;
+        }
+
+        //- Free shrinkage tensor with the fibre orientation (task 034):
+        //  the aligned direction shrinks less, eps = S/3 (I - beta (a -
+        //  I/3)); the trace is the volumetric shrinkage S for any
+        //  orientation (trace-preserving)
+        symmTensor anisotropicShrinkage
+        (
+            const scalar rho,
+            const scalar chi,
+            const symmTensor& a
+        ) const
+        {
+            const scalar e = volumetricShrinkage(rho, chi)/3;
+            const symmTensor I(1, 0, 0, 1, 0, 1);
+
+            return e*(I - orientationShrinkage_*(a - I/3));
+        }
+
+        //- Fibre-orientation shrinkage anisotropy factor [-]
+        scalar orientationShrinkage() const
+        {
+            return orientationShrinkage_;
         }
 
         //- Constrained thermal stress indicator [Pa]

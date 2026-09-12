@@ -1468,6 +1468,53 @@ void shrinkageTests()
         );
     }
 
+    // Fibre-orientation shrinkage anisotropy (task 034): a fully aligned
+    // orientation tensor splits the free shrinkage while preserving the
+    // volume
+    {
+        IStringStream ois(
+            "referenceDensity 950;"
+            "referenceTemperature 293.15;"
+            "elasticModulus 2e9;"
+            "poissonRatio 0.3;"
+            "thermalExpansion 7e-5;"
+            "orientationShrinkage 0.5;"
+        );
+        dictionary odict(ois);
+        moldingShrinkage oshrink(odict);
+
+        const symmTensor a(1, 0, 0, 0, 0, 0);   // diag(1, 0, 0)
+        const scalar rho = 1000;                // S = 1 - 0.95 = 0.05
+        const symmTensor e = oshrink.anisotropicShrinkage(rho, 0, a);
+        const scalar e0 = 0.05/3;
+
+        Info<< "    anisotropic shrinkage diag = (" << e.xx() << ", "
+            << e.yy() << ", " << e.zz() << "), trace = " << tr(e)
+            << endl;
+
+        checkBool
+        (
+            "shrinkage: the fibre anisotropy splits the shrinkage and "
+            "preserves the volume",
+            relDiff(tr(e), 0.05) < 1e-12
+         && relDiff(e.xx(), e0*(1 - 0.5*2.0/3)) < 1e-12
+         && relDiff(e.yy(), e0*(1 + 0.5/3)) < 1e-12
+         && relDiff(e.zz(), e.yy()) < 1e-12
+         && mag(e.xy()) < 1e-16
+         && e.xx() < e.yy()
+        );
+
+        // Without the anisotropy factor the tensor is isotropic
+        const symmTensor eiso = shrink.anisotropicShrinkage(rho, 0, a);
+        checkBool
+        (
+            "shrinkage: zero orientationShrinkage leaves the isotropic "
+            "tensor",
+            relDiff(eiso.xx(), e0) < 1e-12
+         && relDiff(eiso.yy(), e0) < 1e-12
+        );
+    }
+
     // The cavitation pressure is optional and defaults to vacuum
     {
         IStringStream vis(

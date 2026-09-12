@@ -41,7 +41,8 @@ Foam::moldingShrinkage::moldingShrinkage(const dictionary& dict)
     nu_(dict.lookup<scalar>("poissonRatio")),
     alpha_(dict.lookup<scalar>("thermalExpansion")),
     pv_(dict.lookupOrDefault<scalar>("voidPressure", 0)),
-    chiShrinkage_(dict.lookupOrDefault<scalar>("crystallinityShrinkage", 0))
+    chiShrinkage_(dict.lookupOrDefault<scalar>("crystallinityShrinkage", 0)),
+    orientationShrinkage_(dict.lookupOrDefault<scalar>("orientationShrinkage", 0))
 {
     if (rhoRef_ <= 0)
     {

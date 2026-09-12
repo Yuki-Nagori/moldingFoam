@@ -75,6 +75,11 @@ jobs:
           set -o pipefail
           xmake run coolantMold 2>&1 | tee coolantMold.txt
 
+      - name: Anisotropic shrinkage warpage validation
+        run: |
+          set -o pipefail
+          xmake run warpageAniso 2>&1 | tee warpageAniso.txt
+
       - name: Shrinkage warpage plate validation
         run: |
           set -o pipefail
@@ -100,6 +105,7 @@ jobs:
           cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
           cp validation/warpagePlate/log.foamRun warpagePlate.txt dist/ 2>/dev/null || true
           cp validation/coolantMold/log.foamRun coolantMold.txt dist/ 2>/dev/null || true
+          cp validation/warpageAniso/log.foamRun warpageAniso.txt dist/ 2>/dev/null || true
           cp validation/moldCHT/log.foamRun moldcht.txt dist/ 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4

@@ -355,6 +355,33 @@ target("moldCHT")
     end)
 target_end()
 
+target("warpageAniso")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the anisotropic shrinkage warpage "
+            .. "validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-validation.sh")
+            .. " validation/warpageAniso")
+        if ok ~= 0 then
+            os.raise("warpageAniso validation failed; see "
+                .. "validation/warpageAniso/log.foamRun")
+        end
+    end)
+target_end()
+
 target("warpagePlate")
     set_kind("phony")
     add_deps("moldingFoam")

@@ -106,8 +106,12 @@
   - aniso=0 与 0.5 的 T 场差 **max|ΔT| = 0.0421 K**（顶行
     460.0045 vs 460.0011、472.67 vs 472.68）——交叉导热可观测 ✓；
   - 结合矩阵级（diag diff 19282），本项实现-验证闭环；
-- 待做：哑铃各向异性收缩对拍（需 `solidDisplacement` 的部分约束
-  BC——symmetryPlane 会段错误）。
+- **哑铃/自由收缩条尝试（2026-09-13，受阻）**：`solidDisplacement` 的
+  自由收缩约束存在 BC 层限制——`symmetryPlane` 段错误（core dump）、
+  `directionMixed` 滚轴（法向固定/切向自由）稳态求解超时；
+  自由收缩条的解析验证需结构模块支持部分约束（留档为上游/模块级
+  增强）。各向异性结构验证以 `warpagePlate`（4.2%）与
+  `warpageAniso`（2.7%）为准。
 
 ## 3. 技术方案
 

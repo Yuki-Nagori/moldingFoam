@@ -130,6 +130,7 @@ class moldingFoam
         //- Mass-budget logging interval [time steps]
         label massBudgetInterval_;
 
+
         //- Time at the previous postSolve call [s] (for the actual step dt)
         scalar massBudgetPrevTime_;
 

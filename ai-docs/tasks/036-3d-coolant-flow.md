@@ -1,6 +1,6 @@
 # 036 — 三维冷却水流动（019 遗留）
 
-- 状态：in-progress（2026-09-13：**路线 C 完整落地并验证**——`moldingChannelCooling` 多区域通道壁 BC + `validation/coolantMold` 验收 + 模型测试（Nu/推进/ε-NTU）；剩路线 A 三维水区）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
+- 状态：in-progress（2026-09-13：路线 C 完整落地验证；**路线 A 首里程碑达成**——`moldingCoolantFluid` 三维水模块 + `validation/coolantWater`（能量平衡 2.7e-6）；剩多区域 CHT 集成）（2026-09-12：路线 C 设计定稿——仿 `moldingRunnerTemperature` 模式新增模具侧冷却水 BC）
 - 优先级：P3
 - 依赖：019（调研：v14 `incompressibleFluid` 等温，无温度场）、008
 - 预估规模：3–6 周
@@ -38,6 +38,23 @@
 3. 沿程模具温度梯度：**受限于集总模具表述**（单个模具热质量；只有
    冷却水沿程温度分组）——真正的三维模具梯度需路线 A（三维水区），
    作为长期项保留并已在限制中记录。
+
+## 2d. 路线 A 首里程碑（2026-09-13）
+
+- **新求解器模块 `moldingCoolantFluid`**（派生 `incompressibleFluid`）：
+  常密度水流动 + `thermophysicalPredictor` 中的被动温度方程
+  `dT/dt + div(phi,T) − laplacian(kappa/(rho·Cp), T) = 0`；物性自
+  `constant/physicalProperties`（rho/Cp/kappa，与 nu 并存）；
+  注册入 `libmoldingFoam.so`，`solver moldingCoolantFluid` 可用；
+- **验证 `validation/coolantWater`**（`xmake run coolantWater` + 夜间
+  CI）：2D 通道（40×4，入口 300 K、热壁 350 K、U=0.01 m/s、层流
+  Re≈80）；模块内诊断（净边界热流、出口流量加权温度）：
+  - 净热 4.6703 W = ṁcp(T_bulk−300) → **能量平衡误差 2.7e-6** ✓；
+  - 出口 ṁ = 4.000001e-5 kg/s（解析 4e-5 ✓）、T_bulk = 327.92 K
+    （物理区间 300–350 ✓）；
+- 待做：**多区域 CHT 集成**（水区与模具固体区经 `coupledTemperature`
+  耦合、`regionSolvers { water moldingCoolantFluid; mold solid; ... }`），
+  以及圆管换热 Nu 关联式定量对拍。
 
 ## 2c. 路线 C 完整落地（2026-09-13）
 

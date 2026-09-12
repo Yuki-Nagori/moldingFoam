@@ -762,6 +762,15 @@ moldingFoam: mass budget: m = 8.1012857e-05 kg, accumulated boundary
 flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
 ```
 
+### 三维冷却水模块（`moldingCoolantFluid`，任务 036 路线 A）
+
+派生 `incompressibleFluid` 的非等温水位模块：常密度 PIMPLE 流动 +
+被动温度方程（`alphaEff = kappa/(rho Cp)`），物性在
+`constant/physicalProperties`（nu 之外加 rho/Cp/kappa）。
+`xmake run coolantWater`（`validation/coolantWater`）：层流通道
+（入口 300 K、壁 350 K）稳态能量平衡误差 **2.7e-6**、出口 ṁ 与解析
+一致。可与 `solid` 模具区经 `coupledTemperature` 组多区域 CHT。
+
 ### 空洞闭锁工具（`scripts/void_cooling.py`，任务 033）
 
 密封单元的 0D 空洞闭锁：Tait 等容压力解析反演 + 互补条件

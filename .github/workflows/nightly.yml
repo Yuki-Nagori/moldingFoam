@@ -70,6 +70,11 @@ jobs:
           set -o pipefail
           xmake run thermoelastic 2>&1 | tee thermoelastic.txt
 
+      - name: 3D coolant-flow validation
+        run: |
+          set -o pipefail
+          xmake run coolantWater 2>&1 | tee coolantWater.txt
+
       - name: Mould cooling channel validation
         run: |
           set -o pipefail
@@ -105,6 +110,7 @@ jobs:
           cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
           cp validation/warpagePlate/log.foamRun warpagePlate.txt dist/ 2>/dev/null || true
           cp validation/coolantMold/log.foamRun coolantMold.txt dist/ 2>/dev/null || true
+          cp validation/coolantWater/log.foamRun coolantWater.txt dist/ 2>/dev/null || true
           cp validation/warpageAniso/log.foamRun warpageAniso.txt dist/ 2>/dev/null || true
           cp validation/moldCHT/log.foamRun moldcht.txt dist/ 2>/dev/null || true
 

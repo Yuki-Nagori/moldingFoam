@@ -48,7 +48,16 @@ do
 
     rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
     blockMesh > log.blockMesh 2>&1
-    foamRun > log.foamRun 2>&1 || true
+    if ! foamRun > log.foamRun 2>&1; then
+        echo "FAIL: $name: foamRun exited with $? (see log.foamRun)"
+        caseFailed=1
+    fi
+
+    if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \
+            log.foamRun; then
+        echo "FAIL: $name: heap corruption reported at exit"
+        caseFailed=1
+    fi
 
     caseFailed=0
     while IFS= read -r pattern

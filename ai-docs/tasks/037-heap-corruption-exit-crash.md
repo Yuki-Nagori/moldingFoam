@@ -1,6 +1,6 @@
 # 037 — 求解完成后退出阶段堆破坏崩溃（bundle exit 132/134/139）
 
-- 状态：planned
+- 状态：in-progress（repo 侧防线完成；bundle 侧需 Kairos 按报告复测；源码两组版本本地均干净）
 - 优先级：P0（驱动方拿到非零退出码，Kairos 只能按输出标记兜底）
 - 依赖：无（libmoldingFoam.so 初始化路径）
 - 预估规模：1–3 天
@@ -38,6 +38,18 @@ libOpenFOAM.so(Foam::argList::~argList) -> dictionary::~dictionary -> free
    （xmake 的 cxxflags/cxflags），ASan 直接指出越界写入；
 3. 重点排查构造路径：`new[]/delete` 配对、字典解析定长缓冲区写越界、
    注册场/边界条件越界写、EOS/黏度模型构造中的静态表。
+
+## 3a. 取证结果（2026-09-12）
+
+- 详见 `ai-docs/report-037-heap-crash.md`：当前与上一版源码（0b22ce9）
+  本地重建后，零步/并行/FATAL + `MALLOC_CHECK_=3` 全部干净
+  （源层面不复现）；valgrind arm64 SIGILL 属工具限制；
+- **CI 掩盖缺陷已修复**：`run-solver-tests.sh` 的 `|| true` → 退出码
+  检查；全部 runner 加堆报告 grep 守卫；
+- 新增 `scripts/smoke-exit.sh`（零步 + FATAL 退出路径冒烟）并在本 VM
+  验证 PASS；建议接入 CI/夜间；
+- bundle 侧假设与复测步骤见报告 §4/§5（ISA/工具链、OpenMPI/ABI
+  混用、ASan 重建）。
 
 ## 4. 验收标准（DoD）
 

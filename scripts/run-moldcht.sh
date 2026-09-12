@@ -55,4 +55,12 @@ echo "=============================================================="
 echo "moldingFoam CHT validation, verifying ..."
 echo "=============================================================="
 
+# Heap-integrity guard: glibc reports at exit must fail the run even when
+# the solver printed its End marker
+if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \
+        log.foamRun; then
+    echo "error: heap corruption reported at exit" >&2
+    exit 1
+fi
+
 python3 "$scriptDir/$verifier" "$caseDir"

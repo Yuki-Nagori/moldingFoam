@@ -90,7 +90,7 @@
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
 | [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | in-progress（gateSealRamp、massFixGlobal、深层热阻已交付；仅 χ-η 耦合待做） | 018/008/024/031 |
-| [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | in-progress（潜热断言、cycleReset/gateFreeze 数值验证器已交付 → G8 清零；pressureRamp 三路径、powerLaw/Nu 待做） | 038/006/012/016 |
+| [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | in-progress（潜热、G8 清零、pressureRamp 三路径全交付；仅 powerLaw/Nu 待做） | 038/006/012/016 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | planned | CI/032/041 |
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、

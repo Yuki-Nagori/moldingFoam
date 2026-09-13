@@ -97,3 +97,17 @@
 | `tests/cases/boxFill*/`、`cycleReset/`、`gateFreeze/`、`runnerNetwork/`、`moldSteady/` | 变体与断言 |
 | `scripts/verify-cycle-reset*.py`、`verify-gate-freeze.py`（新）等 | 数值验证器 |
 | `ai-docs/tasks/{038,006,012,016,002,015,003}-*.md`、审计文档 | 记录与缺口关闭 |
+
+## 8. 交付记录（2026-09-13）
+
+- **负值 pressureRamp 路径 + runner 期望失败支持**：`scripts/run-solver-tests.sh`
+  新增 `system/expectFailure`（存在时反转期望：`foamRun` 必须非零退出且
+  日志包含指定错误文本），并新增永久用例 `tests/cases/fatalPressureRamp`
+  （`packing.pressureRamp -1` → 断言 `The packing pressure ramp must be
+  non-negative`）。实测 runner 输出
+  `PASS: fatalPressureRamp: expected failure reproduced`（All 1 solver
+  case(s) passed）；插入块内补 `caseFailed=0` 修 `set -u` 下的 unbound。
+  pressureRamp 三条路径（自适应/显式+回显/负值）至此全部交付；
+- 交付顺序回顾：潜热断言 → cycleReset/gateFreeze 数值验证器（G8 清零）
+  → pressureRamp 显式值+回显（并修复 `word(scalar)` 回显缺陷）
+  → 负值路径 + runner 支持。剩余：powerLaw / Nu 相关式两个分支。

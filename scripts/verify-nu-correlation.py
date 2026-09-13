@@ -45,6 +45,10 @@ def main():
         print("FAIL: the solver did not reach the end time")
         sys.exit(1)
 
+    if not os.path.isfile(os.path.join(case_dir, "0", "T")):
+        print("FAIL: missing 0/T")
+        sys.exit(1)
+
     with open(os.path.join(case_dir, "0", "T"), errors="replace") as f:
         bc = f.read()
     if "Nu" not in bc:

@@ -69,3 +69,22 @@ rm -rf src/Make/*Opt tests/Make/*Opt && xmake 2>&1 | grep -c warning:
 # 静态扫描
 # 见本文件 §2 的扫描口径：遗留标记 / Info 调试输出 / 单次出现函数与成员
 ```
+
+## 7. 新增用例的消融（2026-09-14，040/043/044 交付件）
+
+对本次会话新增的断言逐一做消融（同 §1 口径：消融后检查必须 FAIL）：
+
+| 用例/变体 | 消融项 | 消融后 | 说明 |
+|---|---|---|---|
+| `eigenstrainGraded` | 移除 `constant/fvModels`（模型关闭） | **FAIL** | 尖端位移回落到 0.59375（解析 0.750，−20.8%）→ 验证器拒绝；首轮实现还会因未守卫的字典读取抛 traceback，已补存在性守卫 |
+| `eigenstrainGraded` | 模型符号取反（历史缺陷） | FAIL（已修复） | 差分 −0.150000 vs 要求 +0.150000；修复后 0.833% |
+| `crystallinityViscosity` | 移除 `crystallinity` 子字典 | **FAIL** | 配置守卫拦截（η 由 5.62e10 回落到 6.36 Pa·s 量级） |
+| `nuCorrelation` | `C`×2（等效 htc 2×） | **FAIL** | 模温终值 306.877 → 312.027 K（+5.15 K，为 0.05 K 公差的 100×） |
+| `massFixGlobal` | `massFixGlobal false` | **FAIL** | 配置守卫拦截；残差由 −8.2e-15 回落到 −2.5e-08 kg |
+| `voidCavitation` | `closure false` | FAIL | 质量判据拦截（onset 损失 24.7%） |
+| `pressureRamp`（fatalPressureRamp） | 去掉负值条目 | 反向 | `expectFailure` 反转期望：移除后 foamRun 成功 → runner 判 FAIL |
+| `case-contract`（041） | 容差放宽 10× | 仍 PASS | 计时 −24% 且验收通过（非强度消融，属增益标定，见 041 §4b） |
+
+**结论**：本次新增的全部断言均通过消融（关掉被断言的对象后检查失败），
+未出现"永远通过"的假测试；其中 `eigenstrainGraded` 的消融还顺带暴露出
+验证器未守卫字典读取的健壮性问题，已修复。

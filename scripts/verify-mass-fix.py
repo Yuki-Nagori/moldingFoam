@@ -39,6 +39,10 @@ def main():
         print("FAIL: the solver did not reach the end time")
         sys.exit(1)
 
+    if not os.path.isfile(os.path.join(case_dir, "constant", "moldingDict")):
+        print("FAIL: missing constant/moldingDict")
+        sys.exit(1)
+
     with open(os.path.join(case_dir, "constant", "moldingDict"),
               errors="replace") as f:
         dict_txt = f.read()

@@ -76,21 +76,14 @@
 | [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [039](tasks/039-void-cavitation-closure.md) | 汽蚀空洞的闭锁约束与标定（033 跟进） | P1 | **done**（`moldingVoidClosure` 闭锁上限：void 与 Cv/Cc 无关、质量漂移 ≤0.13%、验证器含质量/闭锁判据；完全退化平衡仍待两场模块） | 033 | 1–2 天 |
+| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
+| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | **done**（量化入口 + 计时矩阵：能量容差 10× → 墙钟 −24%、验收通过；未改缺省，记为按需选项） | 032 | 周级 |
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
 | [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | **done**（四项全交付：gateSealRamp、massFixGlobal、深层热阻、χ-η 耦合） | 018/008/024/031 | 1–2 天 |
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 | 1–2 天 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 | 1–3 天（含 CI 时间成本评估） |
 
-### 进行中任务（无；001–045 全部完成，见上方索引）
-
-| 任务 | 主题 | 优先级 | 状态 | 依赖 |
-|------|------|--------|------|------|
-| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
-| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | **done**（量化入口 + 计时矩阵：能量容差 10× → 墙钟 −24%、验收通过；未改缺省，记为按需选项） | 032 | 周级 |
-
-覆盖审计缺口 G1–G11 已全部闭环并落为任务：G1/G7→042、G2/G4/G5/G6→043、
-G3/G8/G9→044（powerLaw 经核实为扫描假阳性、原已被执行）、G10→045；
-G11 由 041 收口（能量容差杠杆 −24%，未改缺省；见 `coverage-audit-2026-09-13.md` §5–§6）。
+（全部任务 001–045 均已完成，见上方索引。）
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

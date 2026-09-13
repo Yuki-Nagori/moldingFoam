@@ -62,6 +62,10 @@ def main():
         sys.exit(1)
 
     nCycles = None
+    if not os.path.isfile(os.path.join(case_dir, "constant", "moldingDict")):
+        print("FAIL: missing constant/moldingDict")
+        sys.exit(1)
+
     with open(os.path.join(case_dir, "constant", "moldingDict"),
               errors="replace") as f:
         md = f.read()

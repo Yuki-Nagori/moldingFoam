@@ -79,6 +79,10 @@ def main():
         sys.exit(1)
     t = times[-1]
 
+    if not os.path.isfile(os.path.join(case_dir, "constant", "momentumTransport")):
+        print("FAIL: missing constant/momentumTransport")
+        sys.exit(1)
+
     with open(os.path.join(case_dir, "constant", "momentumTransport"),
               errors="replace") as f:
         mt = f.read()

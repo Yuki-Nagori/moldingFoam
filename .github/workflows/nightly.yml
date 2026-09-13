@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Model tests
         run: xmake run test
@@ -31,6 +32,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Solver feature cases
         run: |
@@ -47,6 +49,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Flow and thermal validations
         run: |
@@ -73,6 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Structural validations
         run: |
@@ -97,6 +101,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Conjugate heat transfer validation
         run: |
@@ -122,6 +127,7 @@ jobs:
     env:
       MOLDINGFOAM_PARALLEL: "4"
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Contract case (4 subdomains)
         run: |

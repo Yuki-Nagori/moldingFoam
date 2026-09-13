@@ -113,3 +113,22 @@ rho** 后加到 RHS。结论：
 
 **剩余工作**（本任务未完成部分）：`moldingEigenstrain` 模型实现、非均匀
 ε* 梯度条基准用例与验证器（<1%）、`anisoShrinkBar` 回归、契约与文档同步。
+
+## 9. 实施要点补记（2026-09-14，v14 源码核实）
+
+- **`d2dt2` 不是特殊钩子**：基类实现（`fvModelTemplates.C:210`）为
+  `d2dt2(field) = sourceTerm(field, dimVolume/sqr(dimTime), field)`——即
+  它复用了**普通源装配**（`sourceTerm` → 各模型的 `addSup(field, eqn)`）。
+  因此方案 A 的实现等价于「实现标准单场 `addSup`」，无需模板特化，也无需
+  复刻上游矩阵钩子；
+- **量纲与 rho 补偿**：求解器侧装配为 `rho*fvModels().d2dt2(D)`，而目标
+  项是 `div(threeK*eps*)`（力密度量纲）。故在 `addSup` 中注入
+  `div(threeK*eps*)/rho`（逐格，ρ>0 守卫），使外层 `rho*` 后恰好还原；
+  与 039 的闭锁模型同型的"外部约定补偿"写法，需在注释中写明；
+- **模型输入**：需要固体侧 `threeK*alpha`（或 `K` 与 `alpha`）。下一步先
+  确认 `solidDisplacement` 求解器是否把 `threeKalpha`/`mu`/`lambda` 注册
+  到网格（可 lookup）或是否需从 `constant/` 物性字典自行构造；若不可
+  lookup，则退回用 `thermo.thermalExpansion()` + 物性字段在模型内构造
+  （`K = lambda + 2*mu/3`）；
+- **基准**：非均匀 ε* 梯度条（自由态 u ≈ ε*(x)·x 缓变解析解），验证器
+  <1%；回归 `anisoShrinkBar`（均匀路径机器精度 1e-16）不变。

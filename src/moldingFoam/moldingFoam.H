@@ -261,8 +261,13 @@ class moldingFoam
         //- Initial time step [s], restored at each cycle reset
         scalar deltaTInitial_;
 
-        //- Initial fields for the cycle reset
+        //- Initial fields for the cycle reset. Both phase fractions are
+        //  restored together: the upstream mixture divides by
+        //  rho = alpha1*rho1 + alpha2*rho2, so a stale alpha2 (e.g. ~0
+        //  in the melt-filled region) with a reset alpha1 leaves rho ~ 0
+        //  and trips the FP-exception trap (observed on x86 CI)
         autoPtr<volScalarField> alpha1Initial_;
+        autoPtr<volScalarField> alpha2Initial_;
         autoPtr<volVectorField> UInitial_;
         autoPtr<volScalarField> TInitial_;
         autoPtr<volScalarField> pInitial_;

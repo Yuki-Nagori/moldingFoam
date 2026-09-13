@@ -157,6 +157,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     cycle_(1),
     deltaTInitial_(runTime.deltaTValue()),
     alpha1Initial_(),
+    alpha2Initial_(),
     UInitial_(),
     TInitial_(),
     pInitial_(),
@@ -614,6 +615,22 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             alpha1
         )
     );
+    alpha2Initial_.reset
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "alpha2Initial",
+                Time::timeName(runTime.value()),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            alpha2
+        )
+    );
     UInitial_.reset
     (
         new volVectorField
@@ -1066,6 +1083,8 @@ void Foam::solvers::moldingFoam::resetCycle()
     {
         alpha1.boundaryFieldRef()[patchi] =
             alpha1Initial_->boundaryField()[patchi];
+        alpha2.boundaryFieldRef()[patchi] =
+            alpha2Initial_->boundaryField()[patchi];
         U_.boundaryFieldRef()[patchi] =
             UInitial_->boundaryField()[patchi];
         mixture_.T().boundaryFieldRef()[patchi] =
@@ -1077,6 +1096,7 @@ void Foam::solvers::moldingFoam::resetCycle()
     }
 
     alpha1.primitiveFieldRef() = alpha1Initial_->primitiveField();
+    alpha2.primitiveFieldRef() = alpha2Initial_->primitiveField();
     U_.primitiveFieldRef() = UInitial_->primitiveField();
     mixture_.T().primitiveFieldRef() = TInitial_->primitiveField();
 

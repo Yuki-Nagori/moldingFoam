@@ -91,6 +91,12 @@
   标定坑记录：初版脚本用 `"massBudget" in txt` 判键，被
   `massBudgetInterval` 抢先命中导致两变体都没开修正器（假阴性），
   改为显式正则写入；
-- **待做**：`wallResistance`/`deepMoldTemperature`（深层热阻）、CrossWlf
-  `crystallinity` 子字典（χ-η 耦合）两项，手法同上（扩展现有用例 +
-  定量或回显断言）。
+- **深层热阻（G4）已交付**：`tests/cases/moldSteady/0/T` 设
+  `wallResistance 1e-3`（非零分支首次被用例执行）；`verify-mold-steady.py`
+  增加**条件断言**（仅当用例设置非零 wallResistance 时启用）：稳态模温
+  必须 ≤ 347 K。标定：无电阻 349.166 K、`1e-3 m²K/W` → **345.778 K**
+  （−3.39 K），阈值两侧各 >1 K 余量。实测启用断言 PASS。**消融注意**：
+  把电阻改成 1e-9（等于无电阻）时，先被既有的「周期增量不得为负」判据
+  拦下（收敛末期增量在 0 附近抖动）——即该用例的收敛判据对微小扰动敏感，
+  属既有行为，已在本次记录（可另开项收紧）；
+- **待做**：CrossWlf `crystallinity` 子字典（χ-η 耦合）。

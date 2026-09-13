@@ -86,6 +86,23 @@ def main():
         print("FAIL: last increment is not small compared to the warm-up")
         sys.exit(1)
 
+
+    # Deep-mould wall resistance (task 043): when the case sets a non-zero
+    # wallResistance the steady mould temperature must drop accordingly
+    # (calibration: 349.166 K without, 345.778 K with 1e-3 m^2K/W; the
+    # threshold sits between with >1 K on each side)
+    wallTxt = open(os.path.join(case_dir, "0", "T"), errors="replace").read()
+    mw = re.search(r"wallResistance\s+([-+0-9.eE]+)\s*;", wallTxt)
+    if mw and float(mw.group(1)) > 0:
+        wallRes = float(mw.group(1))
+        limit = 347.0
+        print("  wallResistance = {:g} m^2K/W -> T_mould end must be "
+              "<= {:g} K".format(wallRes, limit))
+        if starts[-1] > limit:
+            print("FAIL: the wall resistance is set but the steady mould "
+                  "temperature is not reduced (branch not effective)")
+            sys.exit(1)
+
     print("PASS: mould temperature converges to a periodic steady state")
     sys.exit(0)
 

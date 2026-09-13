@@ -31,6 +31,11 @@ packing
     switchFraction   1;
     switchPressure   1e9;
 
+    // Smooth gate seal (task 018): the gate flux ramps to zero over this
+    // duration after the freeze time instead of sealing instantaneously
+    // (task 043: the non-zero ramp branch was never exercised before)
+    gateSealRamp     0.01;
+
     pressure
     {
         type            constant;

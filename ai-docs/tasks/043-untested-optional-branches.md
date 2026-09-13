@@ -1,6 +1,7 @@
 # 043 — 未触发可选分支的用例覆盖（gateSealRamp / 深层热阻 / χ-η 耦合 / 质量修正器）
 
-- 状态：planned
+- 状态：in-progress（2026-09-13：gateSealRamp 分支已交付并断言；
+  深层热阻 / χ-η 耦合 / 质量修正器三项待做，见 §8）
 - 优先级：P2
 - 依赖：018（gateSealRamp）、008（深层热阻）、024（χ-η）、031（修正器口径）
 - 预估规模：1–2 天
@@ -68,3 +69,18 @@
 | `tests/cases/gateFreeze/`、`moldSteady/`、`crystallization/` | 变体配置与断言 |
 | `scripts/verify-*.py` | 对应定量断言 |
 | `ai-docs/tasks/{008,018,024,031}-*.md`、审计文档 | 验收记录与缺口关闭 |
+
+## 8. 交付记录（2026-09-13）
+
+- **gateSealRamp 分支（G2）已交付**：`tests/cases/gateFreeze` 设
+  `packing.gateSealRamp 0.01`（此前全仓库无任何用例赋值 → 非零斜坡
+  分支从未执行），`expectedPatterns` 新增启动回显断言
+  `gateSealRamp        = 0.01`（回显来自 stage 构造，证明键被消费）。
+  标定：斜坡开/关两变体封冻时刻同为 1e-4 s、回显分别为 0.01 / 0；
+  `gateSealFactor` 已确认接线到 `moldingInletVelocity` 与
+  `moldingPrghPressure` 两个 BC（非死代码）。实测 patterns 全 PASS。
+  **未做**：斜坡效应对通量衰减曲线的定量断言（本次标定未取到稳定
+  信号，留作后续增强）；
+- **待做**：`wallResistance`/`deepMoldTemperature`（深层热阻）、CrossWlf
+  `crystallinity` 子字典（χ-η 耦合）、`massFix*` 开启路径三项，手法同
+  上（扩展现有用例 + 定量或回显断言）。

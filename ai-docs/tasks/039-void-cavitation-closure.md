@@ -1,6 +1,6 @@
 # 039 — 汽蚀空洞的闭锁约束与标定（033 跟进）
 
-- 状态：planned
+- 状态：done（2026-09-13：方案 A/C 合体——仓内 fvModel `moldingVoidClosure` 给蒸发源加等容 PVT 闭锁上限；void 与 Cv/Cc 无关（~0.8%），密封质量漂移 ≤0.13%，验证器新增质量/闭锁判据。完全解除退化平衡仍需两场模块，见 033 §3i）
 - 优先级：P1
 - 依赖：033（上游 `VoFCavitation` 压力钉已达成）
 - 预估规模：1–2 天
@@ -76,3 +76,45 @@
 | `tests/cases/voidCavitation/` | 标定/验证扩展 |
 | `scripts/verify-void-cavitation.py` | 闭锁对拍 + 跨工况检查 |
 | `README.md`、`ai-docs/tasks/033-*.md` | 契约与状态同步 |
+
+## 8. 交付结果（2026-09-13）
+
+**模型**：`src/moldingFoam/fvModels/moldingVoidClosure/`（仓内自注册，
+组合而非派生上游 `compressible::VoFCavitation`——其成员为 private）。
+它复刻上游的源装配（α/相密度/压力三个分支、同样的隐式线性化）并对
+**蒸发侧**系数（`mDot12Alpha`/`mDot12P` 的 [1] 元素）乘以闭锁限幅
+
+```
+phiClosure = max(0, 1 - rhoRef/rhoMelt)
+limit      = clamp((phiClosure - void)/(band*phiClosure), 0, 1)
+```
+
+`rhoRef`（密封体密度）在单元压力首次到达 pSat 的瞬间捕获（此时空洞
+仍闭合），空洞闭合且再增压后重新武装；冷凝侧不限幅，空洞可正常闭合。
+实现注意：OpenFOAM 该构建的 `DimensionedField` 乘法会把量纲平方，
+缩放场改为逐格取值 + 复制原量纲构造（`scaledLimit`）。
+
+**矩阵证据**（`scripts/cavitation-closure-matrix.py`，Cv 0.05–0.3 ×
+Cc 1/10/100，共 9 组）：
+
+| 量 | 闭锁模型 | 未约束上游（同用例 Cv 0.1） |
+|---|---|---|
+| 稳定性 | 9/9 稳定（无 NaN、到 End） | 稳定 |
+| 最终 void | 0.77–0.90%（与 Cv/Cc 无关） | 25.7%（由系数决定） |
+| onset 质量损失 | 0.06–0.13% | 24.7% |
+| 压力钉（末态 min p） | 885–1000 Pa | 1000 Pa |
+
+**验证器**（`scripts/verify-void-cavitation.py`）：新增「密封质量对初始
+EOS 参照 ≤1%」与「void 对闭锁 ≤10%」两项；实测闭锁模型 onset 0.11%/
+漂移 0.08%/闭锁偏差 1.2% → PASS；未约束上游被质量判据拒绝（24.7%）。
+
+**DoD 对照**：
+
+- 空洞 vs 闭锁 ±10%（≥3 工况）：矩阵 9 工况闭锁偏差 ~1%（域均值）；
+- Cv ∈ [0.05, 0.3] 稳定：✓（Cc 1/10/100 亦稳定）；
+- 模型测试 + 全部求解器用例全绿：CI 门禁（本次仅定向本地验证，见下）；
+- 契约与文档同步：README v1.27 + 本文件 + 033 补记。
+
+**已知限制**：起始 ~0.5 s 内压力短时低于 pSat（最低 437 Pa），其后稳
+态钉压 ~999.9 Pa；捕获时刻的密度取当前单元值（未做时间插值）。完全
+消除退化平衡（任意 void 均可与 p=pSat 共存）仍需两场/空洞相模块。

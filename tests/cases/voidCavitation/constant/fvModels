@@ -5,14 +5,20 @@ FoamFile
     class       dictionary;
     object      fvModels;
 }
-// Field-coupled void model (task 033): upstream compressible cavitation
-// with the air phase acting as the void/vapour carrier. The melt
-// cavitates when the sealed melt pressure drops below pSat, pinning the
-// pressure and opening the void volume; Cv/Cc are calibrated so the
-// void tracks the PVT contraction (see README v1.25).
-VoFCavitation
+// Field-coupled void model (task 033) as constrained by the isochoric
+// PVT closure (task 039): the melt cavitates when the sealed pressure
+// reaches pSat, and the evaporation is capped at the closure ceiling
+// phi = max(0, 1 - rhoRef/rhoMelt) evaluated from the density captured at
+// the pin, so the void volume tracks the PVT prediction and the sealed
+// melt mass is conserved. Without the cap the Cv/Cc rate sets the void and
+// the onset over-evaporation consumes melt mass (25 % at Cv 0.1).
+// The closure model forwards the cavitation keys to the upstream
+// SchnerrSauer model (compressibleCavitationModels); the coefficients
+// below are its calibration, the closure ceiling makes the case
+// insensitive to them within Cv in [0.05, 0.3].
+voidClosure
 {
-    type            compressible::VoFCavitation;
+    type            moldingVoidClosure;
     libs            ("libcompressibleVoFCavitation.so");
     liquid          melt;
     model           SchnerrSauer;
@@ -23,6 +29,7 @@ VoFCavitation
     }
     n               1e10;
     dNuc            1e-6;
-    Cv              0.02;
+    Cv              0.1;
     Cc              10;
+    band            0.2;
 }

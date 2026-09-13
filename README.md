@@ -1012,6 +1012,26 @@ boundaryField { ... }
 
 ### 契约变更日志
 
+**v1.27**（汽蚀闭锁约束：`moldingVoidClosure`，任务 039）：
+
+- `constant/fvModels` 新增仓内自注册 fvModel `moldingVoidClosure`：转发
+  `compressibleCavitationModels` 的模型与系数（`model`/`pSat`/`n`/`dNuc`/
+  `Cv`/`Cc`），并给**蒸发侧**源项加等容 PVT 闭锁上限
+  `phi = max(0, 1 - rhoRef/rhoMelt)`——`rhoRef` 在压力到达 pSat 的瞬间
+  捕获（密封体密度），`band` 为上限斜坡宽度（缺省 0.2）；冷凝侧不设限，
+  空洞仍可正常闭合；
+- 效果（`tests/cases/voidCavitation`，密封冷却）：空洞由闭锁决定、与
+  Cv/Cc 无关——Cv 0.05–0.3 × Cc 1/10/100 全部稳定，void 均 ~0.8%，
+  密封质量漂移 ≤0.13%，压力钉 999.9–1000 Pa（起始 0.25 s 内短时降至
+  437 Pa）。未加约束的上游模型在同一用例（Cv 0.1）下 onset 一次吞掉
+  24.7% 熔体质量，空洞被推高到 25.7%；
+- 验证器新增两项定量判据：密封质量（对初始 EOS 参照，阈值 1%）与
+  空洞-闭锁一致性（阈值 10%）——闭锁模型与小 Cv 基线通过，未约束模型
+  被质量判据拒绝；矩阵工具 `scripts/cavitation-closure-matrix.py`；
+- 说明：闭锁量仍按单密度框架内的一致口径给出（0D 闭锁核
+  `scripts/void_cooling.py`）；完全解除退化平衡需两场/空洞相模块
+  （033 §3i）。
+
 **v1.26**（保压 ramp 自适应默认与守卫回显，任务 038 跟进）：
 
 - `packing.pressureRamp` **缺省改为自适应**：不写该键时按「切换时刻的

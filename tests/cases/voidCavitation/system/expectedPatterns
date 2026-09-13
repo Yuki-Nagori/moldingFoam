@@ -1,2 +1,4 @@
-Selecting compressible::VoFCavitation
+# The closure-constrained cavitation model (task 039) must be selected and
+# cap the evaporation at the isochoric PVT closure
+Selecting moldingVoidClosure
 End

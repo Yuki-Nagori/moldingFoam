@@ -26,4 +26,5 @@ moldingFoam/boundaryConditions/moldingChannelCooling/moldingChannelCoolingFvPatc
 moldingFoam/moldingCoolantFluid/moldingCoolantFluid.C
 moldingFoam/boundaryConditions/moldingConvectiveCooling/moldingConvectiveCoolingFvPatchScalarField.C
 moldingFoam/fvModels/viscoelasticStress/viscoelasticStress.C
+moldingFoam/fvModels/moldingEigenstrain/moldingEigenstrain.C
 moldingFoam/fvModels/moldingVoidClosure/moldingVoidClosure.C

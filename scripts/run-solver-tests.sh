@@ -49,6 +49,34 @@ do
     rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
     blockMesh > log.blockMesh 2>&1
 
+    # A case may invert the expectation: system/expectFailure names a
+    # message that must appear when foamRun fails (used for the rejected
+    # dictionary entries, task 044)
+    if [ -f system/expectFailure ]
+    then
+        caseFailed=0
+        expected=$(sed -n '1p' system/expectFailure)
+        if foamRun > log.foamRun 2>&1
+        then
+            echo "FAIL: $name: foamRun succeeded but a fatal error was ""expected"
+            caseFailed=1
+        elif ! grep -qF -- "$expected" log.foamRun
+        then
+            echo "FAIL: $name: expected error text not found: $expected"
+            caseFailed=1
+        else
+            echo "PASS: $name: expected failure reproduced"
+        fi
+
+        if [ "$caseFailed" -ne 0 ]
+        then
+            nFailed=$((nFailed + 1))
+            tail -20 log.foamRun || true
+        fi
+        continue
+    fi
+
+
     caseFailed=0
 
     if ! foamRun > log.foamRun 2>&1; then

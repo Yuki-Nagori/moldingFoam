@@ -23,8 +23,13 @@
   太小，跨平台不稳）；改用熔体体积平均温度需给用例加 `volFieldValue`
   函数对象——首次尝试该 FO 被正确选中但未产生输出（`log true` 的
   操作名/输出格式待查，见 `postProcessing/` 或 FO 文档），故**未提交
-  未验证的断言**。下一步：调通该 FO 的日志格式后按「开/关分离度 ≥10×
-  阈值余量」标定；
+  未验证的断言**。**第二次尝试（同日）**：查明失败原因——v14 的
+  `volFieldValue` 被当作 `generatedCellZone` 解析（`system/functions!
+  meltTemperature` 报 `generatedCellZone::read`），补 `regionType all;`
+  后仍无输出，需按 v14 的 region 语法（`regionType`/`cellZone` 组合）再
+  核对。下一步：确认该 FO 在 v14 的最小可用配置 → 用 `postProcessing/
+  meltTemperature/*/volFieldValue.dat` 的时间序列标定（候选判据：末态
+  熔体平均温度或穿越阈值的时刻，开/关分离度须 ≥10× 阈值余量）；
 - **G9 次要分支键无用例配置**：runnerNetwork 的 `powerLaw`（K/n）、
   moldingMoldTemperature 的 `Nu` 相关式（C/m/n/Re/Pr/k/D）、fiber 的
   `lambda` 覆盖、`trapAirAlpha`、`hsRef`、moldingPrghPressure 的

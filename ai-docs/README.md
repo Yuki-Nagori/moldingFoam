@@ -67,28 +67,28 @@
 | [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | **done**（CrossWlf D3 压致增稠验证 517.92→533.91 Pa·s） | 001 | 3–5 天 |
 | [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **done**（22.3 万单元基准、强扩展 1.49×@4、弱扩展 59%、内存报告） | 009/018 | 2–4 周 |
 | [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | **done**（Function1 曲线 + switchTime + 用例） | 006/016 | 1–2 周 |
-
-### 下一阶段任务（031–036，2026-09-12 审查新增）
-
-| 任务 | 主题 | 优先级 | 状态 | 依赖 |
-|------|------|--------|------|------|
 | [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | **done**（根因=时间截断 dt^1.6；maxDeltaT 1e-4 → 无修正器 2.58e-4，176×） | 018 |
 | [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **done**（1M 单元 2.0 GB/6.5 s·步；nSubCycles8 −26%；perf-scaling 含内存/每步；带宽受限为长期项） | 029/018 |
 | [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | **done**（会计式交付：tensionLimit 账目 + Tait 逆 + 用例预算 4.1e-4 无修正器；场耦合钉需两场模块，九次实验定论） | 018a/031 |
 | [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b |
 | [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | **done**（GCI/有界误差报告；阈值 10%→8%） | 017/022/013b |
-| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 |
+| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [039](tasks/039-void-cavitation-closure.md) | 汽蚀空洞的闭锁约束与标定（033 跟进） | P1 | **done**（`moldingVoidClosure` 闭锁上限：void 与 Cv/Cc 无关、质量漂移 ≤0.13%、验证器含质量/闭锁判据；完全退化平衡仍待两场模块） | 033 | 1–2 天 |
-| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | in-progress（探针完成：`d2dt2` 钩子可用、需补偿 rho；模型/基准待做，方案 A 优先） | 034 | 1–2 天 |
-| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | planned（量化入口已交付：能量方程占契约 case 迭代量 94% → 候选杠杆待计时） | 032 | 周级 |
+| [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 |
 
-### 覆盖审计跟进（042–045，2026-09-13 测试覆盖审计新增）
+### 进行中任务（040/041；031–039 已完成并入上方索引）
 
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
-| [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 |
+| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | in-progress（探针完成：`d2dt2` 钩子可用、需补偿 rho；模型/基准待做，方案 A 优先） | 034 | 1–2 天 |
+| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | planned（量化入口已交付：能量方程占契约 case 迭代量 94% → 候选杠杆待计时） | 032 | 周级 |
+
+### 覆盖审计跟进（043–045，2026-09-13 测试覆盖审计新增；042 已完成并入上方索引）
+
+| 任务 | 主题 | 优先级 | 状态 | 依赖 |
+|------|------|--------|------|------|
 | [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | planned | 018/008/024/031 |
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | planned | 038/006/012/016 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | planned | CI/032/041 |

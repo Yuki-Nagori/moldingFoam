@@ -72,7 +72,7 @@ mixture
         mu          100;    // [Pa s] zero-shear reference; the shear
                             // dependent viscosity is provided by the
                             // CrossWlf momentum-transport model
-        Pr          4;
+        Pr          1.39e6;
     }
 }
 

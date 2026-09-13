@@ -206,7 +206,16 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
             pSwitch_ = gAverage(*this);
         }
 
-        const scalar rampTime(stage.pressureRamp());
+        // Explicit ramp, or the adaptive default: 5% of the time to the
+        // switch (large parts fill slowly and need a proportionally
+        // longer ramp), clamped to [0.05, 0.5] s
+        const scalar rampTime
+        (
+            stage.pressureRamp() >= 0
+          ? stage.pressureRamp()
+          : min(scalar(0.5), max(scalar(0.05), scalar(0.05)*tSwitch_))
+        );
+
         const scalar ramp
         (
             rampTime > 0

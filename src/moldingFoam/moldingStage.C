@@ -71,12 +71,9 @@ Foam::moldingStage::moldingStage
     gateSealTime_(-1),
     ventSealed_(false)
 {
-    if (pressureRamp_ < 0)
-    {
-        FatalIOErrorInFunction(mesh.time().controlDict())
-            << "The packing pressure ramp must be non-negative: "
-            << "pressureRamp = " << pressureRamp_ << exit(FatalIOError);
-    }
+    // A negative value is the internal "auto" sentinel (the ramp adapts
+    // to the switch time); an explicit negative entry is rejected when
+    // the dictionary is read
 
     if (gateSealRamp_ < 0)
     {
@@ -221,17 +218,19 @@ void Foam::moldingStage::read(const dictionary& moldingDict)
         packingDict.lookupOrDefault<scalar>("gateSealRamp", gateSealRamp_)
     );
 
-    const scalar newPressureRamp
-    (
-        packingDict.lookupOrDefault<scalar>("pressureRamp", pressureRamp_)
-    );
+    scalar newPressureRamp = pressureRamp_;
 
-    if (newPressureRamp < 0)
+    if (packingDict.found("pressureRamp"))
     {
-        FatalIOErrorInFunction(packingDict)
-            << "The packing pressure ramp must be non-negative: "
-            << "pressureRamp = " << newPressureRamp
-            << exit(FatalIOError);
+        newPressureRamp = packingDict.lookup<scalar>("pressureRamp");
+
+        if (newPressureRamp < 0)
+        {
+            FatalIOErrorInFunction(packingDict)
+                << "The packing pressure ramp must be non-negative: "
+                << "pressureRamp = " << newPressureRamp
+                << exit(FatalIOError);
+        }
     }
 
     // Only the parameters are updated: the stage state and switch time

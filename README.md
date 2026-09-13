@@ -1010,6 +1010,21 @@ boundaryField { ... }
 
 ### 契约变更日志
 
+**v1.26**（保压 ramp 自适应默认与守卫回显，任务 038 跟进）：
+
+- `packing.pressureRamp` **缺省改为自适应**：不写该键时按「切换时刻的
+  5%，夹 [0.05, 0.5] s」自动取值——大件填充慢、需要成比例更长的
+  升压时间（Kairos 对照：873 cm³ 件 k 修复后 0.05 s 死在切换后 2.5 ms、
+  0.2 s 稳定，自适应给出 0.196 s）；显式写值（含 0 = 立即阶跃）行为
+  不变；
+- 启动回显补充：`pressureRamp = auto (...)`、`gateFreezeTemperature`
+  标注 `(gate seal; -great = disabled)`、新增 `freezeOffTemperature`
+  （`disabled` 或数值）与 `freezeOffFraction`——避免把闸口封冻的
+  `-4.5e15` 误读为冻死守卫未启用；
+- `tests/cases/voidCavitation` 材料改用物理导热（Pr 由 k=0.18 反算
+  = 1.39e6，与 Kairos 材料修复一致）后汽蚀瞬态稳健：Cv 0.05/Cc 10、
+  压力钉 999.9–1000 Pa、void 1.6%。
+
 **v1.25**（场耦合空洞：上游汽蚀模型，任务 033 突破）：
 
 - 密封熔体冷却的压力钉与空洞体积可用**上游 compressible 汽蚀

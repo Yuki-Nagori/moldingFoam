@@ -23,6 +23,6 @@ VoFCavitation
     }
     n               1e10;
     dNuc            1e-6;
-    Cv              0.1;
+    Cv              0.02;
     Cc              10;
 }

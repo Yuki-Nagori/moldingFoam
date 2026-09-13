@@ -233,10 +233,25 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // when the switch is triggered by the filled fraction the gate
         // pressure is still far below the packing table's first point,
         // and applying that step in one update drives the melt
-        // transonic and diverges. Ramping over pressureRamp seconds
-        // (default 0.05 s; 0 restores the immediate step)
-        const scalar pressureRamp =
-            packingDict.lookupOrDefault<scalar>("pressureRamp", 0.05);
+        // transonic and diverges. With an explicit `pressureRamp` [s]
+        // the ramp is that long (0 restores the immediate step); when
+        // the key is absent the ramp adapts to the process timescale,
+        // 5% of the time to the switch clamped to [0.05, 0.5] s (large
+        // parts fill slowly and need a proportionally longer ramp)
+        scalar pressureRamp = -1;
+
+        if (packingDict.found("pressureRamp"))
+        {
+            pressureRamp = packingDict.lookup<scalar>("pressureRamp");
+
+            if (pressureRamp < 0)
+            {
+                FatalIOErrorInFunction(packingDict)
+                    << "The packing pressure ramp must be non-negative: "
+                    << "pressureRamp = " << pressureRamp
+                    << exit(FatalIOError);
+            }
+        }
 
         // Optional time-based V/P switch criterion
         const scalar forcedSwitchTime =
@@ -608,7 +623,18 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        switchPressure      = " << switchPressure << nl
             << "        gateSealTime        = " << gateSealTime << nl
             << "        gateSealRamp        = " << gateSealRamp << nl
-            << "        pressureRamp        = " << pressureRamp << nl
+            << "        pressureRamp        = "
+            << (pressureRamp < 0
+              ? word("auto (5% of the switch time, clamped [0.05, 0.5] s)")
+              : word(pressureRamp)) << nl
+            << "        gateFreezeTemperature = " << gateFreezeTemperature
+            << " (gate seal; -great = disabled)" << nl
+            << "        freezeOffTemperature  = "
+            << (freezeOffTemperature_ < great
+              ? word(freezeOffTemperature_)
+              : word("disabled")) << nl
+            << "        freezeOffFraction     = " << freezeOffFraction_
+            << nl
             << "        gateFreezeTemperature = " << gateFreezeTemperature
             << nl
             << "        pressure type       = "

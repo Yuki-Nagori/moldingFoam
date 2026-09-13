@@ -83,6 +83,38 @@ def main():
     if fail:
         sys.exit(1)
 
+
+    # Latent heat must retard the sealed cooling (task 044, ablation
+    # calibrated): with latentHeat 2e5 J/kg the volume-averaged melt
+    # temperature ends near 429 K, while removing the latent heat lets the
+    # case cool to 380 K. The threshold sits between the two with ~20 K
+    # margin on each side (the signal is ~49 K wide).
+    import glob as _glob
+    fns = sorted(_glob.glob(os.path.join(
+        case_dir, "postProcessing", "meltTemperature", "*", "*.dat")))
+    if not fns:
+        print("FAIL: no melt-temperature samples (the case must log the "
+              "volAverage(T) function object)")
+        sys.exit(1)
+    series = []
+    for fn in fns:
+        for line in open(fn, errors="replace"):
+            if line.startswith("#"):
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                series.append(float(parts[1]))
+    if not series:
+        print("FAIL: the melt-temperature series is empty")
+        sys.exit(1)
+    Tfinal = series[-1]
+    print("  final melt vol-average T = {:.2f} K (latent-heat threshold "
+          "400 K)".format(Tfinal))
+    if Tfinal < 400.0:
+        print("FAIL: the melt cooled through the latent-heat plateau "
+              "(the latent heat is not active)")
+        sys.exit(1)
+
     print("PASS: crystallinity grows monotonically and bounded to "
           "near 1; the coupled shrinkage gains the crystallinity part")
 

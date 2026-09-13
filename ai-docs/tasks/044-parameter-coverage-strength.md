@@ -14,22 +14,13 @@
   （其中 E1/E3/E7 是稳定性与跟随性对照，E2 复现失稳）；
 - **G8 模式-only 用例**：`tests/cases/cycleReset`、`gateFreeze` 仅有
   `expectedPatterns`，其余 20/22 用例都有数值验证器；
-- **潜热断言缺失（2026-09-13 消融新发现）**：`crystallization` 的
-  `latentHeat 2e5 → 0` 与 `boxFill` 的同类消融后，用例检查仍 PASS →
-  现有验证器不断言潜热对温度/χ 轨迹的影响（潜热属仓库核心特性，001 的
-  契约走的是 case-contract 口径，求解器用例侧无回归）。**标定尝试
-  （同日）**：`coldWall` 的模具温度（moldingMoldTemperature 集总 BC）
-  在开/关潜热下分离仅 300.021 vs 300.015 K（3 mK，相对 40% 但绝对量级
-  太小，跨平台不稳）；改用熔体体积平均温度需给用例加 `volFieldValue`
-  函数对象——首次尝试该 FO 被正确选中但未产生输出（`log true` 的
-  操作名/输出格式待查，见 `postProcessing/` 或 FO 文档），故**未提交
-  未验证的断言**。**第二次尝试（同日）**：查明失败原因——v14 的
-  `volFieldValue` 被当作 `generatedCellZone` 解析（`system/functions!
-  meltTemperature` 报 `generatedCellZone::read`），补 `regionType all;`
-  后仍无输出，需按 v14 的 region 语法（`regionType`/`cellZone` 组合）再
-  核对。下一步：确认该 FO 在 v14 的最小可用配置 → 用 `postProcessing/
-  meltTemperature/*/volFieldValue.dat` 的时间序列标定（候选判据：末态
-  熔体平均温度或穿越阈值的时刻，开/关分离度须 ≥10× 阈值余量）；
+- **潜热断言缺失（2026-09-13 消融新发现 → 同日交付）**：`crystallization`
+  的 `latentHeat 2e5 → 0` 消融原本仍 PASS。**交付**：用例新增
+  `volFieldValue` 函数对象（v14 语法为 `cellZone all;`，非
+  `regionType`——此前的两次失败均因该语法），记录熔体体积平均温度序列；
+  `verify-crystallization.py` 增加断言「末态熔体平均温度 ≥ 400 K」
+  （潜热开 429.23 K / 关 380.16 K，分离 49 K，阈值两侧各留 ~20 K ≈ 5×
+  跨平台波动余量）。消融复验：开 → PASS、关 → FAIL ✓；
 - **G9 次要分支键无用例配置**：runnerNetwork 的 `powerLaw`（K/n）、
   moldingMoldTemperature 的 `Nu` 相关式（C/m/n/Re/Pr/k/D）、fiber 的
   `lambda` 覆盖、`trapAirAlpha`、`hsRef`、moldingPrghPressure 的

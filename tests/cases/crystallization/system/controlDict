@@ -57,6 +57,19 @@ adjustTimeStep  off;
 
 functions
 {
+    meltTemperature
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   10;
+        writeFields     no;
+        log             true;
+        cellZone        all;
+        operation       volAverage;
+        fields          (T);
+    }
+
     moldTemperature
     {
         type            surfaceFieldValue;

@@ -160,6 +160,12 @@ jobs:
       - name: Exit-path smoke test
         run: |
           set -o pipefail
+          # The other steps reach OpenFOAM through xmake; a plain script
+          # invocation must source the environment itself. Without it the
+          # script's blockMesh/foamRun are "command not found", which
+          # set -e turns into a silent early exit (observed: empty log on
+          # the first CI run, run 34766029612).
+          source /opt/openfoam14/etc/bashrc
           bash scripts/smoke-exit.sh case-contract 2>&1 | tee smoke-exit.txt
       - uses: actions/upload-artifact@v4
         if: always()

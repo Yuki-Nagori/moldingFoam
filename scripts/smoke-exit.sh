@@ -16,6 +16,8 @@
 #******************************************************************************
 set -euo pipefail
 
+: "${WM_PROJECT_DIR:?smoke-exit.sh must be invoked inside the OpenFOAM environment}"
+
 caseDir=$(cd "$1" && pwd)
 workDir=$(mktemp -d)
 trap 'rm -rf "$workDir"' EXIT

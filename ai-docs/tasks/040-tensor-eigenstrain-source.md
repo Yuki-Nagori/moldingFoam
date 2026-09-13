@@ -1,6 +1,7 @@
 # 040 — 非均匀张量本征应变的域内源（034 跟进）
 
-- 状态：planned
+- 状态：in-progress（2026-09-13：探针完成——`d2dt2` 钩子可用但需除以 rho；
+  实现与基准用例待做，方案 A/B 取舍见 §8）
 - 优先级：P2
 - 依赖：034（`moldingTractionDisplacement` 均匀路径已交付）
 - 预估规模：1–2 天
@@ -73,3 +74,42 @@
 | `src/moldingFoam/solid/`（新，B） | 派生求解器模块 |
 | `validation/anisoShrinkBar/`、新梯度基准 | 验证 |
 | `README.md`、`ai-docs/tasks/034-*.md` | 契约与状态同步 |
+
+## 8. 探针结果（2026-09-13）
+
+上游 `solidDisplacement::momentumPredictor`（v14）的 D 方程装配：
+
+```cpp
+fvVectorMatrix DEqn
+(
+    fvm::d2dt2(rho, D)
+ ==
+    fvm::laplacian(2*mu + lambda, D, "laplacian(DD,D)")
+  + divSigmaExp
+  + rho*fvModels().d2dt2(D)          // <- 本任务的注入点
+);
+
+if (thermo.thermalStress())
+{
+    DEqn += fvc::grad(threeKalpha*T); // 纯源注入的上游惯用法
+}
+```
+
+`fvModel::d2dt2(const VolField<Type>&)` 返回 `tmp<fvMatrix<Type>>`（"Return
+source for an equation with a second time derivative"），被求解器**整体乘以
+rho** 后加到 RHS。结论：
+
+1. **可以注入纯源，但需补偿 rho**：矩阵里只放 source（不放对角），并预先
+   逐格除以 rho（ρ>0 守卫），使 `rho*fvModels().d2dt2(D)` 恰好等于
+   `div(threeK*eps)` 的体积分。量纲与语义都成立（该钩子本就是给 d2dt2 项
+   加贡献），但"除 rho"是绕过接口约定的取巧，需在模型中注释清楚；
+2. **方案 B 作为兜底仍然干净**：派生 `moldingSolid` 只需在
+   `momentumPredictor` 的同一位置追加 `DEqn += fvc::div(threeK*eps)`（上游
+   该函数约 30 行可复制），并覆写 `postSolve()` 输出
+   `sigma = sigmaD - threeK*eigenstrain`；代价是跟随上游版本；
+3. 建议：**先按方案 A 实现**（不复制上游代码），以 `anisoShrinkBar`
+   （均匀 ε* 机器精度）为回归；若除 rho 路径在非均匀梯度基准上出现
+   量纲/收敛问题，立即转 B。
+
+**剩余工作**（本任务未完成部分）：`moldingEigenstrain` 模型实现、非均匀
+ε* 梯度条基准用例与验证器（<1%）、`anisoShrinkBar` 回归、契约与文档同步。

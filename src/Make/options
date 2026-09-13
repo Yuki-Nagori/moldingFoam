@@ -6,6 +6,8 @@ EXE_INC = \
     -I$(FOAM_MODULES)/twoPhaseSolver/lnInclude \
     -I$(FOAM_MODULES)/VoFSolver/lnInclude \
     -I$(FOAM_MODULES)/basicFluidSolver/lnInclude \
+    -I$(FOAM_MODULES)/solidDisplacement/lnInclude \
+    -I$(FOAM_MODULES)/solidDisplacement/solidDisplacementThermo/lnInclude \
     -I$(LIB_SRC)/physicalProperties/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/basic/lnInclude \
     -I$(LIB_SRC)/thermophysicalModels/solidThermo/lnInclude \
@@ -25,6 +27,7 @@ EXE_INC = \
 
 LIB_LIBS = \
     -lsolidThermo \
+    -lsolidDisplacementThermo \
     -lsolidThermophysicalTransportModels \
     -lincompressibleFluidSolver \
     -lfluidSolver \

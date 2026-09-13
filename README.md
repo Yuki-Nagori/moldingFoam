@@ -1010,6 +1010,21 @@ boundaryField { ... }
 
 ### 契约变更日志
 
+**v1.24**（固体张量本征应变边界，任务 034 跟进）：
+
+- `0/D` 自由面新增可选类型 `moldingTractionDisplacement`：与上游
+  `tractionDisplacement` 相同（`traction`/`pressure`），另读可选
+  `eigenstrain`（`volSymmTensorField` 名，缺省 `eigenstrain`）——自由
+  面牵引含 `sigma_th = -threeK*eigenstrain`，把**各向异性收缩张量**
+  直接送入固体本构（上游热应力项的 `I*threeK*alphav*T` 张量推广）；
+  需在 solid case 的 controlDict 加载 `libmoldingFoam.so`；
+- 均匀本征应变（自由收缩/翘曲主项）经该边界精确复现：
+  `validation/anisoShrinkBar`（`diag(0.02,0.005,0)` 自由条，位移机器
+  精度、解析解一致）；
+- 已知边界：**非均匀** ε* 的域内源 `div(threeK*eps*)` 尚未接入（上游
+  solidDisplacement 无通用源钩子，需求解器级扩展）——取向梯度工况
+  仍走既有标量等效映射（warpageAniso 2.7%）。
+
 **v1.23**（冻死短射防线，任务 038 T 失稳跟进）：
 
 - `constant/moldingDict` 新增可选 `freezeOffTemperature`（[K]，缺省

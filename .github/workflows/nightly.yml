@@ -95,6 +95,11 @@ jobs:
           set -o pipefail
           xmake run shrinkBar 2>&1 | tee shrinkBar.txt
 
+      - name: Anisotropic free-shrinkage quarter bar validation
+        run: |
+          set -o pipefail
+          xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
+
       - name: Conjugate heat transfer validation
         run: |
           set -o pipefail
@@ -115,6 +120,7 @@ jobs:
           cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
           cp validation/warpagePlate/log.foamRun warpagePlate.txt dist/ 2>/dev/null || true
           cp validation/shrinkBar/log.foamRun shrinkBar.txt dist/ 2>/dev/null || true
+          cp validation/anisoShrinkBar/log.run anisoShrinkBar.txt dist/ 2>/dev/null || true
           cp validation/coolantMold/log.foamRun coolantMold.txt dist/ 2>/dev/null || true
           cp validation/coolantWater/log.foamRun coolantWater.txt dist/ 2>/dev/null || true
           cp validation/warpageAniso/log.foamRun warpageAniso.txt dist/ 2>/dev/null || true

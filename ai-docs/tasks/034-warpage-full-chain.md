@@ -194,5 +194,10 @@ case/验证器未入库（未通过）。
   标量等效本征应变（`free_strain.py --tensor` 面内均值），哑铃仅增加
   几何复杂度而不引入新的物理验证；各向异性由 `warpageAniso` 的取向
   梯度基准（2.7%，阈值 8%）验证，自由收缩由 `shrinkBar` 解析验证；
-- 遗留（模块级增强，非本任务）：张量本征应变直接进入固体本构
-  （各向异性热膨胀）、自由收缩条在更一般约束下的部分约束 BC。
+- 遗留（模块级增强，非本任务）：~~张量本征应变直接进入固体本构~~
+  **已交付（均匀路径）**——`moldingTractionDisplacement` 自由面牵引
+  含 `-threeK*eigenstrain`（张量本征应变），`validation/anisoShrinkBar`
+  机器精度验证（2026-09-13，README v1.24）；**非均匀** ε* 的域内源
+  `div(threeK*eps*)` 仍缺（需 solidDisplacement 求解器级扩展，上游无
+  通用源钩子），取向梯度工况继续用标量等效映射（warpageAniso 2.7%）；
+  自由收缩条在更一般约束下的部分约束 BC。

@@ -17,8 +17,13 @@
   （2026-09-13）**：新增 `scripts/verify-cycle-reset.py`——断言喷射周期数
   等于 `nCycles`、复位日志的 `min(rho)` 与初始状态的 Tait EOS 密度一致
   （实测 746.291 vs 746.28177，相对 1.18e-05，阈值 1e-3 ≈ 85× 余量）、
-  写出态的 `alpha.melt`=1 与密度复原；`gateFreeze` 的数值验证器待做
-  （封冻后 `sum(inlet)` 归零检查）；
+  写出态的 `alpha.melt`=1 与密度复原；**gateFreeze 已补**：新增
+  `scripts/verify-gate-freeze.py`——自校准不变量（无需绝对阈值）：
+  封冻（含 `gateSealRamp` 窗口）后熔体质量逐步恒定（实测 99 个闭合样本
+  的逐步变化 **0.00e+00**，阈值 1e-6），并断言封冻事件与斜坡回显；
+  用例同步把 `ejectionTemperature` 设为不可达（原 500 K + `nCycles 1`
+  使运行在封冻瞬间结束，闭合窗口无从采样），endTime 0.005 → 0.02 s；
+  **G8 两项（cycleReset/gateFreeze）至此均具备数值验证器**；
 - **潜热断言缺失（2026-09-13 消融新发现 → 同日交付）**：`crystallization`
   的 `latentHeat 2e5 → 0` 消融原本仍 PASS。**交付**：用例新增
   `volFieldValue` 函数对象（v14 语法为 `cellZone all;`，非

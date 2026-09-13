@@ -30,7 +30,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.0005;
+endTime         0.02;   // seal (1e-4 s) + gateSealRamp (0.01 s) + a closed-cavity window (task 044)
 
 deltaT          1e-04;
 

@@ -6,11 +6,10 @@
      \\/     M anipulation |
 -------------------------------------------------------------------------------
 Description
-    Couette shear-heating validation: the process groups are present only
-    because moldingFoam requires them. The packing group never drives a
-    boundary here (there are no molding inlet/vent patches); the ejection
-    temperature is set below any reachable value so the run stops at
-    endTime. The viscous-dissipation source is enabled explicitly.
+    Gate-freeze feature case: the gate temperature reaches
+    gateFreezeTemperature and the gate must seal; the run continues to
+    endTime so the closed cavity (constant melt mass) can be checked
+    (tasks 010/044).
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
@@ -45,7 +44,7 @@ packing
 
 cooling
 {
-    ejectionTemperature  500;
+    ejectionTemperature  300;   // unreachable: the run must reach endTime so the closed-cavity window is sampled (task 044)
     releasePressure      1e5;
 }
 

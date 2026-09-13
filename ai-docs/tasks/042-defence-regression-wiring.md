@@ -88,3 +88,20 @@
   稳定复现需刻意发散的输入且无法保证跨平台可复现——本任务按 §3 的方案 C
   记录为「仅实现、不做回归」，并在审计文档 G7 标注（预警侧已闭环）；
 - 回归：boxFill 用例标准流程（patterns + 验证器）PASS。
+
+## 9. CI 复测与调查（2026-09-14）
+
+首轮 nightly（run 34766029612）结果：`solver-cases` ✓（26/26）、
+`validation-structural` ✓（含新增 `eigenstrainGraded`）、`model-tests` ✓、
+`contract` 的契约用例本身 ✓——但其中**我加的 smoke-exit 步骤 FAIL**，
+且 artifact `smoke-exit.txt` **为空**（脚本在产生任何输出前就以非零退出）。
+
+**VM 复现**：同一条命令（`bash scripts/smoke-exit.sh case-contract`）在
+VM 内 **PASS**（`zero-step exit = 0` / `fatal-path exit = 1` /
+`PASS: the success and fatal exit paths are clean`）→ 差异为 CI 环境特有，
+需要 run 完成后的原始日志才能定位（空 artifact 提示失败发生在脚本早期，
+可能是 `blockMesh`/环境差异）。
+
+**处理**：按仓库"失败隔离到独立 job"的设计，把该步骤拆为独立 job
+`exit-path-smoke`（含独立日志 artifact 与 `report` 的 needs）——失败保持
+可见，但不污染 contract 的判定；调查入口为 run 34766029612 的原始日志。

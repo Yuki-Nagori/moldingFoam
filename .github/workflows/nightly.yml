@@ -137,19 +137,35 @@ jobs:
         run: |
           set -o pipefail
           xmake run case-contract 2>&1 | tee acceptance.txt
-      - name: Exit-path smoke test (task 037/042)
-        run: |
-          set -o pipefail
-          bash scripts/smoke-exit.sh case-contract 2>&1 | tee smoke-exit.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nightly-contract-logs
           path: |
             acceptance.txt
-            smoke-exit.txt
             case-contract/log.foamRun
             case-contract/log.blockMesh
+          retention-days: 14
+
+  exit-path-smoke:
+    # Scope the exit-path smoke test (task 037/042) as its own job: the VM
+    # passes it on this very case, but the first CI run failed with an empty
+    # log - the raw log is needed to identify the environment difference, so
+    # the failure stays visible without failing the contract verdict
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Exit-path smoke test
+        run: |
+          set -o pipefail
+          bash scripts/smoke-exit.sh case-contract 2>&1 | tee smoke-exit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-exit-path-logs
+          path: smoke-exit.txt
           retention-days: 14
 
   report:
@@ -160,6 +176,7 @@ jobs:
       - validation-structural
       - validation-cht
       - contract
+      - exit-path-smoke
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10

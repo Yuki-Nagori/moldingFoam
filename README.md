@@ -1379,7 +1379,7 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 |-----|------|
 | `model-tests` | `xmake run test` |
 | `solver-cases` | `xmake run test-solver`（22 用例） |
-| `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold |
+| `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold/highPressure |
 | `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
 | `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |
 | `contract` | 完整契约验收（4 子域） |

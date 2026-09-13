@@ -141,8 +141,8 @@
 稳定离散，（b）**闸口 α 质量通量一致性修正**（高压瞬态下
 `alphaRhoPhi.melt` 出现虚假出流尖峰，峰值 0.66 kg/s）。平滑封冻
 （`gateSealRamp`）已实现但单独不解决守恒；具体方案与验收见任务 018。
-标定 case 已落地为 `validation/highPressure`（暂不纳入 CI，待 018
-通过后启用）。
+标定 case 已落地为 `validation/highPressure`（018 收口后于 2026-09-13
+纳入 nightly `validation-thermal-flow` job）。
 
 ## 5. 验收标准（DoD）
 

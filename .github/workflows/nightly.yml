@@ -60,6 +60,7 @@ jobs:
           xmake run thermoelastic 2>&1 | tee thermoelastic.txt
           xmake run coolantWater 2>&1 | tee coolantWater.txt
           xmake run coolantMold 2>&1 | tee coolantMold.txt
+          xmake run highPressure 2>&1 | tee highPressure.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,6 +71,7 @@ jobs:
             validation/thermoelastic/log.foamRun
             validation/coolantWater/log.foamRun
             validation/coolantMold/log.foamRun
+            validation/highPressure/log.foamRun
           retention-days: 14
 
   validation-structural:

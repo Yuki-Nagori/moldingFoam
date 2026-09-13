@@ -89,7 +89,7 @@
 
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
-| [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | in-progress（gateSealRamp、massFixGlobal、深层热阻已交付；仅 χ-η 耦合待做） | 018/008/024/031 |
+| [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | **done**（四项全交付：gateSealRamp、massFixGlobal、深层热阻、χ-η 耦合） | 018/008/024/031 |
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | in-progress（潜热、G8 清零、pressureRamp 三路径全交付；仅 powerLaw/Nu 待做） | 038/006/012/016 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 |
 

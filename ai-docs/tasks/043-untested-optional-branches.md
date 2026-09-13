@@ -1,7 +1,7 @@
 # 043 — 未触发可选分支的用例覆盖（gateSealRamp / 深层热阻 / χ-η 耦合 / 质量修正器）
 
-- 状态：in-progress（2026-09-13：gateSealRamp 分支已交付并断言；
-  深层热阻 / χ-η 耦合 / 质量修正器三项待做，见 §8）
+- 状态：done（2026-09-13：四项全部交付——gateSealRamp、massFixGlobal、
+  深层热阻 wallResistance、CrossWlf χ-η 耦合；见 §8）
 - 优先级：P2
 - 依赖：018（gateSealRamp）、008（深层热阻）、024（χ-η）、031（修正器口径）
 - 预估规模：1–2 天
@@ -110,4 +110,16 @@
   量（或黏度场）为指标标定。**未提交任何断言**（标定未成立），下一步
   入口即：在 `crystallizationAdvection` 上启用耦合 → 选流动/黏度指标
   → 开/关标定 → 阈值两侧留余量 → 消融复验；
-- **待做**：χ-η 耦合（如上，已锁定算例与入口）。
+- **χ-η 耦合（G5）已交付**：新增永久用例
+  `tests/cases/crystallinityViscosity`（`crystallizationAdvection` 拷贝 +
+  `CrossWlfCoeffs.crystallinity { chiInfinity 1; exponent 2; }`），配
+  `scripts/verify-crystallinity-viscosity.py`：断言末态
+  `strainRateViscosityModel:nu` 的 max ≥ 1e3 Pa·s 且 max|U| ≤ 0.01 m/s
+  （配置守卫：用例必须真的启用该子字典）。标定（χ→1）：耦合开
+  **η_max = 5.62e10 Pa·s、|U| = 2.73e-3 m/s**；耦合关
+  **η_max = 6.36 Pa·s、|U| = 2.68e-2 m/s**——η 分离 10 个数量级、速度
+  约 10× 变慢（既有 advection 验证器在耦合开后还会因冲流不足而 FAIL，
+  佐证耦合确实改变物理）。实测新用例 PASS；消融（移除子字典）被配置
+  守卫拒绝，数值阈值另有上述标定数据佐证。**过程记录**：首轮误用
+  `crystallization`（静止算例，开/关序列完全一致）→ 静止算例无法体现
+  η(χ)，必须用随流算例（见前文标定尝试记录）。

@@ -88,3 +88,19 @@ rm -rf src/Make/*Opt tests/Make/*Opt && xmake 2>&1 | grep -c warning:
 **结论**：本次新增的全部断言均通过消融（关掉被断言的对象后检查失败），
 未出现"永远通过"的假测试；其中 `eigenstrainGraded` 的消融还顺带暴露出
 验证器未守卫字典读取的健壮性问题，已修复。
+
+## 8. 本地回归（2026-09-14，本会话 29 笔改动）
+
+本会话的改动（新 fvModel ×2、新用例 ×4、runner 与脚本修复、文档）在推送前
+做了一次本地范围回归（VM arm64，当前源码）：
+
+| 项 | 结果 |
+|---|---|
+| `xmake` 干净重建 | BUILD_EXIT=0 |
+| `modelTests` | All tests passed ✓ |
+| `run-solver-tests.sh tests/cases` | **All 26 solver case(s) passed** ✓（22 原有 + fatalPressureRamp / massFixGlobal / crystallinityViscosity / nuCorrelation） |
+| `run-validation.sh validation/eigenstrainGraded` | PASS（0.833% < 1.5%） |
+
+合计 159 个 PASS 断言、0 FAIL。**未在本地跑**：17 个重型数值验证（CHT 等）
+与 4 子域契约——按既定分工留待 nightly；由于本地提交尚未推送，CI 侧
+尚未验证这批改动（这是当前唯一未闭环的验证面）。

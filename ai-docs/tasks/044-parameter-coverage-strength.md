@@ -111,3 +111,16 @@
 - 交付顺序回顾：潜热断言 → cycleReset/gateFreeze 数值验证器（G8 清零）
   → pressureRamp 显式值+回显（并修复 `word(scalar)` 回显缺陷）
   → 负值路径 + runner 支持。剩余：powerLaw / Nu 相关式两个分支。
+
+## 9. 结项（2026-09-14）
+
+`powerLaw` 分支核实结论：**并非缺口**——`tests/cases/runnerNetwork/0/U`
+已内联配置 `viscosity { type powerLaw; K 1e4; n 0.5; }`，该分支一直在 CI
+执行路径中；覆盖审计 §3 的「未被赋值」扫描按行首匹配、漏判内联子字典
+（假阳性），已在审计 §6 更正。**未补**对 K/n 取值的效应断言：现有验证器
+校验的是入口质量流与 `rho Q` 一致（Q 为给定流量），对网络黏度不敏感；
+要加需先确定黏度相关且被记录的量（如闸口压力序列）并标定——与 Nu 案例
+同一手法，留作可选增强。
+
+044 至此四项主体全部交付（潜热、G8、pressureRamp 三路径、Nu），
+powerLaw 经核实无需新增用例。

@@ -115,9 +115,31 @@ for bc in moldingChannelCooling moldingConvectiveCooling moldingInletVelocity \
 |------|------|
 | G1 `smoke-exit.sh` 接线、G7 038 防线断言 | ~~042~~ **已闭环**（2026-09-13：smoke-exit 入 nightly；boxFill 预警断言；非有限快速失败记录为不回归） |
 | G2 `gateSealRamp`、G4 深层热阻、G5 χ-η 耦合、G6 质量修正器 | ~~043~~ **已全部闭环**（2026-09-13：四项均已交付用例断言，含 χ-η 随流算例与 η 十数量级分离） |
-| G3 `pressureRamp`、G8 模式-only 用例、G9 次要分支键 | [044](tasks/044-parameter-coverage-strength.md)（P2） |
+| G3 `pressureRamp`、G8 模式-only 用例、G9 次要分支键 | ~~044~~ **已闭环**（2026-09-14：潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 经核实为扫描假阳性、原已被执行） |
 | G10 平台/并行范围 | ~~045~~ **已闭环**（2026-09-13：口径决策 B——数值回归基线 x86_64，arm64 仅构建+模型测试，跨平台差异 1–10% 记录在案） |
 | G11 性能手工基准 | 041（量化入口已交付 `scripts/perf-breakdown.py`；候选杠杆=能量方程 94% 迭代量，待计时矩阵） |
 
 G8 中的 `cycleReset`/`gateFreeze` 与 G10 的 arm64 口径决策是本批任务中
 的优先子项；G9 的「有意不覆盖清单」按 044 的要求随实现落文档。
+
+## 6. 更正（2026-09-14，044 推进中发现）
+
+§3 的「未被用例赋值」扫描按**行首**匹配赋值（`^\s*key\s+...;`），会漏掉
+**单行内联子字典**的写法，产生假阳性。已核实两例：
+
+- `K` / `n`（`tests/cases/runnerNetwork/0/U`：
+  `viscosity { type powerLaw; K 1e4; n 0.5; }`）——powerLaw 分支**一直
+  有用例在跑**，G9 的「powerLaw 未被覆盖」不成立；
+- `length` / `diameter`（同处 `feed { ... }` / `gates { gate1 { ... } }`
+  内联）——同样为假阳性。
+
+其余被点名的键（`gateSealRamp`、`wallResistance`、`chiInfinity`/
+`exponent`、`pressureRamp`、`Nu` 的 `C/m/n/Re/Pr/k/D` 等）在本次会话中
+逐个核实并已补用例或已确认（见 043/044 交付记录）；`b3s`/`b4s` 为缺省
+回退（= 熔体支系数）、`eigenstrain` 为字段名键（用例依赖缺省名且有
+`0/eigenstrain` 场），均非缺口。
+
+**结论修正**：G9 的「powerLaw 分支未覆盖」→ **不成立**（原本即被
+runnerNetwork 用例执行）；G9 的 Nu 分支 → 已由 044 交付（新增
+`nuCorrelation` 用例）。**G9 至此全部结清**。后续优化方向：把扫描改为
+「赋值行 + 内联子字典」双模式，避免同类假阳性。

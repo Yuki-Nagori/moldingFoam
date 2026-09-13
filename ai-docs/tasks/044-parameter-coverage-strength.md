@@ -13,7 +13,12 @@
   （`pressureRamp = auto (...)`）无断言；038 报告的 E1–E7 实验矩阵未跑
   （其中 E1/E3/E7 是稳定性与跟随性对照，E2 复现失稳）；
 - **G8 模式-only 用例**：`tests/cases/cycleReset`、`gateFreeze` 仅有
-  `expectedPatterns`，其余 20/22 用例都有数值验证器；
+  `expectedPatterns`，其余 20/22 用例都有数值验证器；**cycleReset 已补
+  （2026-09-13）**：新增 `scripts/verify-cycle-reset.py`——断言喷射周期数
+  等于 `nCycles`、复位日志的 `min(rho)` 与初始状态的 Tait EOS 密度一致
+  （实测 746.291 vs 746.28177，相对 1.18e-05，阈值 1e-3 ≈ 85× 余量）、
+  写出态的 `alpha.melt`=1 与密度复原；`gateFreeze` 的数值验证器待做
+  （封冻后 `sum(inlet)` 归零检查）；
 - **潜热断言缺失（2026-09-13 消融新发现 → 同日交付）**：`crystallization`
   的 `latentHeat 2e5 → 0` 消融原本仍 PASS。**交付**：用例新增
   `volFieldValue` 函数对象（v14 语法为 `cellZone all;`，非

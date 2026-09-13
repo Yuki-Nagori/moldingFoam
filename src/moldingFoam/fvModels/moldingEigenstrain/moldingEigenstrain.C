@@ -112,7 +112,13 @@ void Foam::fv::moldingEigenstrain::addSup
     // multiplication then restores div(threeK*eigenstrain)
     const volScalarField& rho = thermo_.rho();
 
-    eqn += fvc::div(threeK*eigenstrain)/rho;
+    // Sign convention, measured on the graded-bar probe (task 040 §9c):
+    // the source assembled through the d2dt2 hook reaches the equation with
+    // a flipped sign (a +div source produced a -div response of exactly the
+    // same magnitude, -0.150 vs the required +0.150), so it is added
+    // negated here. The solver's own thermal term uses fvc::grad(...)
+    // directly on the field-level +=, which is not flipped.
+    eqn -= fvc::div(threeK*eigenstrain)/rho;
 }
 
 

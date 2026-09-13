@@ -1,0 +1,14 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      fvModels;
+}
+// Domain eigenstrain source (task 040): the non-uniform in-plane eigenstrain
+// must be carried by the domain source div(threeK*eigenstrain) (the face
+// traction of moldingTractionDisplacement alone cannot represent it)
+eigenstrainSource
+{
+    type            moldingEigenstrain;
+    eigenstrain     eigenstrain;
+}

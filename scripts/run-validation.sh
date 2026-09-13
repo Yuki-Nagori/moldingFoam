@@ -20,6 +20,10 @@
 
 set -euo pipefail
 
+# Resolve the script directory before any cd so relative invocations
+# (bash scripts/run-validation.sh <case>) find the verifier
+scriptDir=$(cd "$(dirname "$0")" && pwd)
+
 caseDir=$(cd "$1" && pwd)
 cd "$caseDir"
 
@@ -62,4 +66,4 @@ if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \
     exit 1
 fi
 
-python3 "$(dirname "$0")/$verifier" "$caseDir"
+python3 "$scriptDir/$verifier" "$caseDir"

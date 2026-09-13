@@ -87,6 +87,7 @@ jobs:
           xmake run warpagePlate 2>&1 | tee warpagePlate.txt
           xmake run shrinkBar 2>&1 | tee shrinkBar.txt
           xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
+          xmake run eigenstrainGraded 2>&1 | tee eigenstrainGraded.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -97,6 +98,7 @@ jobs:
             validation/warpagePlate/log.foamRun
             validation/shrinkBar/log.run
             validation/anisoShrinkBar/log.run
+            validation/eigenstrainGraded/log.run
           retention-days: 14
 
   validation-cht:

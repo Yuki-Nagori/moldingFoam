@@ -81,11 +81,11 @@
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 | 1–2 天 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 | 1–3 天（含 CI 时间成本评估） |
 
-### 进行中任务（040；其余 001–039、041–045 已完成并入上方索引）
+### 进行中任务（无；001–045 全部完成，见上方索引）
 
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
-| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | in-progress（探针完成：`d2dt2` 钩子可用、需补偿 rho；模型/基准待做，方案 A 优先） | 034 | 1–2 天 |
+| [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
 | [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | **done**（量化入口 + 计时矩阵：能量容差 10× → 墙钟 −24%、验收通过；未改缺省，记为按需选项） | 032 | 周级 |
 
 覆盖审计缺口 G1–G11 已全部闭环并落为任务：G1/G7→042、G2/G4/G5/G6→043、

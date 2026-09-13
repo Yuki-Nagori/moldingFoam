@@ -1,0 +1,37 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "volVectorField";
+    object U;
+}
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+
+    gate
+    {
+        type                moldingInletVelocity;
+        volumetricFlowRate  1e-06;
+        value               uniform (0 0 0);
+    }
+    #includeEtc "caseDicts/setConstraintTypes"
+
+
+    vent
+    {
+        // Restricted vent of the reference case (task 003/038): the
+        // solver seals it when the melt covers the patch, so no polymer
+        // escapes; CdA is the effective discharge area
+        type            moldingVentVelocity;
+        value           uniform (0 0 0);
+    }
+
+    walls
+    {
+        type            noSlip;
+    }
+}

@@ -1,0 +1,40 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object moldingDict;
+}
+injection
+{
+    meltTemperature  503.1500;
+}
+packing
+{
+    switchFraction   0.9600;
+    switchPressure  6.000000e7;
+    pressure
+    {
+        type            table;
+        values
+        (
+            (0.0000 6.000000e7)
+            (8.0000 4.000000e7)
+        );
+    }
+}
+// The melt must not escape through the vent (task 038): the vent
+// passes air and is sealed once the melt covers the patch
+ventSealAlpha   0.9;
+
+// The slow fill through the narrow slot freezes off in the cold
+// mould: the freeze-off guard must detect the short shot, seal the
+// gate and keep the run stable
+freezeOffTemperature 418;
+freezeOffFraction    0.01;
+
+cooling
+{
+    ejectionTemperature  363.1500;
+    releasePressure  1e5;
+}

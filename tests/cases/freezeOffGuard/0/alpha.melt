@@ -1,0 +1,32 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "volScalarField";
+    object alpha.melt;
+}
+dimensions      [];
+internalField   uniform 0;
+boundaryField
+{
+
+    gate
+    {
+        type            fixedValue;
+        value           uniform 1;
+    }
+    #includeEtc "caseDicts/setConstraintTypes"
+
+
+    vent
+    {
+        type            inletOutlet;
+        inletValue      uniform 0;
+        value           uniform 0;
+    }
+
+    walls
+    {
+        type            zeroGradient;
+    }
+}

@@ -121,6 +121,13 @@ class moldingFoam
         //  two-phase solver's stability limit; 0 disables the warning
         scalar fillVelocityWarn_;
 
+        //- Melt freeze-off (short shot) guard (task 038 T-follow-up):
+        //  the part is frozen off when the mobile melt fraction (melt
+        //  above freezeOffTemperature_) of the filled volume drops below
+        //  freezeOffFraction_; great disables the guard [K, -]
+        scalar freezeOffTemperature_;
+        scalar freezeOffFraction_;
+
         //- Enable the discrete polymer mass-budget diagnostic (task 018):
         //  accumulates the boundary melt flux with the same discretisation
         //  as the domain mass and logs the residual [dimensionless switch]

@@ -207,9 +207,16 @@ Nu{...D} 或由 Kairos 折算 `htc`。字段名以本契约为准。
 稳定通过；人为 `switchFraction 0.5`（50% 填充即保压，属不可行工况）
 按预期被警告并在保压瞬态快速失败（守护生效）。
 
-**填充期独立失稳（复现留档，跟进）**：3-block 槽形点浇口（0.6×10 mm、
-A≈6e-6 m²、冷壁 313 K、0.2 mm 单元）在填充 **70%** 时 T 残差先 NaN
-（`Initial residual=0.0226 → Final nan, 1000 iters`），此前 dt 已坍缩
-至 2.6e-7（局部 U~70 m/s）——与 Kairos P1 ② 的签名一致，可能与界面/
-冷壁强梯度下的能量方程局部失稳有关，需独立任务。构造配方：boxFill 改
-3-block blockMesh（槽形浇口在底中央）+ 原 BC 迁移至 gate patch。
+**填充期 T 失稳（已修复）**：3-block 槽形点浇口（0.6×10 mm、
+A≈6e-6 m²、冷壁 313 K）在填充 ~70% 时 T 残差先 NaN。逐步诊断显示
+根因是**冻死短射**：样品熔体导热极高（k=mu·Cp/Pr≈6.3e4 W/mK），冷模
++ 慢充下**可动熔体分数从 t=0.1 起即 0%**（T.melt 峰值 372 K < 固化
+418 K），型腔早已冻死而入口仍强制流量 → 冻料被挤过收缩通道 → 局部
+速度尖峰（1.3→96 m/s）→ T 降至 269 K（低于壁温）→ 能量方程 NaN。
+
+**修复（v1.23 契约）**：充填期冻死检测——已充体积中可动熔体（T >
+`freezeOffTemperature`）占比 < `freezeOffFraction`（缺省 0.01）即判定
+短射：**封闸**（零速/零通量）+ 切保压控制 + 打印
+`melt freeze-off detected … (short shot)`。验证：复现件（2% 检出、
+短射 2.1%）与永久用例 `tests/cases/freezeOffGuard` 稳定跑到 endTime、
+无 NaN；21/21 用例 + 模型测试全绿。

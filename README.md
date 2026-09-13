@@ -1010,6 +1010,20 @@ boundaryField { ... }
 
 ### 契约变更日志
 
+**v1.23**（冻死短射防线，任务 038 T 失稳跟进）：
+
+- `constant/moldingDict` 新增可选 `freezeOffTemperature`（[K]，缺省
+  `great` = 关闭）与 `freezeOffFraction`（缺省 0.01）：充填阶段若已充
+  体积中「可动熔体」（温度高于 `freezeOffTemperature`）的占比低于
+  `freezeOffFraction`，判定零件**冻死（短射）**——求解器立即**封闸**
+  （闸口零速/零通量）并切保压控制，打印
+  `melt freeze-off detected: … (short shot)` 后稳定收尾；
+- 物理背景：冷模 + 慢充（小浇口）时熔体在型腔内冻结，若继续按流量
+  强注，冻料被挤过收缩通道会产生局部速度尖峰并最终使能量方程
+  NaN（038 §6e）；该防线把这类工况转为可解释的短射结果；
+- 新回归用例 `tests/cases/freezeOffGuard`（槽形小浇口慢充冻结，2% 填充
+  检出，短射 2.1%，稳定）；既有用例不设该键行为不变。
+
 **v1.22**（保压压力 ramp 与充填速度判据重标定，任务 038 跟进）：
 
 - `constant/moldingDict` 的 `packing` 新增可选 `pressureRamp`（[s]，

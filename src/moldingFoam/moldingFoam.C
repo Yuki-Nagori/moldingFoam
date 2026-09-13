@@ -133,6 +133,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massBudgetPrghPrev_(),
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
+    freezeOffTemperature_(great),
+    freezeOffFraction_(0.01),
     viscousDissipation_(false),
     dissipationCoeffs_(),
     crystallization_(),
@@ -296,6 +298,17 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
 
         const scalar trapAirAlpha =
             moldingDict.lookupOrDefault<scalar>("trapAirAlpha", 0.5);
+
+        // Melt freeze-off (short-shot) guard (task 038 T-follow-up): if
+        // the mobile fraction of the filled melt (melt above the no-flow
+        // temperature) falls below freezeOffFraction the part has frozen
+        // off; continuing the flow-rate injection forces frozen material
+        // through closing channels and becomes unstable. Disabled unless
+        // freezeOffTemperature is set [K]
+        freezeOffTemperature_ =
+            moldingDict.lookupOrDefault<scalar>("freezeOffTemperature", great);
+        freezeOffFraction_ =
+            moldingDict.lookupOrDefault<scalar>("freezeOffFraction", 0.01);
 
         // Optional viscous-dissipation (shear heating) source in the
         // energy equation; default false to preserve existing cases
@@ -2281,14 +2294,70 @@ void Foam::solvers::moldingFoam::preSolve()
                 << ", p_gate = " << pGate << " Pa" << endl;
         }
 
+        // Melt freeze-off (short shot) guard: no mobile melt in the
+        // filled part means it can no longer fill; stop the flow-rate
+        // injection before the frozen material is forced through
+        // closing channels
+        bool freezeOff = false;
+
         if
         (
-            filledFraction >= stage.switchFraction()
+            freezeOffTemperature_ < great
+         && filledFraction > 0.02
+        )
+        {
+            const volScalarField alphaRho1
+            (
+                alpha1*mixture_.thermo1().rho()
+            );
+            const scalar m(fvc::domainIntegrate(alphaRho1).value());
+
+            if (m > small)
+            {
+                const dimensionedScalar Tfreeze
+                (
+                    "freezeOffTemperature",
+                    dimTemperature,
+                    freezeOffTemperature_
+                );
+
+                const scalar mMobile
+                (
+                    fvc::domainIntegrate
+                    (
+                        alphaRho1
+                       *pos(mixture_.thermo1().T() - Tfreeze)
+                    ).value()
+                );
+
+                freezeOff = mMobile/m < freezeOffFraction_;
+            }
+
+            if (freezeOff)
+            {
+                Info<< "moldingFoam: melt freeze-off detected: no mobile "
+                    << "melt above " << freezeOffTemperature_
+                    << " K at filled fraction " << filledFraction
+                    << " (short shot); sealing the gate and switching to "
+                    << "pressure control" << endl;
+
+                // A short shot cannot accept the packing pressure: seal
+                // the gate (zero velocity and zero flux) so the machine
+                // stops injecting instead of compressing the remaining
+                // air pockets to the packing pressure
+                stage.sealGate(runTime.value());
+            }
+        }
+
+        if
+        (
+            freezeOff
+         || filledFraction >= stage.switchFraction()
          || pGate >= switchPressure_
          || runTime.value() >= forcedSwitchTime_
         )
         {
-            if (filledFraction < 0.90)
+            if (!freezeOff && filledFraction < 0.90)
             {
                 WarningInFunction
                     << "The V/P switch fired at a filled fraction of "

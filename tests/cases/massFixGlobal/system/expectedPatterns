@@ -1,0 +1,4 @@
+# The global mass fixer must be active and the sealed budget must close
+# (task 043: the corrector-on path was never exercised before)
+moldingFoam: mass budget: m = 
+End

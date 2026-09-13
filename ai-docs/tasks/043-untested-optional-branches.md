@@ -81,6 +81,16 @@
   `moldingPrghPressure` 两个 BC（非死代码）。实测 patterns 全 PASS。
   **未做**：斜坡效应对通量衰减曲线的定量断言（本次标定未取到稳定
   信号，留作后续增强）；
+- **massFixGlobal 开启路径（G6）已交付**：新增永久用例
+  `tests/cases/massFixGlobal`（voidFraction 几何拷贝 + 明确要求
+  `massFixGlobal true`/`massFixRelaxation 1`/`massBudget true`），配
+  `scripts/verify-mass-fix.py`：断言 budget 残差 ≤ 1e-12 kg 且用例确实
+  开启了修正器。标定：修正器开 → 残差 **−8.2e-15 kg**（相对 1.4e-10），
+  关 → **−2.5e-08 kg**（分离 7 个数量级，阈值两侧各 ~3–4 个量级余量）。
+  实测新用例 patterns + 验证器 PASS；关修正器时验证器拒绝（含配置守卫）。
+  标定坑记录：初版脚本用 `"massBudget" in txt` 判键，被
+  `massBudgetInterval` 抢先命中导致两变体都没开修正器（假阴性），
+  改为显式正则写入；
 - **待做**：`wallResistance`/`deepMoldTemperature`（深层热阻）、CrossWlf
-  `crystallinity` 子字典（χ-η 耦合）、`massFix*` 开启路径三项，手法同
-  上（扩展现有用例 + 定量或回显断言）。
+  `crystallinity` 子字典（χ-η 耦合）两项，手法同上（扩展现有用例 +
+  定量或回显断言）。

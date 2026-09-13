@@ -976,7 +976,36 @@ thermoType
 | `constant/momentumTransport` | laminar `generalisedNewtonian` + `CrossWlf` |
 | `constant/moldingDict` | 工艺参数：`injection.meltTemperature`、`packing.switchFraction`、`packing.switchPressure`、`packing.gateSealTime`、`packing.pressure`（`table`）、`cooling.ejectionTemperature`、`cooling.releasePressure`、`ventSealAlpha`、`viscousDissipation`、`nCycles`、`trapAirInterval`、`trapAirAlpha` |
 
+### 输出场契约（Kairos 可视化对接）
+
+| 场 | 类型 | 量纲 | 说明 |
+|----|------|------|------|
+| `D` | volVectorField | m（SI） | 位移；显示按 mm 换算（×1000） |
+| `sigma` | volSymmTensorField | Pa | 残余应力张量 |
+| `sigmaEq` | volScalarField | Pa | 等效应力 |
+| `T` | volScalarField | K | 温度（各向同性映射时为本征应变代理） |
+| `shrinkage` / `shrinkageTensor` / `voidFraction` | scalar / symmTensor / scalar | —（无量纲） | 流动侧关联场（启用时写出） |
+
+- 位置：case 时间目录 `<time>/…`（`writeInterval` 控制）；
+- 样例：`validation/warpagePlate`（4.2%）、`validation/shrinkBar`
+  （自由收缩机器精度）；bundle 内 `xmake run warpagePlate` 可复跑生成；
+- 冷却水路瞬态：模壁 patch 的 `moldingMoldTemperature` + `coolant`
+  子字典（键见第 6 节，`massFlowRate/cp/inletTemperature/direction/
+  htc|Nu{…}`），冷却阶段逐步求解 1D 活塞流能量平衡；需要真实水流场
+  时用三维 CHT（`validation/coolantWaterMold`）。
+
 ### 契约变更日志
+
+**v1.21**（充填稳定性防线与输出场契约，任务 038）：
+
+- `constant/moldingDict` 新增可选 `fillVelocityWarn`（[m/s]，缺省 5；
+  0 关闭）：充填第一步按 `U = |φ|/A` 计算名义浇口速度，超过阈值打印
+  预警（不改变求解）；建议浇口速度 >5 m/s 时检查流量/浇口面积；
+- 求解器新增**非有限快速失败**：T 或 |p_rgh| 出现 NaN/Inf 立即
+  `FatalError`（附 t、max(T)、max|p_rgh| 与处置建议），不再输出
+  海量 NaN 后续算；
+- 文档化输出场 `D/sigma/sigmaEq`（上表）。不写 `fillVelocityWarn`
+  的旧 case 行为与 v1.20 一致。
 
 **v1.20**（热流道温度边界，任务 026）：
 

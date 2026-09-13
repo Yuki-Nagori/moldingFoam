@@ -83,11 +83,17 @@ jobs:
           xmake
           xmake run test
 
+      - name: Set the release version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          sed -i "s/^local MOLDINGFOAM_VERSION = .*/local MOLDINGFOAM_VERSION = \"$TAG\";/" xmake.lua
+          grep -n "MOLDINGFOAM_VERSION" xmake.lua
+
       - name: Assemble self-contained bundle
         env:
           # The archive name carries the release tag and the architecture
           # instead of a date (a day may carry several releases)
-          MOLDINGFOAM_VERSION: ${{ inputs.tag }}
           MOLDINGFOAM_ARCH: ${{ matrix.arch }}
         run: xmake run bundle
 

@@ -38,6 +38,12 @@
 --                                     `xmake run case-contract`
 --******************************************************************************
 
+-- ============================================================================
+-- Release version: the CD workflow rewrites this single line with the
+-- release tag before building the bundle (do not use timestamps)
+-- ============================================================================
+local MOLDINGFOAM_VERSION = "v0.2.3"
+
 option("of_src")
     set_default("")
     set_showmenu(true)
@@ -570,11 +576,11 @@ target_end()
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
 -- dirs, compressed into build/moldingFoam-<version>-<arch>.tar.xz. The
--- version comes from the MOLDINGFOAM_VERSION environment (set to the
--- release tag by the CD workflow) or, for local builds, from the
--- repository VERSION file; the architecture comes from MOLDINGFOAM_ARCH
--- (the CD matrix) or is derived from WM_OPTIONS. A timestamp is never
--- used, so a day may carry several releases without ambiguity.
+-- version is defined at the top of this file (rewritten by the CD with
+-- the release tag); the
+-- architecture comes from MOLDINGFOAM_ARCH (the CD matrix) or is derived
+-- from WM_OPTIONS. A timestamp is never used, so a day may carry several
+-- releases without ambiguity.
 -- Recipients extract it, source OpenFOAM-14/etc/bashrc and run - no apt,
 -- no download. See MOLDINGFOAM-BUNDLE.md inside the archive for the
 -- usage and GPL-3.0 source pointers. Run with `xmake run bundle`.
@@ -696,21 +702,11 @@ moldingFoam (c) the moldingFoam authors, GPL-3.0. Source: the moldingFoam
 project repository.
 ]=])
 
-        -- Version: the CD passes the release tag; local builds fall back
-        -- to the VERSION file (no timestamps: a day may carry several
-        -- releases and the archive name must identify the release)
-        local version = os.getenv("MOLDINGFOAM_VERSION")
-
-        if version == nil or version == "" then
-            local versionFile = path.join(projectdir, "VERSION")
-            if os.isfile(versionFile) then
-                version = (io.readfile(versionFile) or ""):gsub("%s+$", "")
-            end
-        end
-
-        if version == nil or version == "" then
-            os.raise("no version: set MOLDINGFOAM_VERSION or write VERSION")
-        end
+        -- Release version: defined once at the top of this file and
+        -- rewritten by the CD workflow with the release tag (no
+        -- timestamps: a day may carry several releases and the archive
+        -- name must identify the release)
+        local version = MOLDINGFOAM_VERSION
 
         local arch = os.getenv("MOLDINGFOAM_ARCH")
 

@@ -1,6 +1,7 @@
-# Nightly full-system regression: the contract case is too slow for
-# per-PR CI, so it runs once a night (and on demand) on amd64. A failure
-# opens an issue with the logs.
+# Nightly full-system regression. Each block runs as an independent job so
+# a failure is scoped to a single, short log; the report job opens or
+# comments on a tracking issue listing the failed jobs. The per-PR CI
+# keeps only the build + model tests.
 
 name: nightly
 
@@ -18,129 +19,152 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  contract-case:
+  model-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Model tests
+        run: xmake run test
+
+  solver-cases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Solver feature cases
+        run: |
+          set -o pipefail
+          xmake run test-solver 2>&1 | tee test-solver.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-solver-cases
+          path: test-solver.txt
+          retention-days: 14
+
+  validation-thermal-flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Flow and thermal validations
+        run: |
+          set -o pipefail
+          xmake run couette 2>&1 | tee couette.txt
+          xmake run couetteSlip 2>&1 | tee couetteSlip.txt
+          xmake run stefan 2>&1 | tee stefan.txt
+          xmake run thermoelastic 2>&1 | tee thermoelastic.txt
+          xmake run coolantWater 2>&1 | tee coolantWater.txt
+          xmake run coolantMold 2>&1 | tee coolantMold.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-thermal-flow-logs
+          path: |
+            *.txt
+            validation/stefan/log.foamRun
+            validation/thermoelastic/log.foamRun
+            validation/coolantWater/log.foamRun
+            validation/coolantMold/log.foamRun
+          retention-days: 14
+
+  validation-structural:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Structural validations
+        run: |
+          set -o pipefail
+          xmake run warpageAniso 2>&1 | tee warpageAniso.txt
+          xmake run warpagePlate 2>&1 | tee warpagePlate.txt
+          xmake run shrinkBar 2>&1 | tee shrinkBar.txt
+          xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-structural-logs
+          path: |
+            *.txt
+            validation/warpageAniso/log.foamRun
+            validation/warpagePlate/log.foamRun
+            validation/shrinkBar/log.run
+            validation/anisoShrinkBar/log.run
+          retention-days: 14
+
+  validation-cht:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: ./.github/actions/setup
+      - name: Conjugate heat transfer validation
+        run: |
+          set -o pipefail
+          xmake run moldCHT 2>&1 | tee moldcht.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-cht-logs
+          path: |
+            moldcht.txt
+            validation/moldCHT/log.foamRun
+            validation/moldCHT-cycle/log.foamRun
+            validation/moldCHT-fill/log.foamRun
+            validation/moldCHT-cooled/log.foamRun
+            validation/moldCHT-lumped/log.foamRun
+            validation/coolantWaterMold/log.foamRun
+          retention-days: 14
+
+  contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       MOLDINGFOAM_PARALLEL: "4"
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            g++ libopenmpi-dev openmpi-bin python3 curl ca-certificates
-
-      - name: Install OpenFOAM-14 (official binary, cached)
-        uses: actions/cache@v4
-        id: ofcache
-        with:
-          path: /opt/openfoam14
-          key: openfoam14-20260724-amd64
-      - name: Install OpenFOAM-14 (on cache miss)
-        if: steps.ofcache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL https://dl.openfoam.org/gpg.key \
-            | sudo tee /etc/apt/trusted.gpg.d/openfoam.asc >/dev/null
-          sudo add-apt-repository -y http://dl.openfoam.org/ubuntu
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends openfoam14
-
-      - name: Install xmake
-        run: |
-          curl -fsSL https://xmake.io/shget.text | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Build and run model tests
-        run: |
-          xmake
-          xmake run test
-          xmake run test-solver
-          xmake run couette
-          xmake run couetteSlip
-
-      - name: Stefan solidification validation
-        run: |
-          set -o pipefail
-          xmake run stefan 2>&1 | tee stefan.txt
-
-      - name: Thermoelastic cantilever validation
-        run: |
-          set -o pipefail
-          xmake run thermoelastic 2>&1 | tee thermoelastic.txt
-
-      - name: 3D coolant-flow validation
-        run: |
-          set -o pipefail
-          xmake run coolantWater 2>&1 | tee coolantWater.txt
-
-      - name: Mould cooling channel validation
-        run: |
-          set -o pipefail
-          xmake run coolantMold 2>&1 | tee coolantMold.txt
-
-      - name: Anisotropic shrinkage warpage validation
-        run: |
-          set -o pipefail
-          xmake run warpageAniso 2>&1 | tee warpageAniso.txt
-
-      - name: Shrinkage warpage plate validation
-        run: |
-          set -o pipefail
-          xmake run warpagePlate 2>&1 | tee warpagePlate.txt
-
-      - name: Free-shrinkage quarter bar validation
-        run: |
-          set -o pipefail
-          xmake run shrinkBar 2>&1 | tee shrinkBar.txt
-
-      - name: Anisotropic free-shrinkage quarter bar validation
-        run: |
-          set -o pipefail
-          xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
-
-      - name: Conjugate heat transfer validation
-        run: |
-          set -o pipefail
-          xmake run moldCHT 2>&1 | tee moldcht.txt
-
+      - uses: ./.github/actions/setup
       - name: Contract case (4 subdomains)
         run: |
           set -o pipefail
           xmake run case-contract 2>&1 | tee acceptance.txt
-
-      - name: Collect artifacts
-        if: always()
-        run: |
-          mkdir -p dist
-          cp case-contract/log.foamRun case-contract/log.blockMesh acceptance.txt dist/ 2>/dev/null || true
-          cp -r case-contract/postProcessing dist/ 2>/dev/null || true
-          cp validation/stefan/log.foamRun stefan.txt dist/ 2>/dev/null || true
-          cp validation/thermoelastic/log.foamRun thermoelastic.txt dist/ 2>/dev/null || true
-          cp validation/warpagePlate/log.foamRun warpagePlate.txt dist/ 2>/dev/null || true
-          cp validation/shrinkBar/log.foamRun shrinkBar.txt dist/ 2>/dev/null || true
-          cp validation/anisoShrinkBar/log.run anisoShrinkBar.txt dist/ 2>/dev/null || true
-          cp validation/coolantMold/log.foamRun coolantMold.txt dist/ 2>/dev/null || true
-          cp validation/coolantWater/log.foamRun coolantWater.txt dist/ 2>/dev/null || true
-          cp validation/warpageAniso/log.foamRun warpageAniso.txt dist/ 2>/dev/null || true
-          cp validation/moldCHT/log.foamRun moldcht.txt dist/ 2>/dev/null || true
-
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: contract-case-logs
-          path: dist/
+          name: nightly-contract-logs
+          path: |
+            acceptance.txt
+            case-contract/log.foamRun
+            case-contract/log.blockMesh
           retention-days: 14
 
-      - name: Open issue on failure
-        if: failure()
+  report:
+    needs:
+      - model-tests
+      - solver-cases
+      - validation-thermal-flow
+      - validation-structural
+      - validation-cht
+      - contract
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Open or comment the failure issue
+        if: contains(needs.*.result, 'failure')
         env:
           GH_TOKEN: ${{ github.token }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          TITLE="nightly contract-case FAILED $(date -u +%Y-%m-%d)"
+          FAILED=$(echo "$NEEDS" \
+            | jq -r 'to_entries[] | select(.value.result == "failure") | .key' \
+            | paste -sd, -)
+          TITLE="nightly FAILED $(date -u +%Y-%m-%d)"
+          BODY="Failed jobs: ${FAILED}
+
+          Open the failed job in the run and its uploaded artifact
+          (nightly-*-logs); the job log is scoped to that block."
           EXISTING=$(gh issue list -R "$GITHUB_REPOSITORY" \
             --search "$TITLE in:title" --state open --json number -q '.[0].number')
-          BODY=$(head -100 acceptance.txt 2>/dev/null || echo "see logs")
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" -R "$GITHUB_REPOSITORY" --body "$BODY"
           else

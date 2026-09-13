@@ -1,0 +1,59 @@
+# Shared setup for the moldingFoam workflows: system dependencies, the
+# cached official OpenFOAM-14 binary, xmake and the module build. Kept as
+# a composite action so each nightly job can run an independent, scoped
+# regression block with its own log.
+name: moldingFoam setup
+description: system deps, cached OpenFOAM-14, xmake and the module build
+
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          g++ libopenmpi-dev openmpi-bin python3 curl ca-certificates jq
+
+    - name: Install OpenFOAM-14 (official binary, cached)
+      id: ofcache
+      uses: actions/cache@v4
+      with:
+        path: /opt/openfoam14
+        # Arch-specific: the amd64 and arm64 jobs must never share the
+        # OpenFOAM tree (runner.arch is X64 / ARM64)
+        key: openfoam14-20260724-${{ runner.arch }}
+
+    - name: Install OpenFOAM-14 (on cache miss)
+      if: steps.ofcache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        curl -fsSL https://dl.openfoam.org/gpg.key \
+          | sudo tee /etc/apt/trusted.gpg.d/openfoam.asc >/dev/null
+        sudo add-apt-repository -y http://dl.openfoam.org/ubuntu
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends openfoam14
+
+    - name: Cache xmake
+      id: xmakecache
+      uses: actions/cache@v4
+      with:
+        # The pinned binary: the version is frozen by the key so CI runs
+        # are reproducible; the OpenFOAM tree is the heavy cache
+        path: ~/.local/bin/xmake
+        key: xmake-bin-${{ runner.arch }}-20260724
+
+    - name: Install xmake
+      if: steps.xmakecache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        curl -fsSL https://xmake.io/shget.text | bash
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Add xmake to PATH
+      shell: bash
+      run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Build
+      shell: bash
+      run: xmake

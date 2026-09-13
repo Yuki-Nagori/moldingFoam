@@ -1341,18 +1341,32 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 ### CI（自动触发）
 
 `ci.yml` 在 **push 到 `main`** 和所有 **Pull Request** 上自动运行，
-双架构各一遍：安装系统依赖与官方 `openfoam14` 二进制（apt）→
-`xmake` 编译 → `xmake run test` 模型测试。求解器特性用例与解析验证
-（每个都要重建并跑 case）耗时更长，统一放在夜间任务。
+双架构各一遍：`actions/setup` 复合 action（系统依赖 + 缓存的官方
+`openfoam14` + xmake）→ `xmake` 编译 → `xmake run test` 模型测试。
+求解器特性用例与解析验证（每个都要重建并跑 case）耗时更长，统一放在
+夜间任务。
 
-### 夜间契约 case 回归（`nightly.yml`）
+**缓存**：复合 action `.github/actions/setup/` 被 CI/CD/nightly 共用，
+缓存 `/opt/openfoam14`（key 含 `runner.arch`，amd64/arm64 互不命中）
+与 xmake 二进制（key 固定版本，保证可复现）；命中后省去 apt 安装与
+下载，仅剩增量编译。
+
+### 夜间回归（`nightly.yml`，按板块拆分）
 
 求解器特性用例、解析验证与契约 case 在 PR 级 CI 上太慢（每个
 `xmake run <case>` 都要重建库并跑 case），由**每夜定时任务**
-（UTC 22:00）在 amd64 runner 上运行：`test-solver`、`couette`、
-`couetteSlip`、`stefan`、`moldCHT`（双区域共轭传热）与完整契约
-验收，失败时自动开/评论 issue 并上传日志 artifact；也可在 Actions
-页手动触发。
+（UTC 22:00，也可手动触发）在 amd64 runner 上运行。为便于定位失败，
+任务拆成**独立 job**（各自日志与 artifact）：
+
+| job | 内容 |
+|-----|------|
+| `model-tests` | `xmake run test` |
+| `solver-cases` | `xmake run test-solver`（22 用例） |
+| `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold |
+| `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
+| `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |
+| `contract` | 完整契约验收（4 子域） |
+| `report` | 汇总失败 job 名并开/评论 issue（指向对应 job 日志与 artifact） |
 
 ### CD（手动触发，写入 tag）
 

@@ -29,28 +29,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            g++ libopenmpi-dev openmpi-bin python3 curl ca-certificates
-
-      - name: Install OpenFOAM-14 (official binary)
-        run: |
-          curl -fsSL https://dl.openfoam.org/gpg.key \
-            | sudo tee /etc/apt/trusted.gpg.d/openfoam.asc >/dev/null
-          sudo add-apt-repository -y http://dl.openfoam.org/ubuntu
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends openfoam14
-
-      - name: Install xmake
-        run: |
-          curl -fsSL https://xmake.io/shget.text | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Build
-        run: xmake
-
+      - uses: ./.github/actions/setup
       - name: Model tests
         run: xmake run test

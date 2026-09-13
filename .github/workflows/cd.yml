@@ -84,12 +84,17 @@ jobs:
           xmake run test
 
       - name: Assemble self-contained bundle
+        env:
+          # The archive name carries the release tag and the architecture
+          # instead of a date (a day may carry several releases)
+          MOLDINGFOAM_VERSION: ${{ inputs.tag }}
+          MOLDINGFOAM_ARCH: ${{ matrix.arch }}
         run: xmake run bundle
 
       - name: Collect artifacts
         run: |
           mkdir -p dist
-          cp build/moldingFoam-openfoam14-*.tar.xz dist/
+          cp build/moldingFoam-*.tar.xz dist/
 
       - uses: actions/upload-artifact@v4
         with:

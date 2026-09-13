@@ -272,13 +272,14 @@ wmake；它必须是**已经构建完成**的环境树（根目录含 `etc/bashr
 $ xmake run bundle
 ```
 
-产出 `build/moldingFoam-openfoam14-<WM_OPTIONS>-<日期>.tar.xz`（约
+产出 `build/moldingFoam-<版本>-<架构>.tar.xz`（版本取自 `VERSION` 或 CD 的
+发布 tag；架构 amd64/arm64；约
 120 MB）：完整 OpenFOAM-14 官方环境树（约 700 MB，含 ThirdParty 与全部
 模块）加上并入树内平台目录的 `libmoldingFoam.so` 与 `modelTests`。使用
 者**无需安装 OpenFOAM**：
 
 ```console
-$ tar -xJf moldingFoam-openfoam14-*.tar.xz
+$ tar -xJf moldingFoam-*.tar.xz
 $ . openfoam14/etc/bashrc
 $ modelTests        # 自检；case 中照常 solver moldingFoam + libs ("libmoldingFoam.so")
 ```

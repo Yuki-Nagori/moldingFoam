@@ -569,7 +569,12 @@ target_end()
 
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
--- dirs, compressed into build/moldingFoam-openfoam14-<WM_OPTIONS>-<date>.tar.xz.
+-- dirs, compressed into build/moldingFoam-<version>-<arch>.tar.xz. The
+-- version comes from the MOLDINGFOAM_VERSION environment (set to the
+-- release tag by the CD workflow) or, for local builds, from the
+-- repository VERSION file; the architecture comes from MOLDINGFOAM_ARCH
+-- (the CD matrix) or is derived from WM_OPTIONS. A timestamp is never
+-- used, so a day may carry several releases without ambiguity.
 -- Recipients extract it, source OpenFOAM-14/etc/bashrc and run - no apt,
 -- no download. See MOLDINGFOAM-BUNDLE.md inside the archive for the
 -- usage and GPL-3.0 source pointers. Run with `xmake run bundle`.
@@ -662,7 +667,7 @@ complete OpenFOAM-14 runtime environment (OpenFOAM Foundation
 
 ## Usage
 
-    tar -xJf moldingFoam-openfoam14-*.tar.xz
+    tar -xJf moldingFoam-*.tar.xz
     . openfoam14/etc/bashrc
     modelTests                       # self-check
 
@@ -691,8 +696,35 @@ moldingFoam (c) the moldingFoam authors, GPL-3.0. Source: the moldingFoam
 project repository.
 ]=])
 
-        local name = "moldingFoam-openfoam14-" .. wmo .. "-"
-            .. os.date("%Y%m%d")
+        -- Version: the CD passes the release tag; local builds fall back
+        -- to the VERSION file (no timestamps: a day may carry several
+        -- releases and the archive name must identify the release)
+        local version = os.getenv("MOLDINGFOAM_VERSION")
+
+        if version == nil or version == "" then
+            local versionFile = path.join(projectdir, "VERSION")
+            if os.isfile(versionFile) then
+                version = (io.readfile(versionFile) or ""):gsub("%s+$", "")
+            end
+        end
+
+        if version == nil or version == "" then
+            os.raise("no version: set MOLDINGFOAM_VERSION or write VERSION")
+        end
+
+        local arch = os.getenv("MOLDINGFOAM_ARCH")
+
+        if arch == nil or arch == "" then
+            if wmo:find("Arm64") then
+                arch = "arm64"
+            elseif wmo:find("Arm") then
+                arch = "arm"
+            else
+                arch = "amd64"
+            end
+        end
+
+        local name = "moldingFoam-" .. version .. "-" .. arch
         local tarball = path.join(projectdir, "build", name .. ".tar.xz")
         os.rm(tarball)
         print("[moldingFoam] compressing the bundle (xz, a few minutes) ...")

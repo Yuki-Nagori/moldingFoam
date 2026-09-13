@@ -986,7 +986,21 @@ thermoType
 | `T` | volScalarField | K | 温度（各向同性映射时为本征应变代理） |
 | `shrinkage` / `shrinkageTensor` / `voidFraction` | scalar / symmTensor / scalar | —（无量纲） | 流动侧关联场（启用时写出） |
 
-- 位置：case 时间目录 `<time>/…`（`writeInterval` 控制）；
+- 位置：case 时间目录 `<time>/…`（`writeInterval` 控制）；`D` 为
+  标准 OpenFOAM volVectorField（单位 m），示例：
+
+```
+FoamFile { class volVectorField; object D; }
+dimensions      [0 1 0 0 0 0 0];
+internalField   nonuniform List<vector>
+768
+(
+(0.0003125 0.01 0)        // (Dx Dy Dz)，SI 米
+(0.0009375 0.01 0)
+...
+)
+boundaryField { ... }
+```
 - 样例：`validation/warpagePlate`（4.2%）、`validation/shrinkBar`
   （自由收缩机器精度）；bundle 内 `xmake run warpagePlate` 可复跑生成；
 - 冷却水路瞬态：模壁 patch 的 `moldingMoldTemperature` + `coolant`

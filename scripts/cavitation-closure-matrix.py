@@ -47,7 +47,7 @@ def read_field(case, time, name):
     return [float(m.group(1))] if m else None
 
 
-def run_case(base, work, Cv, Cc, band):
+def run_case(base, work, Cv, Cc, band, closure=True):
     case = os.path.join(work, "void_%s_%s" % (Cv, Cc))
     shutil.rmtree(case, ignore_errors=True)
     shutil.copytree(base, case)
@@ -61,6 +61,18 @@ def run_case(base, work, Cv, Cc, band):
     txt = re.sub(r"Cv\s+[-+0-9.eE]+;", "Cv              %g;" % Cv, txt)
     txt = re.sub(r"Cc\s+[-+0-9.eE]+;", "Cc              %g;" % Cc, txt)
     txt = re.sub(r"band\s+[-+0-9.eE]+;", "band            %g;" % band, txt)
+    switch = "true" if closure else "false"
+    if re.search(r"^\s*closure\s", txt, re.M):
+        txt = re.sub(r"^\s*closure\s+\w+;", "    closure         %s;" % switch,
+                     txt, flags=re.M)
+    else:
+        # insert next to band (a comment mentioning "closure" must not
+        # suppress this)
+        txt = re.sub(r"^(\s*band\s+[^;]*;)",
+                     lambda m: m.group(1) + "\n    closure         " + switch + ";",
+                     txt, count=1, flags=re.M)
+    if not re.search(r"^\s*closure\s+%s;" % switch, txt, re.M):
+        raise SystemExit("error: could not set closure %s in %s" % (switch, fvm))
     open(fvm, "w").write(txt)
 
     subprocess.run(["blockMesh"], cwd=case, stdout=subprocess.DEVNULL,
@@ -120,21 +132,33 @@ def run_case(base, work, Cv, Cc, band):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    argv = sys.argv[1:]
+    band = 0.2
+    closure = True
+    if "--band" in argv:
+        band = float(argv[argv.index("--band") + 1])
+    if "--closure" in argv:
+        closure = argv[argv.index("--closure") + 1].lower() not in ("off", "false", "0")
+    skip = set()
+    for opt in ("--band", "--closure"):
+        if opt in argv:
+            skip.update((argv.index(opt), argv.index(opt) + 1))
+    args = [a for i, a in enumerate(argv) if not a.startswith("--") and i not in skip]
     base, work = args[0], args[1]
     Cvs = [float(x) for x in args[2:]] or [0.05, 0.1, 0.2, 0.3]
     base = os.path.abspath(base)
     os.makedirs(work, exist_ok=True)
 
-    print("Cv\tCc\tstable\tvoid\tonset_mass\tfinal_drift\tp_min")
+    print("Cv\tCc\tclosure\tband\tstable\tvoid\tonset_mass\tfinal_drift\tp_min")
     for Cv in Cvs:
         for Cc in (1, 10, 100):
-            r = run_case(base, work, Cv, Cc, 0.2)
+            r = run_case(base, work, Cv, Cc, band, closure)
             if r is None:
                 print("%g\t%g\tNO-FIELDS" % (Cv, Cc))
                 continue
-            print("%g\t%g\t%s\t%.5f\t%.3f%%\t%.3f%%\t%.1f" % (
-                r["Cv"], r["Cc"], "yes" if r["stable"] else "NO",
+            print("%g\t%g\t%s\t%g\t%s\t%.5f\t%.3f%%\t%.3f%%\t%.1f" % (
+                r["Cv"], r["Cc"], "on" if closure else "off", band,
+                "yes" if r["stable"] else "NO",
                 r["void"], 100*r["onset"], 100*r["drift"], r["pMin"]))
 
 

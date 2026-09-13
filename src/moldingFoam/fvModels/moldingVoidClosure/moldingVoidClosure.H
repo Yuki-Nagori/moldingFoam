@@ -69,7 +69,22 @@ Description
         //- Evaporation-ceiling ramp width, as a fraction of the closure
         //  void [0, 1]
         band    0.2;
+
+        //- Apply the closure ceiling; off reproduces the unconstrained
+        //  upstream behaviour (ablation/diagnostics)
+        closure true;
     }
+    \endverbatim
+
+    The ceiling makes the void insensitive to the cavitation coefficients
+    (Cv 0.05-0.3, Cc 1-100 all give the closure void), but the ramp width
+    is load bearing: the ablation matrix
+    (\c scripts/cavitation-closure-matrix.py, task 039) shows band 0.05 and
+    0.5 can crash the run and band 0.1 degrades the pressure pin at
+    Cc = 100, while the default 0.2 is stable with the pin held at pSat
+    throughout. Bands outside [0.1, 0.3] therefore warn.
+
+    \verbatim
     \endverbatim
 
     The upstream cavitation library must be loadable; the case's
@@ -119,6 +134,11 @@ class moldingVoidClosure
         //- Evaporation-ceiling ramp width as a fraction of the closure
         //  void [0, 1]
         scalar band_;
+
+        //- Apply the closure ceiling. Disabling it reproduces the
+        //  unconstrained upstream behaviour (the onset over-evaporation),
+        //  which is used for ablation and diagnostics
+        Switch closure_;
 
 
 
@@ -197,10 +217,6 @@ public:
         //- Evaporation limit factor per cell: 1 below the closure ceiling,
         //  ramped to 0 at it, 0 where no void is admissible
         tmp<volScalarField::Internal> evaporationLimit() const;
-
-        //- Current closure ceiling (void fraction) per cell, for
-        //  diagnostics and verification
-        tmp<volScalarField::Internal> closureVoid() const;
 
 
     // Member Operators

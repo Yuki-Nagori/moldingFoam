@@ -71,13 +71,24 @@ Foam::fv::moldingVoidClosure::moldingVoidClosure
 
     rhoRef_(mesh.nCells(), 0),
 
-    band_(dict.lookupOrDefault<scalar>("band", 0.2))
+    band_(dict.lookupOrDefault<scalar>("band", 0.2)),
+
+    closure_(dict.lookupOrDefault<Switch>("closure", true))
 {
     if (band_ <= 0 || band_ > 1)
     {
         FatalIOErrorInFunction(dict)
             << "The evaporation-ceiling ramp width must be in (0, 1]: "
             << "band = " << band_ << exit(FatalIOError);
+    }
+
+    if (band_ < 0.1 || band_ > 0.3)
+    {
+        WarningInFunction
+            << "band = " << band_ << " is outside the validated window "
+            << "[0.1, 0.3] (ablation matrix in task 039: bands 0.05 and "
+            << "0.5 can crash the run and 0.1 degrades the pressure pin)"
+            << endl;
     }
 }
 
@@ -128,6 +139,19 @@ Foam::volScalarField::Internal Foam::fv::moldingVoidClosure::scaledLimit
 Foam::tmp<Foam::volScalarField::Internal>
 Foam::fv::moldingVoidClosure::evaporationLimit() const
 {
+    if (!closure_)
+    {
+        // Unconstrained (ablation/diagnostic) path: the phase-change rate
+        // sets the void, with no ceiling
+        return volScalarField::Internal::New
+        (
+            "cavitationEvaporationLimit",
+            mesh(),
+            dimless,
+            Field<scalar>(mesh().nCells(), 1.0)
+        );
+    }
+
     const volScalarField::Internal& alpha1 = mixture_.alpha1().internalField();
     const volScalarField::Internal& rho = mixture_.rho().internalField();
     const volScalarField::Internal& rho1 = mixture_.rho1().internalField();
@@ -192,35 +216,6 @@ Foam::fv::moldingVoidClosure::evaporationLimit() const
     }
 
     return tLimit;
-}
-
-
-Foam::tmp<Foam::volScalarField::Internal>
-Foam::fv::moldingVoidClosure::closureVoid() const
-{
-    const volScalarField::Internal& rho1 = mixture_.rho1().internalField();
-
-    tmp<volScalarField::Internal> tPhi
-    (
-        volScalarField::Internal::New
-        (
-            "voidClosure",
-            mesh(),
-            dimless,
-            Field<scalar>(mesh().nCells(), 0.0)
-        )
-    );
-    volScalarField::Internal& phi = tPhi.ref();
-
-    forAll(rhoRef_, celli)
-    {
-        phi[celli] =
-            rhoRef_[celli] > 0
-          ? max(scalar(0), 1 - rhoRef_[celli]/rho1[celli])
-          : scalar(0);
-    }
-
-    return tPhi;
 }
 
 
@@ -336,6 +331,14 @@ void Foam::fv::moldingVoidClosure::correct()
 bool Foam::fv::moldingVoidClosure::read(const dictionary& dict)
 {
     dict.readIfPresent("band", band_);
+    dict.readIfPresent("closure", closure_);
+
+    if (band_ <= 0 || band_ > 1)
+    {
+        FatalIOErrorInFunction(dict)
+            << "The evaporation-ceiling ramp width must be in (0, 1]: "
+            << "band = " << band_ << exit(FatalIOError);
+    }
 
     cavitation_->read(dict);
 

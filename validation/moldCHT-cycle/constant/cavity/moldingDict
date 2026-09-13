@@ -42,8 +42,10 @@ cooling
     releasePressure      1e5;
 }
 
-// Three moulding cycles: the cavity resets, the mould temperature is kept
-nCycles 4;
+// Six moulding cycles: the cavity resets, the mould temperature is kept.
+// The per-cycle increment trend needs at least four completed cycles
+// (three increments), so the verifier rejects shorter runs
+nCycles 6;
 
 // The vent stays open for the whole benchmark so that the cavity never
 // pressurises after filling (the pressure-work contribution to the energy

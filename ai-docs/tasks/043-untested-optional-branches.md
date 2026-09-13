@@ -99,4 +99,15 @@
   把电阻改成 1e-9（等于无电阻）时，先被既有的「周期增量不得为负」判据
   拦下（收敛末期增量在 0 附近抖动）——即该用例的收敛判据对微小扰动敏感，
   属既有行为，已在本次记录（可另开项收紧）；
-- **待做**：CrossWlf `crystallinity` 子字典（χ-η 耦合）。
+- **χ-η 耦合（G5）标定尝试（2026-09-13）**：键定义已确认
+  （`CrossWlfCoeffs.crystallinity { chiInfinity∈(0,1]; exponent>=0 }`
+  子字典，`useCrystallinity = found("crystallinity")`，读取处含显式
+  校验）。**关键约束**：`tests/cases/crystallization` 是**静止冷却**
+  算例——开/关耦合两变体的闸口压力与模温序列**完全一致**
+  （p_gate 恒 0、wallT 300.021 K 两者相同），说明该算例无流动、η(χ)
+  不可能体现；χ-η 的 case 级验证必须改用**有流动**的
+  `tests/cases/crystallizationAdvection`（随流输运 + 结晶），并以流动
+  量（或黏度场）为指标标定。**未提交任何断言**（标定未成立），下一步
+  入口即：在 `crystallizationAdvection` 上启用耦合 → 选流动/黏度指标
+  → 开/关标定 → 阈值两侧留余量 → 消融复验；
+- **待做**：χ-η 耦合（如上，已锁定算例与入口）。

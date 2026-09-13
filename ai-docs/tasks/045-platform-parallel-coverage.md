@@ -1,0 +1,74 @@
+# 045 — 平台与并行覆盖范围（arm64 重型验证 / 并行矩阵）
+
+- 状态：planned
+- 优先级：P3
+- 依赖：CI/CD（已拆分的 nightly）、032/041（性能）
+- 预估规模：1–3 天（含 CI 时间成本评估）
+- 来源：`ai-docs/coverage-audit-2026-09-13.md` 缺口 G10、G11
+
+## 1. 背景与现状
+
+- **G10a 架构**：重型验证（22 求解器用例、17 数值验证、契约）只在
+  nightly 的 x86_64 上跑；arm64 仅 per-PR CI 的「构建 + 模型测试」。
+  019 的 6 周期复测已实测两平台数值差异（增量序列与钉压量级存在
+  1–10% 差异），说明架构差异不是纯理论问题；
+- **G10b 并行**：并行覆盖仅 nightly `contract`（`MOLDINGFOAM_PARALLEL=4`）
+  一项；`nSubCycles`/分解策略/不同核数的组合无门禁；
+- **G11 性能**：`perf-scaling.sh` 为手工基准（设计如此）；041 已交付
+  `perf-breakdown.py` 并发现能量方程占契约 case 迭代量 94% 的候选杠杆。
+
+## 2. 目标
+
+1. 对「arm64 是否纳入数值回归」做**明确决策并落文档**：
+   - 选项 A：nightly 增加一个 arm64 job（`ubuntu-24.04-arm`）跑
+     validation-cht 或 solver-cases 子集（GitHub 公共仓库 arm runner
+     免费，成本是墙钟时间）；
+   - 选项 B：维持现状，在 README/审计文档明确「数值回归以 x86_64 为准，
+     arm64 只保证构建与模型测试」，并记录已知的架构差异量级；
+2. 并行矩阵（可选，时间盒 1 天）：`MOLDINGFOAM_PARALLEL` ∈ {1,2,4,8} ×
+   `nSubCycles` ∈ {8,16} 的守恒与稳定性抽样，至少断言守恒门槛不破；
+3. 与 041 的衔接：性能项的下一步（能量求解器计时矩阵）仍在 041，
+   本任务不重复。
+
+## 3. 技术方案
+
+- 选项 A 的接线：沿用 `ci.yml` 已有的
+  `ubuntu-24.04-arm` 矩阵与 `./.github/actions/setup`（已支持 arm64
+  缓存键），在 nightly 增加 `validation-arm` job（timeout 60–90 分钟，
+  artifact 与 x86 分块）；先只挂 `moldCHT`（6 案例，最贵）或
+  `test-solver`（最快）二选一，按首个 run 的墙钟数据决定是否扩大；
+- 选项 B 的落文档：在 README 第 11 节与审计文档写明口径与已观测差异；
+- 并行矩阵：用 `scripts/perf-scaling.sh` 的 1M 单元基准过重，改为在
+  `case-contract` 上扫描 `MOLDINGFOAM_PARALLEL` 与 `nSubCycles` 的
+  守恒一致性（质量守恒 <1e-3 为门槛）。
+
+## 4. 工作拆解
+
+1. 用一次手工 nightly dispatch 采集 arm64 跑 `test-solver` 与 `moldCHT`
+   的墙钟（同一 commit）；
+2. 按数据在 A/B 间定稿并接线或落文档；
+3. （可选）并行矩阵脚本化并记录；
+4. 审计文档 G10/G11 标注关闭或转为决策记录。
+
+## 5. 验收标准（DoD）
+
+- arm64 数值回归：要么有 nightly job 且首跑通过，要么有明确的口径决策
+  文档（含已观测差异量级与理由）；
+- 并行：要么有矩阵证据（守恒不破），要么在 041/本任务记录「维持现状」
+  结论；
+- 文档同步（README CI 表 + 审计）。
+
+## 6. 风险与缓解
+
+| 风险 | 缓解 |
+|------|------|
+| arm64 重型验证墙钟过长，推高 nightly 时长 | 先跑最小子集（`test-solver`）并按数据决定；必要时每周一次而非每日 |
+| 并行矩阵的守恒断言掩盖数值差异 | 以守恒门槛（1e-3）为准，不做逐点对拍 |
+
+## 7. 涉及文件
+
+| 文件 | 改动 |
+|------|------|
+| `.github/workflows/nightly.yml`（选项 A） | arm64 数值 job |
+| `README.md` 第 11 节、审计文档 | 口径决策与差异记录 |
+| `scripts/perf-scaling.sh` 或新矩阵脚本（可选） | 并行矩阵 |

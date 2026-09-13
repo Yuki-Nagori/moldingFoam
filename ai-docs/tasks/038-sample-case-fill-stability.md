@@ -95,3 +95,100 @@
 | `tests/cases/boxFill/`（新） | 参考用例（SI + vent 模型 + 预算） |
 | `scripts/verify-box-fill.py`（新） | 验收：早期填充/Q、切换、密封、逃逸积分 |
 | `ai-docs/README.md` | 任务索引（031–038 状态刷新） |
+
+## 6. P1 回流跟进（Kairos 真机复测，2026-09-13 晚）
+
+### 6a. T 先 NaN 的机理：速度 runaway 的**后果**，非能量方程本身
+
+- 以 `/tmp/kairos-e2e/box6` 将 Q 放大 10×（等效小浇口/高压力工况）复现：
+  `t≈0.017 s`（填充 1.7%，与真实件 1.4% 同量级）时
+  `smoothSolver: T: Initial residual = 1 → Final nan, 1000 iters` **先于**
+  其他场 NaN；
+- 但日志序列显示：**dt 已先坍缩**（8.6e-15）、Co ≈ 1e-7（U ~ 1e7 m/s）、
+  门控压力 6.7 MPa（≈ 惯性压降 ρU²/2，物理量级正确）——即
+  压力/动量 runaway → dt 坍缩 → 能量方程系数（对流通量）溢出 → T NaN
+  → EOS → 全场 NaN。**冷壁梯度本身没问题**（样例盒冷壁 313 K 跑满
+  1.0 s 无 NaN）；
+- 触发条件是**浇口速度量级**：真实件浇口 U = Q/A 达数百 m/s（熔体声速
+  ~200–1000 m/s，局部 Mach ~O(1)），可压缩两相求解器在此失稳；样例盒
+  U = 8.3 m/s 在 t≈2.05 s 经 vent 路径进入同一终局。
+
+### 6b. 交付：可行性预警 + 快速失败（求解器两个防线）
+
+1. **启动浇口速度预警**（`fillVelocityWarn`，缺省 5 m/s，0 关闭）：
+   填充第一步按 `U = |φ|/A`（moldingInletVelocity patch）计算名义入口
+   速度并 `Warning`，给出 Q/A/阈值与建议（检查浇口面积/流量或设机台
+   限压 switchPressure）。实测：样例盒 8.33 m/s → 预警；契约 case
+   0.5 m/s → 静默；Q×10 83 m/s → 预警；
+2. **非有限快速失败**：`postSolve` 检测 T/|p_rgh| 非有限即
+   `FatalError`（附 t、max(T)、max|p_rgh| 与处置建议）。实测 Q×10：
+   23,000+ NaN 行 → **17 行 + 清晰 FATAL（rc=1）**；
+3. **限压保护**（既有 V/P 切换）：`switchPressure` 设为机台限压后，
+   流量阶段被压力封顶；注意不可行工况（极低填充即达限压）切换后
+   保压表阶跃仍会失稳——此时应判**工况不可行**而非继续（快速失败
+   会明确报出）。
+
+### 6c. 给 Kairos 的"填充压力上界"判据
+
+- 名义判据：`U_nom = Q/A_in`、动压 `0.5 ρ U_nom²`。经验阈值：
+  - `U_nom < 5 m/s`：正常；
+  - `5–20 m/s`：谨慎（粗网格/大 Q 易失稳，加密+小 dt）；
+  - `>20 m/s`：不可行（所需注塑压力远超机台，多半在填充早期崩）；
+- 更严格：求解器日志的 `p_gate` 超过机台限压的 50% 即预检不通过；
+- 求解器已内置上述两个防线，Kairos 可在提交前用 bundle 跑 1–2 步
+  读取预警/日志判定。
+
+### 6d. 验证用例形态建议（Kairos 提出，已覆盖情况）
+
+| 形态 | 现状 |
+|------|------|
+| 整面进料 | `tests/cases/boxFill`（+通用 vent 对照） |
+| 点浇口 | Q 放大等效复现（速度判据已交付）；建议再建专用小 case |
+| 冷壁 + 薄壁 | 样例盒即冷壁 313 K；薄壁专用 case 待补（速度判据先行） |
+
+## 7. P2 契约（本次定义）
+
+### 7a. C5 冷却水路瞬态（数据契约）
+
+既有能力（两条路径，均已验证）：
+
+1. **模壁 1D 通道（推荐，Kairos 现有面板直连）**：模壁 patch 的 T
+   BC 用 `moldingMoldTemperature`，通道写在 `coolant` 子字典：
+   ```yaml
+   coolant
+   {
+       massFlowRate     0.05;      // [kg/s]
+       cp               4180;      // [J/kg/K]
+       inletTemperature 293.15;    // [K] 介质入口温度（面板字段）
+       direction        (1 0 0);   // 通道轴向
+       htc              5000;      // [W/m^2/K] 或改用 Nu 相关式：
+       // Nu { C 0.023; m 0.8; n 0.4; Re 6000; Pr 7; k 0.6; D 0.008; }
+   }
+   ```
+   该 BC 逐步求解 1D 活塞流能量平衡（离散能量守恒已验收
+   `validation/coolantMold`、moldCHT 套件）；冷却阶段瞬态传热天然
+   包含（壁温随水路取热演化）；
+2. **三维水路 CHT（需要真实水流场时）**：独立 `moldingCoolantFluid`
+   区域 + `coupledTemperature`，见 `validation/coolantWater`（单区）
+   与 `validation/coolantWaterMold`（水+模具，界面能量平衡
+   1.2e-07）。
+
+Kairos 侧 `cooling_channels`（直径/起止/介质温度）映射：每个通道
+的**润湿模壁 patch** 上写 `cooling { ... }`（如上）；直径用于
+Nu{...D} 或由 Kairos 折算 `htc`。字段名以本契约为准。
+
+### 7b. C6 翘曲位移/应力场（数据契约）
+
+| 场 | 类型 | 量纲 | 说明 |
+|----|------|------|------|
+| `D` | volVectorField | `[length]` = **m (SI)** | 位移；显示按 mm ×1000 |
+| `sigma` | volSymmTensorField | `[Pa]` | 残余应力张量 |
+| `sigmaEq` | volScalarField | `[Pa]` | 等效应力 |
+| `T` | volScalarField | `[K]` | 温度（各向同性映射时即本征应变代理） |
+
+- 写出位置：case 时间目录 `<time>/D`（writeInterval 控制），样例见
+  `validation/warpagePlate`（4.2%）与 `validation/shrinkBar`（机器精度
+  自由收缩）；bundle 内 `xmake run warpagePlate` 可直接复跑生成；
+- 流动侧关联场（如启用）：`shrinkage` [-]、`shrinkageTensor` [-]
+  （volSymmTensorField）、`voidFraction` [-]；
+- 单位说明：OpenFOAM 惯例为 SI（m/Pa/K），Kairos 显示层做 mm 换算。

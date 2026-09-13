@@ -118,6 +118,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     forcedSwitchTime_(great),
     gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
+    fillVelocityWarn_(5),
     massBudget_(false),
     massBudgetIn_(0),
     massBudgetInitial_(0),
@@ -242,6 +243,15 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // sealed (polymer must not escape through the vent)
         const scalar ventSealAlpha =
             moldingDict.lookupOrDefault<scalar>("ventSealAlpha", 0.5);
+
+        // Nominal-inlet-velocity warning threshold (task 038 P1): the
+        // compressible two-phase solver loses stability when the gate
+        // velocity is far beyond a physical melt velocity
+        fillVelocityWarn_ = moldingDict.lookupOrDefault<scalar>
+        (
+            "fillVelocityWarn",
+            5
+        );
 
         // Optional discrete mass-budget diagnostic (task 018)
         massBudget_ = moldingDict.lookupOrDefault<Switch>("massBudget", false);
@@ -1757,6 +1767,35 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
 
 void Foam::solvers::moldingFoam::postSolve()
 {
+    // Fail fast on a non-finite solution (task 038 P1): the compressible
+    // two-phase solver cannot recover from a nan and would otherwise
+    // write thousands of nan lines before the run ends. The message
+    // points at the usual cause: a gate velocity beyond the solver's
+    // stability limit
+    {
+        const volScalarField& Tc = mixture_.thermo1().T();
+        const scalar Tmax = gMax(Tc);
+        const scalar pMax = gMax(mag(p_rgh_)());
+
+        if
+        (
+            !(Tmax == Tmax) || mag(Tmax) > vGreat
+         || !(pMax == pMax) || pMax > vGreat
+        )
+        {
+            FatalErrorInFunction
+                << "The melt state became non-finite at t = "
+                << runTime.value() << " s" << nl
+                << "  max(T) = " << Tmax << " K, max|p_rgh| = " << pMax
+                << " Pa" << nl
+                << "This usually means the gate velocity is beyond the "
+                << "compressible two-phase solver's stability limit: "
+                << "check the fill-velocity warning, reduce the injection "
+                << "rate, enlarge the gate, or cap the fill stage with a "
+                << "machine-limit switchPressure" << exit(FatalError);
+        }
+    }
+
     compressibleVoF::postSolve();
 
     // Optional discrete mass-budget diagnostic / conservative mass fixer
@@ -2108,6 +2147,58 @@ void Foam::solvers::moldingFoam::preSolve()
     // avoids over-compressing the cavity after the vent has sealed
     if (!stage.packing())
     {
+        // Fill-velocity feasibility warning (task 038 P1): the nominal
+        // velocity through the inlet patch is a leading indicator of the
+        // compressible two-phase solver's stability limit. A melt jet at
+        // tens of m/s is not physical (the required machine pressure
+        // would be enormous) and the solver will typically become
+        // non-finite; warn once at the start of the fill
+        if (runTime.timeIndex() == 1 && fillVelocityWarn_ > 0)
+        {
+            scalar Qmax = 0;
+            scalar Amax = 0;
+            scalar Umax = 0;
+
+            forAll(U.boundaryField(), pi)
+            {
+                if
+                (
+                    U.boundaryField()[pi].type()
+                 == moldingInletVelocityFvPatchVectorField::typeName
+                )
+                {
+                    const scalar Ap =
+                        gSum(mesh.magSf().boundaryField()[pi]);
+                    const scalar Qp = mag(gSum(phi_.boundaryField()[pi]));
+
+                    if (Qp/max(Ap, small) > Umax)
+                    {
+                        Umax = Qp/max(Ap, small);
+                        Qmax = Qp;
+                        Amax = Ap;
+                    }
+                }
+            }
+
+            reduce(Umax, maxOp<scalar>());
+            reduce(Qmax, maxOp<scalar>());
+            reduce(Amax, maxOp<scalar>());
+
+            if (Umax > fillVelocityWarn_)
+            {
+                WarningInFunction
+                    << "Nominal inlet melt velocity " << Umax << " m/s "
+                    << "(flow rate " << Qmax << " m^3/s through a "
+                    << Amax << " m^2 inlet patch) exceeds the warning "
+                    << "threshold " << fillVelocityWarn_ << " m/s." << nl
+                    << "The compressible two-phase solver is likely to "
+                    << "become non-finite: check the gate area and flow "
+                    << "rate (physical gate velocities are a few m/s at "
+                    << "most) or cap the fill stage with a machine-limit "
+                    << "switchPressure" << endl;
+            }
+        }
+
         // vTot_ is cached: the mesh is static, so the reduction would
         // return the same value every step
         const scalar filledFraction

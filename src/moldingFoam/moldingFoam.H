@@ -116,6 +116,11 @@ class moldingFoam
         //  is sealed (polymer must not escape through the vent)
         scalar ventSealAlpha_;
 
+        //- Nominal inlet-velocity warning threshold [m/s] (task 038 P1):
+        //  a melt jet at tens of m/s is beyond the compressible
+        //  two-phase solver's stability limit; 0 disables the warning
+        scalar fillVelocityWarn_;
+
         //- Enable the discrete polymer mass-budget diagnostic (task 018):
         //  accumulates the boundary melt flux with the same discretisation
         //  as the domain mass and logs the residual [dimensionless switch]

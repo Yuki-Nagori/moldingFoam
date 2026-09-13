@@ -118,7 +118,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     forcedSwitchTime_(great),
     gateFreezeTemperature_(-great),
     ventSealAlpha_(0.5),
-    fillVelocityWarn_(5),
+    fillVelocityWarn_(20),
     massBudget_(false),
     massBudgetIn_(0),
     massBudgetInitial_(0),
@@ -227,6 +227,15 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         const scalar gateSealRamp =
             packingDict.lookupOrDefault<scalar>("gateSealRamp", 0);
 
+        // Time-based ramp of the packing pressure after the V/P switch:
+        // when the switch is triggered by the filled fraction the gate
+        // pressure is still far below the packing table's first point,
+        // and applying that step in one update drives the melt
+        // transonic and diverges. Ramping over pressureRamp seconds
+        // (default 0.05 s; 0 restores the immediate step)
+        const scalar pressureRamp =
+            packingDict.lookupOrDefault<scalar>("pressureRamp", 0.05);
+
         // Optional time-based V/P switch criterion
         const scalar forcedSwitchTime =
             packingDict.lookupOrDefault<scalar>("switchTime", great);
@@ -251,7 +260,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         fillVelocityWarn_ = moldingDict.lookupOrDefault<scalar>
         (
             "fillVelocityWarn",
-            5
+            20
         );
 
         // Optional discrete mass-budget diagnostic (task 018)
@@ -575,7 +584,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                 runTime,
                 switchFraction,
                 std::move(pressure),
-                gateSealRamp
+                gateSealRamp,
+                pressureRamp
             );
         }
 
@@ -585,6 +595,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        switchPressure      = " << switchPressure << nl
             << "        gateSealTime        = " << gateSealTime << nl
             << "        gateSealRamp        = " << gateSealRamp << nl
+            << "        pressureRamp        = " << pressureRamp << nl
             << "        gateFreezeTemperature = " << gateFreezeTemperature
             << nl
             << "        pressure type       = "
@@ -1171,6 +1182,42 @@ void Foam::solvers::moldingFoam::resetCycle()
     }
 
     mixture_.correctThermo();
+
+    // Consistency guard of the restored phase state (task 038 follow-up):
+    // the upstream two-phase mixture divides by
+    // rho = alpha1*rho1 + alpha2*rho2, so both phase fractions must be
+    // restored together. A stale air fraction (e.g. ~0 where the part
+    // was melt-filled) with a reset alpha1 leaves rho ~ 0 and trips the
+    // FP-exception trap on builds with FP handling (x86 CI); checking
+    // min(rho) here makes the fault deterministic on every platform
+    {
+        const scalarField& a1 = alpha1.primitiveField();
+        const scalarField& a2 = alpha2.primitiveField();
+        const scalarField& r1 = mixture_.thermo1().rho().primitiveField();
+        const scalarField& r2 = mixture_.thermo2().rho().primitiveField();
+
+        scalar rhoMin = great;
+
+        forAll(a1, i)
+        {
+            rhoMin = min(rhoMin, a1[i]*r1[i] + a2[i]*r2[i]);
+        }
+
+        reduce(rhoMin, minOp<scalar>());
+
+        if (rhoMin <= small)
+        {
+            FatalErrorInFunction
+                << "The cycle reset left a non-positive mixture density: "
+                << "min(rho) = " << rhoMin << " kg/m3" << nl
+                << "The melt and air phase fractions must both be "
+                << "restored to their initial state" << exit(FatalError);
+        }
+
+        Info<< "moldingFoam: cycle reset: min(rho) = " << rhoMin
+            << " kg/m3" << endl;
+    }
+
     mixture_.correct();
 
     Info<< "moldingFoam: cycle " << (cycle_ - 1) << " complete; starting"
@@ -2241,6 +2288,16 @@ void Foam::solvers::moldingFoam::preSolve()
          || runTime.value() >= forcedSwitchTime_
         )
         {
+            if (filledFraction < 0.90)
+            {
+                WarningInFunction
+                    << "The V/P switch fired at a filled fraction of "
+                    << filledFraction << " (filledFraction trigger): "
+                    << "packing a partially filled cavity requires a "
+                    << "large make-up flow and may be unstable; check "
+                    << "switchFraction and the gate area" << endl;
+            }
+
             stage.switchToPacking(runTime.value());
 
             Info<< "moldingFoam: V/P switch: filled fraction = "

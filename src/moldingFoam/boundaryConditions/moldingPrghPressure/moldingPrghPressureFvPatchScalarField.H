@@ -129,6 +129,18 @@ class moldingPrghPressureFvPatchScalarField
         //  near-incompressible cavity during rapid pressure ramps
         scalar relaxation_;
 
+        //- Gate pressure captured at the first packing update [Pa] and
+        //  the V/P switch time [s]: the applied target ramps from the
+        //  captured value to the packing table over the stage's
+        //  pressureRamp, so a fill-fraction-triggered switch does not
+        //  apply the table's first point as a single pressure step
+        scalar pSwitch_;
+        scalar tSwitch_;
+
+        //- Whether the switch pressure has been captured for the
+        //  current packing stage
+        bool rampArmed_;
+
 
 public:
 

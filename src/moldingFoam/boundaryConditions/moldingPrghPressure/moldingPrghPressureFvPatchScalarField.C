@@ -58,7 +58,10 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*runner_))
       : autoPtr<moldingRunnerNetwork>()
     ),
-    relaxation_(dict.lookupOrDefault<scalar>("relaxation", 1))
+    relaxation_(dict.lookupOrDefault<scalar>("relaxation", 1)),
+    pSwitch_(0),
+    tSwitch_(-1),
+    rampArmed_(false)
 {
     if (relaxation_ <= 0 || relaxation_ > 1)
     {
@@ -105,7 +108,10 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
       : autoPtr<moldingRunnerNetwork>()
     ),
-    relaxation_(mpppsf.relaxation_)
+    relaxation_(mpppsf.relaxation_),
+    pSwitch_(mpppsf.pSwitch_),
+    tSwitch_(mpppsf.tSwitch_),
+    rampArmed_(mpppsf.rampArmed_)
 {}
 
 
@@ -128,7 +134,10 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
       ? autoPtr<moldingRunnerNetwork>(new moldingRunnerNetwork(*mpppsf.network_))
       : autoPtr<moldingRunnerNetwork>()
     ),
-    relaxation_(mpppsf.relaxation_)
+    relaxation_(mpppsf.relaxation_),
+    pSwitch_(mpppsf.pSwitch_),
+    tSwitch_(mpppsf.tSwitch_),
+    rampArmed_(mpppsf.rampArmed_)
 {}
 
 
@@ -156,6 +165,7 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         // The gate has frozen off at the end of packing: zero normal
         // flux, enforced together with the zero-velocity
         // moldingInletVelocity condition
+        rampArmed_ = false;
         valueFraction() = 0.0;
         refGrad() = 0.0;
     }
@@ -179,6 +189,33 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
             pTarget -= network_->pressureDrop(mag(gSum(phip)));
         }
 
+        // Ramp from the gate pressure captured when packing started:
+        // a fill-fraction-triggered switch happens while the gate
+        // pressure is well below the packing table's first point, and
+        // applying that step in one update drives the melt transonic
+        const scalar t = patch().time().value();
+
+        if (!rampArmed_)
+        {
+            // Start the ramp from the first packing update: the switch
+            // may be several steps in the past by then, and clocking
+            // from the switch time would apply a fraction of the step
+            // immediately
+            rampArmed_ = true;
+            tSwitch_ = t;
+            pSwitch_ = gAverage(*this);
+        }
+
+        const scalar rampTime(stage.pressureRamp());
+        const scalar ramp
+        (
+            rampTime > 0
+          ? min(scalar(1), (t - tSwitch_)/rampTime)
+          : scalar(1)
+        );
+
+        pTarget = pSwitch_ + ramp*(pTarget - pSwitch_);
+
         valueFraction() = sealFactor;
 
         // Optional relaxation of the target towards the current value
@@ -200,6 +237,7 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
         // Filling: the flow is volumetric-flow-rate controlled by the
         // moldingInletVelocity boundary condition, so the gate pressure
         // gradient is left to the pressure equation
+        rampArmed_ = false;
         valueFraction() = 0.0;
         refGrad() = 0.0;
     }

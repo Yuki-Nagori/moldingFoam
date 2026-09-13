@@ -42,7 +42,8 @@ Foam::moldingStage::moldingStage
     const Time& runTime,
     scalar switchFraction,
     autoPtr<Function1<scalar>> pressure,
-    scalar gateSealRamp
+    scalar gateSealRamp,
+    scalar pressureRamp
 )
 :
     regIOobject
@@ -66,9 +67,17 @@ Foam::moldingStage::moldingStage
     pressure_(std::move(pressure)),
     gateSealed_(false),
     gateSealRamp_(gateSealRamp),
+    pressureRamp_(pressureRamp),
     gateSealTime_(-1),
     ventSealed_(false)
 {
+    if (pressureRamp_ < 0)
+    {
+        FatalIOErrorInFunction(mesh.time().controlDict())
+            << "The packing pressure ramp must be non-negative: "
+            << "pressureRamp = " << pressureRamp_ << exit(FatalIOError);
+    }
+
     if (gateSealRamp_ < 0)
     {
         FatalIOErrorInFunction(mesh.time().controlDict())
@@ -212,11 +221,25 @@ void Foam::moldingStage::read(const dictionary& moldingDict)
         packingDict.lookupOrDefault<scalar>("gateSealRamp", gateSealRamp_)
     );
 
+    const scalar newPressureRamp
+    (
+        packingDict.lookupOrDefault<scalar>("pressureRamp", pressureRamp_)
+    );
+
+    if (newPressureRamp < 0)
+    {
+        FatalIOErrorInFunction(packingDict)
+            << "The packing pressure ramp must be non-negative: "
+            << "pressureRamp = " << newPressureRamp
+            << exit(FatalIOError);
+    }
+
     // Only the parameters are updated: the stage state and switch time
     // are preserved, so changes take effect from now on
     switchFraction_ = newSwitchFraction;
     pressure_ = std::move(newPressure);
     gateSealRamp_ = newGateSealRamp;
+    pressureRamp_ = newPressureRamp;
 }
 
 

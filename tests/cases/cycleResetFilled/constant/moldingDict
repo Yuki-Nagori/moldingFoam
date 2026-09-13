@@ -1,0 +1,34 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object moldingDict;
+}
+injection
+{
+    meltTemperature  503.1500;
+}
+packing
+{
+    switchFraction   0.9600;
+    switchPressure  6.000000e7;
+    pressure
+    {
+        type            table;
+        values
+        (
+            (0 1e5)
+        );
+    }
+}
+// The melt must not escape through the vent (task 038): the vent
+// passes air and is sealed once the melt covers the patch
+ventSealAlpha   0.9;
+
+nCycles 2;
+cooling
+{
+    ejectionTemperature  510;
+    releasePressure  1e5;
+}

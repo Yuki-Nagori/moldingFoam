@@ -1,0 +1,4 @@
+moldingFoam: cycle reset: min\(rho\)
+cycle 1 complete; starting cycle 2/2
+ejection criterion met: .*\(cycle 2/2\)
+End

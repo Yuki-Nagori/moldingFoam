@@ -91,6 +91,10 @@ private:
         //  [Pa]
         autoPtr<Function1<scalar>> pressure_;
 
+        //- Packing-pressure ramp duration after the V/P switch [s]; 0
+        //  applies the table's first point immediately
+        scalar pressureRamp_;
+
         //- Has the gate frozen off at the end of packing?
         bool gateSealed_;
 
@@ -119,7 +123,8 @@ public:
             const Time& runTime,
             scalar switchFraction,
             autoPtr<Function1<scalar>> pressure,
-            scalar gateSealRamp = 0
+            scalar gateSealRamp = 0,
+            scalar pressureRamp = 0.05
         );
 
         //- Disallow default bitwise copy construction
@@ -215,6 +220,13 @@ public:
         //- Return the packing pressure target at time t [Pa]; zero before
         //  the switch
         scalar pressure(scalar t) const;
+
+        //- Packing-pressure ramp duration after the V/P switch [s]; 0
+        //  applies the packing table immediately (legacy behaviour)
+        scalar pressureRamp() const
+        {
+            return pressureRamp_;
+        }
 
         //- Switch to the packing stage at time t
         void switchToPacking(scalar t);

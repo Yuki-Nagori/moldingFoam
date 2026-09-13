@@ -192,3 +192,24 @@ Nu{...D} 或由 Kairos 折算 `htc`。字段名以本契约为准。
 - 流动侧关联场（如启用）：`shrinkage` [-]、`shrinkageTensor` [-]
   （volSymmTensorField）、`voidFraction` [-]；
 - 单位说明：OpenFOAM 惯例为 SI（m/Pa/K），Kairos 显示层做 mm 换算。
+
+## 6e. 保压阶跃修复与填充期 T 失稳复现（2026-09-13 晚二）
+
+**保压阶跃（Kairos B/C）**：V/P 切换由填充分数触发时，闸口压力低于
+保压曲线首点，切换瞬间形成 ~55 MPa 单步阶跃 → 跨声速 → 失稳。
+修复（v1.22 契约）：
+
+- `packing.pressureRamp`（缺省 0.05 s）：BC 在**首次保压更新**时捕获
+  实测闸口压力并线性 ramp 到曲线目标（压力触发时起点=首点，无操作）；
+- 切换填充率 < 0.90 警告；`fillVelocityWarn` 重标定 20 m/s（SI）。
+
+验证（最小）：`tests/cases/boxFill`（96% 填充、57.7 MPa 阶跃）ramp 后
+稳定通过；人为 `switchFraction 0.5`（50% 填充即保压，属不可行工况）
+按预期被警告并在保压瞬态快速失败（守护生效）。
+
+**填充期独立失稳（复现留档，跟进）**：3-block 槽形点浇口（0.6×10 mm、
+A≈6e-6 m²、冷壁 313 K、0.2 mm 单元）在填充 **70%** 时 T 残差先 NaN
+（`Initial residual=0.0226 → Final nan, 1000 iters`），此前 dt 已坍缩
+至 2.6e-7（局部 U~70 m/s）——与 Kairos P1 ② 的签名一致，可能与界面/
+冷壁强梯度下的能量方程局部失稳有关，需独立任务。构造配方：boxFill 改
+3-block blockMesh（槽形浇口在底中央）+ 原 BC 迁移至 gate patch。

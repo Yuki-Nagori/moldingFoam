@@ -91,6 +91,11 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Creating the release and writing the tag needs a write token; the
+    # repository's default workflow permissions must also be "write"
+    # (Settings -> Actions -> General -> Workflow permissions)
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 

@@ -5,3 +5,6 @@ gate sealed at .* \(gate temperature = .* <= gateFreezeTemperature = 485 K\)
 # branch was never exercised before; the startup echo proves the key is
 # consumed by the stage)
 gateSealRamp        = 0.01
+
+# The explicit pressure ramp must be read and echoed (task 044)
+pressureRamp        = 0.2

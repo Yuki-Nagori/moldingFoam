@@ -48,9 +48,17 @@
 
 ## 3. 技术方案
 
-- pressureRamp：`tests/cases/boxFill` 变体设 `pressureRamp 0.2`，断言
-  「切换后闸口压力单调升至目标、无 NaN」，并断言回显行；另一变体
-  `pressureRamp -1` 断言 `FatalIOError` 文本；
+- pressureRamp：**显式值 + 回显断言已交付（2026-09-13）**：
+  `tests/cases/gateFreeze` 设 `pressureRamp 0.2`（此前只有自适应缺省被
+  执行），patterns 断言回显 `pressureRamp        = 0.2`，gateFreeze 的
+  自校准验证器不受斜坡取值影响；**顺带修掉一个真实缺陷**：
+  `moldingFoam.C` 的启动回显写作 `word(pressureRamp)`，而 `word` 只匹配
+  到 `word(char)`（0.2 → char(0) = NUL）——显式值回显为空并往日志里写入
+  NUL 字节（grep 判为 binary；若取值恰为 ASCII 码会打印成乱字符）；
+  改为 `Foam::name(pressureRamp)`（首版 `name(...)` 被类自身 `name()`
+  成员遮蔽，需限定命名空间）。**剩余**：负值 `FatalIOError` 路径需要
+  runner 支持「期望失败」标记（`system/expectFailure`），为本批唯一需要
+  动 runner 的项；
 - 复位序列断言：把 `cycleReset` 扩展为验证器（对比复位前后
   `alpha.melt`/`U` 的 L1 差与 `T` 保留量）；
 - 封冻断言：`gateFreeze` 增加「封冻后 `sum(inlet)` ≈ 0」检查（可从

@@ -35,6 +35,11 @@ packing
     // (task 043: the non-zero ramp branch was never exercised before)
     gateSealRamp     0.01;
 
+    // Explicit packing-pressure ramp (task 044: only the adaptive default
+    // was ever exercised; the explicit branch and its startup echo were
+    // never covered)
+    pressureRamp     0.2;
+
     pressure
     {
         type            constant;

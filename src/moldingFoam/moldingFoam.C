@@ -626,7 +626,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "        pressureRamp        = "
             << (pressureRamp < 0
               ? word("auto (5% of the switch time, clamped [0.05, 0.5] s)")
-              : word(pressureRamp)) << nl
+              : Foam::name(pressureRamp)) << nl
             << "        gateFreezeTemperature = " << gateFreezeTemperature
             << " (gate seal; -great = disabled)" << nl
             << "        freezeOffTemperature  = "

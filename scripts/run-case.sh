@@ -18,6 +18,10 @@
 
 set -euo pipefail
 
+# Resolve the script directory before any cd: relative invocations
+# (e.g. `bash scripts/run-case.sh <case>`) must still find the verifier
+scriptDir=$(cd "$(dirname "$0")" && pwd)
+
 # Allow more MPI ranks than detected cores: CI runners expose fewer
 # physical cores than subdomains, and small VMs may too (OpenMPI only;
 # other MPI implementations ignore the variable)
@@ -68,7 +72,6 @@ else
     verifier="verify-case.py"
 fi
 
-scriptDir=$(cd "$(dirname "$0")" && pwd)
 
 if grep -qi "Duplicate entry" log.foamRun; then
     echo "error: duplicate runtime-selection entries (multiple module " \

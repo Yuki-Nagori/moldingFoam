@@ -132,3 +132,21 @@ rho** 后加到 RHS。结论：
   （`K = lambda + 2*mu/3`）；
 - **基准**：非均匀 ε* 梯度条（自由态 u ≈ ε*(x)·x 缓变解析解），验证器
   <1%；回归 `anisoShrinkBar`（均匀路径机器精度 1e-16）不变。
+
+### 9a. 输入来源已锁定（同日，源码核实）
+
+- `threeKalpha` 在 `solidDisplacement` 中是 **未注册** 的成员（name-only
+  构造 `threeKalpha("threeKalpha", threeK*thermo_.alphav())`）→ 模型不能
+  `lookupObject`，需自行构造；
+- **可复用已交付 BC 的算法**：`moldingTractionDisplacement` 已实现同一量
+  的构造——从固体 thermo 取 `E`/`nu`/`planeStress()`/`alphav()` 组出
+  `mu = E/(2(1+nu))`、`lambda`（平面应力分支）与 `threeK`，并按
+  `sigma_th = -threeK*eigenstrain` 的约定使用（该 BC 已用 anisoShrinkBar
+  机器精度验证）。模型照抄该构造即可，无需上层改动；
+- **符号与量纲**：热项的既有装配为 `DEqn += fvc::grad(threeKalpha*T)`
+  （对应 `div(sigmaD) = div(threeKalpha*T·I)`），故张量本征应变的域内源
+  取 `+fvc::div(threeK*eigenstrain)`，再除以 rho 以补偿求解器的
+  `rho*fvModels().d2dt2(D)` 约定；
+- **rho 来源**：优先 `mesh().lookupObject<volScalarField>("rho")`，若未注册
+  则用固体 thermo 的密度字段（模型内构造），实现时以探针确认；
+- 至此方案 A 的输入、符号、量纲、补偿方式全部明确，可直接写模型与基准。

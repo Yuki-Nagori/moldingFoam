@@ -17,7 +17,14 @@
 - **潜热断言缺失（2026-09-13 消融新发现）**：`crystallization` 的
   `latentHeat 2e5 → 0` 与 `boxFill` 的同类消融后，用例检查仍 PASS →
   现有验证器不断言潜热对温度/χ 轨迹的影响（潜热属仓库核心特性，001 的
-  契约走的是 case-contract 口径，求解器用例侧无回归）；
+  契约走的是 case-contract 口径，求解器用例侧无回归）。**标定尝试
+  （同日）**：`coldWall` 的模具温度（moldingMoldTemperature 集总 BC）
+  在开/关潜热下分离仅 300.021 vs 300.015 K（3 mK，相对 40% 但绝对量级
+  太小，跨平台不稳）；改用熔体体积平均温度需给用例加 `volFieldValue`
+  函数对象——首次尝试该 FO 被正确选中但未产生输出（`log true` 的
+  操作名/输出格式待查，见 `postProcessing/` 或 FO 文档），故**未提交
+  未验证的断言**。下一步：调通该 FO 的日志格式后按「开/关分离度 ≥10×
+  阈值余量」标定；
 - **G9 次要分支键无用例配置**：runnerNetwork 的 `powerLaw`（K/n）、
   moldingMoldTemperature 的 `Nu` 相关式（C/m/n/Re/Pr/k/D）、fiber 的
   `lambda` 覆盖、`trapAirAlpha`、`hsRef`、moldingPrghPressure 的

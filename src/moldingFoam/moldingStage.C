@@ -65,9 +65,9 @@ Foam::moldingStage::moldingStage
     stage_(stage::filling),
     switchTime_(-1),
     pressure_(std::move(pressure)),
+    pressureRamp_(pressureRamp),
     gateSealed_(false),
     gateSealRamp_(gateSealRamp),
-    pressureRamp_(pressureRamp),
     gateSealTime_(-1),
     ventSealed_(false)
 {

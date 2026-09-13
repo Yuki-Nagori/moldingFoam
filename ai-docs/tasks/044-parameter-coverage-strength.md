@@ -14,6 +14,10 @@
   （其中 E1/E3/E7 是稳定性与跟随性对照，E2 复现失稳）；
 - **G8 模式-only 用例**：`tests/cases/cycleReset`、`gateFreeze` 仅有
   `expectedPatterns`，其余 20/22 用例都有数值验证器；
+- **潜热断言缺失（2026-09-13 消融新发现）**：`crystallization` 的
+  `latentHeat 2e5 → 0` 与 `boxFill` 的同类消融后，用例检查仍 PASS →
+  现有验证器不断言潜热对温度/χ 轨迹的影响（潜热属仓库核心特性，001 的
+  契约走的是 case-contract 口径，求解器用例侧无回归）；
 - **G9 次要分支键无用例配置**：runnerNetwork 的 `powerLaw`（K/n）、
   moldingMoldTemperature 的 `Nu` 相关式（C/m/n/Re/Pr/k/D）、fiber 的
   `lambda` 覆盖、`trapAirAlpha`、`hsRef`、moldingPrghPressure 的
@@ -53,6 +57,7 @@
 ## 5. 验收标准（DoD）
 
 - pressureRamp 的三条路径（自适应/显式/负值）均有断言；
+- 潜热断言：至少一个求解器用例在 `latentHeat` 关掉后 FAIL（消融可验）；
 - 22 个 solver 用例全部带数值或定量断言（模式-only 归零）；
 - `powerLaw`/`Nu` 分支有解析对拍（≤1%）；
 - 有意不覆盖清单落文档。

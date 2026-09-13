@@ -32,8 +32,6 @@
 
 ## 任务索引
 
-| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
-|------|------|--------|------|------|----------|
 | [001](tasks/001-he-energy-predictor.md) | 潜热能量预报器（启用 latentHeat） | P0 | **done**（根因修正，非 he 方案；周期完备化后质量守恒 9.305e-04） | 无 | 1–2 周 |
 | [002](tasks/002-mold-thermal-coupling.md) | 模具热耦合（集总参数模温模型） | P2 | **done** | 建议在 001 之后 | 3–5 天 |
 | [003](tasks/003-venting-model.md) | 排气反压/困气模型 | P1 | **done**（A 反压 + B 困气诊断均已验收） | 006 | 3–5 天 |
@@ -77,21 +75,22 @@
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [039](tasks/039-void-cavitation-closure.md) | 汽蚀空洞的闭锁约束与标定（033 跟进） | P1 | **done**（`moldingVoidClosure` 闭锁上限：void 与 Cv/Cc 无关、质量漂移 ≤0.13%、验证器含质量/闭锁判据；完全退化平衡仍待两场模块） | 033 | 1–2 天 |
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 |
+| [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | **done**（四项全交付：gateSealRamp、massFixGlobal、深层热阻、χ-η 耦合） | 018/008/024/031 |
+| [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 |
+| [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 |
+| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
+|------|------|--------|------|------|----------|
 
-### 进行中任务（040/041；031–039 已完成并入上方索引）
+### 进行中任务（040/041；031–039、042–045 已完成并入上方索引）
 
 | 任务 | 主题 | 优先级 | 状态 | 依赖 |
 |------|------|--------|------|------|
 | [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | in-progress（探针完成：`d2dt2` 钩子可用、需补偿 rho；模型/基准待做，方案 A 优先） | 034 | 1–2 天 |
 | [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | planned（量化入口已交付：能量方程占契约 case 迭代量 94% → 候选杠杆待计时） | 032 | 周级 |
 
-### 覆盖审计跟进（043–045，2026-09-13 测试覆盖审计新增；042 已完成并入上方索引）
-
-| 任务 | 主题 | 优先级 | 状态 | 依赖 |
-|------|------|--------|------|------|
-| [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | **done**（四项全交付：gateSealRamp、massFixGlobal、深层热阻、χ-η 耦合） | 018/008/024/031 |
-| [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 |
-| [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 |
+覆盖审计缺口 G1–G11 已全部闭环并落为任务：G1/G7→042、G2/G4/G5/G6→043、
+G3/G8/G9→044（powerLaw 经核实为扫描假阳性、原已被执行）、G10→045；
+G11 由 041 跟踪（见 `coverage-audit-2026-09-13.md` §5–§6）。
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

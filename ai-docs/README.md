@@ -26,7 +26,9 @@
    `/opt/openfoam14` 或引入 upstream patch。
 5. **验证环境**：Linux（本仓库 Multipass VM `of14`，Ubuntu 24.04
    arm64 + openfoam14 官方二进制）。宿主 macOS 只做编辑，构建一律
-   `scripts/vm-sync.sh` 后在 VM 内执行。
+   `scripts/vm-sync.sh` 后在 VM 内执行（该脚本依赖宿主挂载
+   `~/moldingFoam`；挂载未激活时 VM 内该目录为空，需先重新挂载或
+   改用 tar 同步到 VM 原生目录）。
 
 ## 任务索引
 
@@ -40,7 +42,7 @@
 | [006](tasks/006-contract-cycle-well-posedness.md) | 契约周期物理完备化（排气封堵/压力切换/闸口封冻） | P0 | **done**（质量守恒 9.383e-04，周期单调） | 无 | 2–4 天 |
 | [007](tasks/007-viscous-dissipation.md) | 黏性生热（能量方程剪切耗散项） | P0 | **done**（解析 Couette 对拍 4.1e-4；契约 case 已开启） | 001/006 | 2–4 天 |
 | [008](tasks/008-mold-conjugate-heat-transfer.md) | 模具三维传热（共轭传热 CHT） | P1 | **done**（路线 A 双区域 + VoF 充填能量守恒 0.24%；冷却水 1D 通道） | 002 之后 | 1–2 周 |
-| [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **done**（018 收口：massFixGlobal + Euler 口径，40 MPa 离散守恒 1.1e-5） | 006 | 1–2 周 |
+| [009](tasks/009-high-pressure-vof-conservation.md) | 高压可压缩界面守恒（40–100 MPa） | P1 | **done**（018 收口：massFixGlobal + Euler 口径，40 MPa 离散守恒 1.1e-5；标定 case 2026-09-13 入 nightly） | 006 | 1–2 周 |
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | **done**（温度判据实现+用例；契约物理触发依赖 016） | 006/016 | 3–5 天 |
 | [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
@@ -53,7 +55,7 @@
 | [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
 | [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（定位 psi/rho 拆分；massFixGlobal 修正，40 MPa 1.1e-5） | 009 | 3–5 天 |
 | [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **done**（PVT 指标 + voidFraction 场 + 精确 Tait + PVT 对拍 1.6e-6 + 质量预算 4.1e-4） | 018 | 1–2 周 |
-| [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | **done**（四基准：多周期/Robin 冷却/002 极限/周期稳态；三维水区受上游模块限制） | 008/002 | 1–2 周 |
+| [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | **done**（四基准：多周期/Robin 冷却/002 极限/周期稳态；2026-09-13 多周期回归修复：`nCycles 6` + 验证器按顶出事件计周期、≥3 增量硬要求；三维水区受上游模块限制） | 008/002 | 1–2 周 |
 | [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
 | [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | **done**（fillTime/airTrap 场 + 熔接痕对称性 0.554%） | 006/003 | 1–2 周 |
 | [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | **done**（解析翘曲/残余应力 + `solidDisplacement` 三维悬臂基准 5.46%） | 001–012 | 2–4 周 |
@@ -128,3 +130,8 @@
   1.3 MPa 保压、黏性生热开启、界面控制 `maxAlphaCo 0.03` /
   `nSubCycles 16`）质量守恒相对误差 **9.383e-04**（阈值 1e-3），
   全部阶段证据 PASS；006 初次落地时为 9.305e-04。
+- 回归面（2026-09-13 起）：nightly 覆盖模型测试、22 个求解器用例、
+  **全部 17 个数值验证 case**（含此前漏排的 `highPressure`）与 4 子域
+  契约；PR 级 CI 仅双架构构建 + 模型测试。多周期 CHT 验证器要求
+  ≥4 个完成周期（≥3 个增量）——用例 `moldCHT-cycle` 为 `nCycles 6`、
+  `endTime 60`，勿再压缩周期数。

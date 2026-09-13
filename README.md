@@ -1010,6 +1010,32 @@ boundaryField { ... }
 
 ### 契约变更日志
 
+**v1.25**（场耦合空洞：上游汽蚀模型，任务 033 突破）：
+
+- 密封熔体冷却的压力钉与空洞体积可用**上游 compressible 汽蚀
+  fvModel** 实现（无需新代码）：`constant/fvModels` 增加
+  ```yaml
+  VoFCavitation
+  {
+      type            compressible::VoFCavitation;
+      libs            ("libcompressibleVoFCavitation.so");
+      liquid          melt;          // 液相相名（空气=空洞/汽相载体）
+      model           SchnerrSauer;
+      pSat { type constant; value 1e3; }   // [Pa] 汽蚀压力（**勿用 0**：
+                                           //  汽相密度→0 使源项消失且除零）
+      n               1e10;          // [1/m^3] 汽核数密度
+      dNuc            1e-6;          // [m] 汽核直径
+      Cv              0.1;           // 蒸发系数（标定值）
+      Cc              10;            // 冷凝系数（标定值，防过冲）
+  }
+  ```
+- 效果（`tests/cases/voidCavitation` 密封冷却）：压力钉在 pSat
+  （1000–1008 Pa，原张力路径为 −4.2 MPa）、熔体区开洞 ~2.95%
+  （0D PVT 闭锁同量级 ~4%）、稳定无 NaN；Cv/Cc 需按工况标定（默认
+  Cv=Cc=1 过冲至 ~35%），机制为相变传质（非体密度闭锁）；
+- 边界：空洞量对系数/瞬态敏感（退化平衡），与 018a 体密度闭锁的
+  逐点等价需进一步标定；压力钉（九次实验未竟）已达成。
+
 **v1.24**（固体张量本征应变边界，任务 034 跟进）：
 
 - `0/D` 自由面新增可选类型 `moldingTractionDisplacement`：与上游

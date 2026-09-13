@@ -1,0 +1,28 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvModels;
+}
+// Field-coupled void model (task 033): upstream compressible cavitation
+// with the air phase acting as the void/vapour carrier. The melt
+// cavitates when the sealed melt pressure drops below pSat, pinning the
+// pressure and opening the void volume; Cv/Cc are calibrated so the
+// void tracks the PVT contraction (see README v1.25).
+VoFCavitation
+{
+    type            compressible::VoFCavitation;
+    libs            ("libcompressibleVoFCavitation.so");
+    liquid          melt;
+    model           SchnerrSauer;
+    pSat
+    {
+        type        constant;
+        value       1e3;
+    }
+    n               1e10;
+    dNuc            1e-6;
+    Cv              0.1;
+    Cc              10;
+}

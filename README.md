@@ -1407,7 +1407,7 @@ runner**（`ubuntu-24.04` / `ubuntu-24.04-arm`，后者对公共仓库免费）�
 | `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold/highPressure |
 | `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
 | `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |
-| `contract` | 完整契约验收（4 子域） |
+| `contract` | 完整契约验收（4 子域）+ 退出路径 smoke（037/042） |
 | `report` | 汇总失败 job 名并开/评论 issue（指向对应 job 日志与 artifact） |
 
 ### CD（手动触发，写入 tag）

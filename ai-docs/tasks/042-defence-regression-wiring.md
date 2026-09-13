@@ -1,6 +1,8 @@
 # 042 — 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败）
 
-- 状态：planned
+- 状态：done（2026-09-13：smoke-exit 接入 nightly contract job；
+  fillVelocityWarn 预警在 boxFill 落地断言；非有限快速失败保留实现、
+  不做回归——见 §8）
 - 优先级：P1
 - 依赖：037（堆破坏退出防线）、038（守卫与预警）
 - 预估规模：0.5–1 天
@@ -68,3 +70,21 @@
 | `tests/cases/boxFill*`（或新变体） | fillVelocityWarn 断言 |
 | `tests/cases/*`（快速失败，若可行） | 断言 FatalError |
 | `README.md`、`ai-docs/coverage-audit-2026-09-13.md` | CI 表与缺口标注 |
+
+## 8. 交付记录（2026-09-13）
+
+- **G1 接线**：nightly `contract` job 新增步骤
+  `bash scripts/smoke-exit.sh case-contract | tee smoke-exit.txt`，artifact
+  增加 `smoke-exit.txt`。脚本为**零步运行 + 未知求解器 FATAL 路径**两段，
+  成本仅一次 blockMesh，不显著推高 job 时长；本地在 boxFill 上验证机制：
+  `zero-step exit = 0` / `fatal-path exit = 1` /
+  `PASS: the success and fatal exit paths are clean`；
+- **G7 预警断言**：`tests/cases/boxFill/constant/moldingDict` 设
+  `fillVelocityWarn 1e-3`（缺省 20 m/s 远高于任何物理闸口速度，故调低以
+  触发），`expectedPatterns` 断言
+  `Nominal inlet melt velocity .* exceeds the warning threshold`；实测预警
+  出现、用例其余断言与 `verify-box-fill.py`（逃逸 7.83%）不变；
+- **非有限快速失败**：`moldingFoam.C:1876` 的 FatalError 属失败路径，构造
+  稳定复现需刻意发散的输入且无法保证跨平台可复现——本任务按 §3 的方案 C
+  记录为「仅实现、不做回归」，并在审计文档 G7 标注（预警侧已闭环）；
+- 回归：boxFill 用例标准流程（patterns + 验证器）PASS。

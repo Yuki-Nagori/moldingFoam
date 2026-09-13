@@ -36,3 +36,8 @@ cooling
     ejectionTemperature  363.1500;
     releasePressure  1e5;
 }
+
+// Fill-velocity feasibility warning (task 038 P1): the default threshold
+// (20 m/s) is far above any physical gate velocity, so the case lowers it
+// to assert that the warning path is reached and reported (task 042)
+fillVelocityWarn  1e-3;

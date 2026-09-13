@@ -1,2 +1,5 @@
 moldingFoam: V/P switch
 End
+# The fill-velocity feasibility warning must fire at the lowered
+# threshold (task 042; the key is calibrated low in moldingDict)
+Nominal inlet melt velocity .* exceeds the warning threshold

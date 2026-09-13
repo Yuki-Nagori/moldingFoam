@@ -38,21 +38,29 @@ runs:
       id: xmakecache
       uses: actions/cache@v4
       with:
-        # The pinned binary: the version is frozen by the key so CI runs
-        # are reproducible; the OpenFOAM tree is the heavy cache
-        path: ~/.local/bin/xmake
-        key: xmake-bin-${{ runner.arch }}-20260724
+        # The binary AND its runtime scripts: caching only the binary
+        # makes xmake exit 255 on a cache hit (missing
+        # ~/.local/share/xmake). The version is frozen by the key so CI
+        # runs are reproducible; the OpenFOAM tree is the heavy cache
+        path: |
+          ~/.local/bin/xmake
+          ~/.local/share/xmake
+        key: xmake-bin-${{ runner.arch }}-v2
 
     - name: Install xmake
       if: steps.xmakecache.outputs.cache-hit != 'true'
       shell: bash
-      run: |
-        curl -fsSL https://xmake.io/shget.text | bash
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      run: curl -fsSL https://xmake.io/shget.text | bash
 
     - name: Add xmake to PATH
       shell: bash
       run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Verify xmake
+      shell: bash
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        xmake --version
 
     - name: Build
       shell: bash

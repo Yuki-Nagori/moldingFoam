@@ -116,7 +116,8 @@ for bc in moldingChannelCooling moldingConvectiveCooling moldingInletVelocity \
 | G1 `smoke-exit.sh` 接线、G7 038 防线断言 | ~~042~~ **已闭环**（2026-09-13：smoke-exit 入 nightly；boxFill 预警断言；非有限快速失败记录为不回归） |
 | G2 `gateSealRamp`、G4 深层热阻、G5 χ-η 耦合、G6 质量修正器 | [043](tasks/043-untested-optional-branches.md)（P2） |
 | G3 `pressureRamp`、G8 模式-only 用例、G9 次要分支键 | [044](tasks/044-parameter-coverage-strength.md)（P2） |
-| G10 平台/并行范围、G11 性能手工基准 | [045](tasks/045-platform-parallel-coverage.md)（P3；G11 的量化入口已由 041 交付 `scripts/perf-breakdown.py`） |
+| G10 平台/并行范围 | ~~045~~ **已闭环**（2026-09-13：口径决策 B——数值回归基线 x86_64，arm64 仅构建+模型测试，跨平台差异 1–10% 记录在案） |
+| G11 性能手工基准 | 041（量化入口已交付 `scripts/perf-breakdown.py`；候选杠杆=能量方程 94% 迭代量，待计时矩阵） |
 
 G8 中的 `cycleReset`/`gateFreeze` 与 G10 的 arm64 口径决策是本批任务中
 的优先子项；G9 的「有意不覆盖清单」按 044 的要求随实现落文档。

@@ -87,7 +87,7 @@
 | [048](tasks/048-cost-lever-combination.md) | 求解成本杠杆组合实测与每步通信削减 | P1 | **done**（组合 −43.6%；**E=组合+dt÷2 支配基线：−23% 墙钟且余量 6%→48%**，契约变更建议见 §3c） | 032/041 | 1–2 天 |
 | [049](tasks/049-external-benchmark-calibration.md) | 外部精度标定 MVP（公开 benchmark 对拍） | P2 | **done**（1D 润滑参照入 fountainFlow：实测 −3.09%，残差=离散壁面剪切 −3.13% 解析解释） | 017/020 | 1–2 天 |
 | [050](tasks/050-million-cell-capacity-profiling.md) | 百万单元产能：通信占比 profiling 与定位决策 | P2 | **done**（通信 7–10% ≪ 30%：不投上游通信改造；定位 10⁵ 单元级） | 032/041 | 2–4 天 |
-| [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | planned | 020/021/035/036/043 | 1–2 天 |
+| [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | **done**（① 结案：细网格 L2 反升=验证器测站假象；②③④ 记录不做的理由） | 020/021/035/036/043 | 1–2 天 |
 
 （001–046 已完成；047–051 为本轮评估新增，状态见上表。）
 

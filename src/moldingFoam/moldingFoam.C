@@ -1951,11 +1951,22 @@ void Foam::solvers::moldingFoam::postSolve()
     reduce(flux, sumOp<scalar>());
 
     // Optional flux breakdown: the volumetric, alpha and melt mass boundary
-    // fluxes (their mismatch localises the mass-balance inconsistency)
+    // fluxes (their mismatch localises the mass-balance inconsistency).
+    // They feed the interval print below and nothing else, so their
+    // reductions run on the print steps only: the condition is global
+    // (timeIndex and the dictionary are the same on every rank), and the
+    // per-step cost drops to the two reductions above (m and flux)
+    const bool budgetPrint
+    (
+        massBudget_
+     && massBudgetInterval_ > 0
+     && runTime.timeIndex() % massBudgetInterval_ == 0
+    );
+
     scalar fluxVol = 0;
     scalar fluxAlpha = 0;
 
-    if (massBudget_)
+    if (budgetPrint)
     {
         forAll(phi.boundaryField(), patchi)
         {
@@ -2015,7 +2026,7 @@ void Foam::solvers::moldingFoam::postSolve()
         massBudgetIn_ = 0;
         massBudgetInit_ = true;
     }
-    else if (massBudget_)
+    else if (budgetPrint)
     {
         const scalarField& psip = mixture_.thermo1().psi().primitiveField();
         const scalarField& prghc = p_rgh_.primitiveField();
@@ -2040,23 +2051,20 @@ void Foam::solvers::moldingFoam::postSolve()
         reduce(psiDm, sumOp<scalar>());
         reduce(alphaDm, sumOp<scalar>());
 
-        if (massBudgetInterval_ > 0 && runTime.timeIndex() % massBudgetInterval_ == 0)
-        {
-            Info<< "moldingFoam: mass budget terms: dm = " << dm
-                << " kg, flux*dt = " << flux*dt
-                << " kg, psi*dp = " << psiDm
-                << " kg, dalpha = " << alphaDm
-                << " kg, dm+flux*dt = " << (dm + flux*dt)
-                << " kg, dm-(psi+dalpha) = " << (dm - psiDm - alphaDm)
-                << " kg" << endl;
+        Info<< "moldingFoam: mass budget terms: dm = " << dm
+            << " kg, flux*dt = " << flux*dt
+            << " kg, psi*dp = " << psiDm
+            << " kg, dalpha = " << alphaDm
+            << " kg, dm+flux*dt = " << (dm + flux*dt)
+            << " kg, dm-(psi+dalpha) = " << (dm - psiDm - alphaDm)
+            << " kg" << endl;
 
-            Info<< "moldingFoam: mass budget fluxes: vol*dt = "
-                << fluxVol*dt << " kg, alpha*dt = " << fluxAlpha*dt
-                << " kg, alphaRho*dt = " << flux*dt
-                << " kg, alpha/vol = "
-                << (mag(fluxVol) > small ? fluxAlpha/fluxVol : 1)
-                << endl;
-        }
+        Info<< "moldingFoam: mass budget fluxes: vol*dt = "
+            << fluxVol*dt << " kg, alpha*dt = " << fluxAlpha*dt
+            << " kg, alphaRho*dt = " << flux*dt
+            << " kg, alpha/vol = "
+            << (mag(fluxVol) > small ? fluxAlpha/fluxVol : 1)
+            << endl;
 
     }
 

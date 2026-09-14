@@ -69,18 +69,20 @@ if not m:
     raise SystemExit("blocks section not found in blockMeshDict")
 
 def rescale(mo):
-    nx, ny, nz = (int(mo.group(i)) for i in (1, 2, 3))
+    nx, ny, nz = (int(mo.group(i)) for i in (2, 3, 4))
     sx = max(1, round(nx*scale))
     sy = max(1, round(ny*scale))
-    return f"{mo.group(0).split('(')[0]}({sx} {sy} {nz})"
+    return mo.group(1) + f"({sx} {sy} {nz})"
 
-new = re.sub(r'\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\)', rescale, m.group(1))
+# Only the resolution triple that follows the hex vertex list is scaled:
+# a bare 3-tuple pattern would also hit simpleGrading (1 1 1)
+new = re.sub(r'(\)\s*)\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\)', rescale, m.group(1))
 if new == m.group(1):
     raise SystemExit("no block resolution changed (bad scale?)")
 src = src[:m.start(1)] + new + src[m.end(1):]
 open(path, 'w').write(src)
 
-counts = [tuple(int(x) for x in c) for c in re.findall(r'\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\)', new)]
+counts = [tuple(int(x) for x in c) for c in re.findall(r'\)\s*\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\)', new)]
 nx = sum(c[0] for c in counts)
 ny = counts[0][1]
 nz = counts[0][2]

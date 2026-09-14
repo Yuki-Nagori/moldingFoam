@@ -120,7 +120,7 @@
 | [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b | 3–5 周 |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 | 3–6 周 |
 | [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
-| [058](tasks/058-runner-tree-topology.md) | 一维流道拓扑扩展：任意树 + 逐浇口时序 | P2 | planned | 016/026/030 | 1–2 周 |
+| [058](tasks/058-runner-tree-topology.md) | 一维流道拓扑扩展：任意树 + 逐浇口时序 | P2 | planned（stage 1 首版因嵌套求解超时已回退，设计要点见 §2a） | 016/026/030 | 1–2 周 |
 
 ### 验证与不确定度（8 项）
 
@@ -150,7 +150,7 @@
 | [052](tasks/052-interface-cost-levers.md) | 界面机制的下一批杠杆：alpha 修正器与 MULES 策略 | P1 | **done**（`nCorrectors 2→1`：同批 −30% 墙钟、守恒 5.010e-04，已入 v1.29；`MULESCorr yes` 阴性） | 047/048/050/009 | 1–2 天 |
 | [053](tasks/053-adaptive-alpha-subcycles.md) | 自适应 alpha 子循环表（nSubCycles 的 Function1） | P1 | **done**（阴性 −2%，机理=填充期占 95–99% 步数；顺带量化 (nSubCycles,nCorrectors) 与熔接痕对称性的取舍） | 052 | 1 天 |
 | [054](tasks/054-trapped-air-rank-divergence.md) | 并行死锁 #2：`reportTrappedAir` 的按 rank 提前返回 | P0 | **done**（fountainFlow @4 复现/修复前后对照；防线用例受 harness 状态污染影响，列后续；§8 记录 `0/` 污染发现） | 046 | 0.5–1 天 |
-| [057](tasks/057-io-diagnostics-cost.md) | 性能收口：I/O 与诊断开销量化 + 剩余旋钮盘点 | P2 | planned | 050/041/048 | 1 天 |
+| [057](tasks/057-io-diagnostics-cost.md) | 性能收口：I/O 与诊断开销量化 + 剩余旋钮盘点 | P2 | **done**（两项都在噪声内：I/O 花磁盘不花时间、trapAir/writeFillTime 不可测） | 050/041/048 | 1 天 |
 
 ### 流程/防线与发布（5 项）
 
@@ -160,7 +160,7 @@
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
 | [055](tasks/055-case-reuse-semantics.md) | 测试流程的用例复用语义（`0/` 污染）与 054 防线落地 | P1 | **done**（每 pass 新鲜副本 + `parallelTrappedAir` 两端口验证：pre-054 FAIL / 修复后 PASS） | 054/046 | 0.5–1 天 |
-| [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | planned | 046/054/038 | 1–2 天 |
+| [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | in-progress（kairos 二分运行中） | 046/054/038 | 1–2 天 |
 （001–054 已完成；055–058 为 2026-09-14 的跟进项（测试流程复用语义、037 写入点定位、I/O 与诊断开销、流道拓扑扩展），状态见上表。）
 
 审计与报告（按时间）：

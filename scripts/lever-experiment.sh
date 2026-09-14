@@ -68,9 +68,9 @@ def patch_block(text, header_re, key, value):
             depth -= 1
         i += 1
     block = text[start:i]
-    new = re.sub(rf'(\b{key}\s+)[^\s;]+;', lambda mo: mo.group(1) + value + ';', block, count=1)
-    if new == block:
+    if not re.search(rf'\b{key}\s+', block):
         raise SystemExit(f"{key} not found in block")
+    new = re.sub(rf'(\b{key}\s+)[^\s;]+;', lambda mo: mo.group(1) + value + ';', block, count=1)
     return text[:start] + new + text[i:]
 
 src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'nSubCycles', nsub)

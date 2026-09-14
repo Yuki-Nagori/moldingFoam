@@ -83,8 +83,13 @@
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 | 1–2 天 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 | 1–3 天（含 CI 时间成本评估） |
 | [046](tasks/046-parallel-boundary-patch-collectives.md) | 并行死锁：边界 patch 循环内的归约（issue #7） | P0 | **done**（根因＝processor patch 数按 rank 不同；4 进程真实件复测通过 + `parallelMassBudget` 防线） | 无 | 1–2 天 |
+| [047](tasks/047-contract-grid-time-convergence.md) | 契约 case 网格/时间收敛（1e-3 余量归因） | P1 | in-progress | 031/035 | 1–2 天 |
+| [048](tasks/048-cost-lever-combination.md) | 求解成本杠杆组合实测与每步通信削减 | P1 | in-progress（诊断门控已落地） | 032/041 | 1–2 天 |
+| [049](tasks/049-external-benchmark-calibration.md) | 外部精度标定 MVP（公开 benchmark 对拍） | P2 | planned | 017/020 | 1–2 天 |
+| [050](tasks/050-million-cell-capacity-profiling.md) | 百万单元产能：通信占比 profiling 与定位决策 | P2 | planned | 032/041 | 2–4 天 |
+| [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | planned | 020/021/035/036/043 | 1–2 天 |
 
-（全部任务 001–046 均已完成，见上方索引。）
+（001–046 已完成；047–051 为本轮评估新增，状态见上表。）
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

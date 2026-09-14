@@ -91,8 +91,9 @@
 
 | [052](tasks/052-interface-cost-levers.md) | 界面机制的下一批杠杆：alpha 修正器与 MULES 策略 | P1 | **done**（`nCorrectors 2→1`：同批 −30% 墙钟、守恒 5.010e-04，已入 v1.29；`MULESCorr yes` 阴性） | 047/048/050/009 | 1–2 天 |
 | [053](tasks/053-adaptive-alpha-subcycles.md) | 自适应 alpha 子循环表（nSubCycles 的 Function1） | P1 | **done**（阴性 −2%，机理=填充期占 95–99% 步数；顺带量化 (nSubCycles,nCorrectors) 与熔接痕对称性的取舍） | 052 | 1 天 |
+| [054](tasks/054-trapped-air-rank-divergence.md) | 并行死锁 #2：`reportTrappedAir` 的按 rank 提前返回 | P0 | **done**（fountainFlow @4 复现/修复前后对照；防线用例受 harness 状态污染影响，列后续；§8 记录 `0/` 污染发现） | 046 | 0.5–1 天 |
 
-（001–053 已完成；052/053 为界面机制的旋钮探索，均已收口。）
+（001–054 已完成；052/053 为界面机制的旋钮探索，054 为第二处并行死锁。）
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

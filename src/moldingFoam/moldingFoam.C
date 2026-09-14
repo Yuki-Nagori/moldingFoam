@@ -1291,7 +1291,14 @@ void Foam::solvers::moldingFoam::reportTrappedAir()
         airTrap_->primitiveFieldRef() = 0;
     }
 
-    if (nAir == 0)
+    // The shortcut below must be taken by every rank together: nAir is a
+    // local count, and the flood fill, its boundary synchronisation and the
+    // reductions that follow are collective. A rank that returns here while
+    // another enters them splits the ranks into different communication
+    // paths - a deterministic deadlock once the decomposition leaves one
+    // rank fully filled (nAir == 0) and another not, as the fountainFlow
+    // case at 4 subdomains does when the melt front reaches its last cells
+    if (returnReduce(nAir, sumOp<label>()) == 0)
     {
         if (Pstream::master())
         {

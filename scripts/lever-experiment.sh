@@ -11,6 +11,11 @@
 #   F  E with alpha nCorrectors 1 (halve the explicit alpha correction passes)
 #   G  E with MULESCorr yes (limiter-only corrections instead of explicit MULES)
 #   H  F + G
+#   I  F with an adaptive alpha sub-cycle table (Function1 of the
+#      interface Courant number: 8 at the fill regime, 1 in the quiet
+#      phases; see ai-docs/tasks/053)
+#   J  F with nSubCycles 12 (more transport passes: recover the front
+#      sharpness that nCorrectors 1 gives up; see task 053 section 3b)
 #
 # Each variant runs on its own scratch copy of case-contract (the contract
 # case itself is never touched). Runs are interleaved and repeated so the
@@ -41,6 +46,7 @@ do
     alphaCo=""
     alphaCorr=""
     mulesCorr=""
+    subCycleTable=""
     case "$v" in
         A) ;;
         B) nsub=8 ;;
@@ -50,6 +56,8 @@ do
         F) nsub=8; tol="1e-5"; alphaCo=0.015; alphaCorr=1 ;;
         G) nsub=8; tol="1e-5"; alphaCo=0.015; mulesCorr=yes ;;
         H) nsub=8; tol="1e-5"; alphaCo=0.015; alphaCorr=1; mulesCorr=yes ;;
+        I) nsub=8; tol="1e-5"; alphaCo=0.015; alphaCorr=1; subCycleTable=1 ;;
+        J) nsub=12; tol="1e-5"; alphaCo=0.015; alphaCorr=1 ;;
         *) echo "unknown variant '$v'" >&2; exit 1 ;;
     esac
 
@@ -61,10 +69,11 @@ do
     rm -rf "$work"/processor* "$work"/postProcessing "$work"/constant/polyMesh \
         "$work"/log.* "$work"/0.[0-9]* "$work"/[1-9]*
 
-    python3 - "$work/system/fvSolution" "$nsub" "$tol" "$alphaCorr" "$mulesCorr" <<'PY'
+    python3 - "$work/system/fvSolution" "$nsub" "$tol" "$alphaCorr" "$mulesCorr" "$subCycleTable" <<'PY'
 import re, sys
-path, nsub, tol, alphaCorr, mulesCorr = (
-    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+path, nsub, tol, alphaCorr, mulesCorr, subCycleTable = (
+    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
+    sys.argv[6])
 src = open(path).read()
 
 def patch_block(text, header_re, key, value):
@@ -91,6 +100,35 @@ if alphaCorr:
     src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'nCorrectors', alphaCorr)
 if mulesCorr:
     src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'MULESCorr', mulesCorr)
+if subCycleTable:
+    table = (
+        "nSubCycles\n"
+        "        {\n"
+        "            type    table;\n"
+        "            values\n"
+        "            (\n"
+        "                (0     1)\n"
+        "                (0.002 2)\n"
+        "                (0.008 4)\n"
+        "                (0.015 8)\n"
+        "            );\n"
+        "        }"
+    )
+    m = re.search(r'"alpha\.melt\.\*"\s*\{', src)
+    start = m.end()
+    depth = 1
+    i = start
+    while depth:
+        if src[i] == '{':
+            depth += 1
+        elif src[i] == '}':
+            depth -= 1
+        i += 1
+    block = src[start:i]
+    newblock, n = re.subn(r'nSubCycles\s+[^\s;]+;', table, block, count=1)
+    if n == 0:
+        raise SystemExit("nSubCycles not found for the table patch")
+    src = src[:start] + newblock + src[i:]
 src = patch_block(src, r'"\(U\|e\|T\)\.\*"\s*\{', 'tolerance', tol)
 open(path, 'w').write(src)
 PY

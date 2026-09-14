@@ -90,8 +90,9 @@
 | [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | **done**（① 结案：细网格 L2 反升=验证器测站假象；②③④ 记录不做的理由） | 020/021/035/036/043 | 1–2 天 |
 
 | [052](tasks/052-interface-cost-levers.md) | 界面机制的下一批杠杆：alpha 修正器与 MULES 策略 | P1 | **done**（`nCorrectors 2→1`：同批 −30% 墙钟、守恒 5.010e-04，已入 v1.29；`MULESCorr yes` 阴性） | 047/048/050/009 | 1–2 天 |
+| [053](tasks/053-adaptive-alpha-subcycles.md) | 自适应 alpha 子循环表（nSubCycles 的 Function1） | P1 | **done**（阴性 −2%，机理=填充期占 95–99% 步数；顺带量化 (nSubCycles,nCorrectors) 与熔接痕对称性的取舍） | 052 | 1 天 |
 
-（001–051 已完成；052 为 050/047 指向的界面机制跟踪。）
+（001–053 已完成；052/053 为界面机制的旋钮探索，均已收口。）
 
 整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
 精度债务、性能瓶颈与优化机会）。

@@ -98,3 +98,33 @@ bash scripts/smoke-exit.sh case-contract      # 期望 PASS
 - Task 037：repo 侧防线完成（退出码/堆守卫/冒烟脚本）；
   **bundle 侧定位需在 Kairos 环境按 §4 复测**；源码侧在本地两组
   版本上均为干净。
+
+---
+
+## 补充 2026-09-14（bundle 侧崩溃的边界与栈）
+
+按 Kairos 侧要求取栈（`MALLOC_CHECK_=3` + gdb，np4，4 rank 完全一致）：
+
+```
+#9  _int_free
+#10 __GI___libc_free
+#11 __run_exit_handlers        ← atexit/静态析构阶段
+#12 __GI_exit
+#13 Foam::UPstream::exit(int)              [libPstream.so]
+#14 Foam::argList::~argList()              [libOpenFOAM.so]
+#15 main
+```
+
+- **性质**：一个 fastbin 块在退出处理器阶段被 free 时已损坏（损坏写入
+  在更早，检测在 teardown）；
+- **边界**：我这边仅在「Kairos VM（Ubuntu 24.04 arm64 / OpenMPI 4.1.6）
+  + bundle 环境 + np4 + 求解打印 `End` 之后」观察到；同一份源码在 apt 环境
+  （of14）不崩。**"与源码无关"这一推断已撤回**——重建只排除了打包/编译器
+  差异，源码路径未被排除；
+- **输出完整性**：崩溃运行的步数、`V/P switch`、质量预算残差与干净运行
+  **逐位一致**（示例：−3.759631e-05 kg），最终时间目录场文件齐全、
+  `reconstructPar` 退出 0 → 验收可按「日志含 `End` 且无 `FATAL` 且
+  reconstructPar 成功」判成功、忽略退出码；
+- **与本报告的 054 项区分**：`reportTrappedAir` 的按 rank 提前返回是
+  **另一条**独立缺陷（已修复，见 `tasks/054`），它会造成确定性的并行
+  死锁，与退出阶段的堆破坏不是同一问题；两条线不要互相推断。

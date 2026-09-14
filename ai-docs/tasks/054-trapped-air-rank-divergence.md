@@ -104,14 +104,15 @@ if (returnReduce(nAir, sumOp<label>()) == 0) { ...; return; }
 
 - 同类根因（按 rank 分歧 → 集合通信错配），但 046 覆盖的是"**循环内**的
   归约"，本项覆盖"**提前返回**"——046 的扫描按"循环"筛选，漏掉了这一族；
-- 教训（进审计）：凡"函数体内含集合通信"，其**所有**提前返回与分支都必须
-  是全局一致的（用 `reduce`/`returnReduce` 或全局字典条件）；`README` 的
-  并行防线小节已记录该规则；
+- 教训（已写入 `README.md`「性能与数值控制」的并行规则小节）：凡"函数体
+  内含集合通信"，其**所有**提前返回与分支都必须是全局一致的（用
+  `reduce`/`returnReduce` 或全局字典条件）；
 - 本项同时解释了 037 报告的一个观察面：bundle 环境里"求解完成后退出异常"
   与"按 rank 分歧"是两条独立的问题线，不应互相推断。
 
 ## 7. 涉及文件
 
 - `src/moldingFoam/moldingFoam.C`（`reportTrappedAir` 守卫）
-- `tests/cases/parallelTrappedAir/`（新用例）
 - `README.md`（并行防线规则）
+
+> 相关：046（同类根因的第一次修复与防线模式）。

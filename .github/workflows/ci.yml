@@ -32,3 +32,6 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Model tests
         run: xmake run test
+
+      - name: Docs check (ai-docs index, headers, rotting references)
+        run: python3 scripts/check-docs.py .

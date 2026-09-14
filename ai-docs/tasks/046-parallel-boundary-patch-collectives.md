@@ -118,3 +118,5 @@ endTime + 输出完整」为准。
 - `tests/cases/parallelMassBudget/`（新用例）
 - `scripts/run-solver-tests.sh`（`system/nProcs` 并行 pass + 超时门禁）
 - `README.md`（§5 并行用例说明、§6 质量预算口径说明）
+
+> 相关：054（同类缺陷的第二个实例——函数体内的按 rank 提前返回）。

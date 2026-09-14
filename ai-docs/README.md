@@ -29,8 +29,48 @@
    `scripts/vm-sync.sh` 后在 VM 内执行（该脚本依赖宿主挂载
    `~/moldingFoam`；挂载未激活时 VM 内该目录为空，需先重新挂载或
    改用 tar 同步到 VM 原生目录）。
+6. **引用代码用函数/符号名，不写行号**：行号随每次编辑失效
+   （本目录已清理过一批）；跨文件引用写 `<类名>::<函数>()` 或文件路径。
+7. **历史不改写，更正用"补记"**：任务/报告文档是带日期的记录，后续
+   结论变化时追加「复核/补充 YYYY-MM-DD」小节，不修改原文数字。
+8. **阴性同样落文档**：试用无效/被否决的方案必须写清"测了什么、数字
+   多少、为什么不用"，避免后人重复。
+9. **数字的取证口径**：墙钟类数字必须标"同会话对照"（VM 跨会话方差
+   20–25%），守恒/物理量类给到提交哈希；只给结论不给口径的数字视为
+   未取证。
+10. **文档体检**：`python3 scripts/check-docs.py .`（索引覆盖、状态字段、
+    失效行号/用例/章节引用）；per-PR CI 已接入。
+
+## 文档地图
+
+| 文档 | 作用 | 阅读时机 |
+|------|------|----------|
+| 本文件 | 任务索引 + 约定 + 基线速查 | 每次开工 |
+| `tasks/NNN-*.md` | 单任务：背景/方案/DoD/验收记录 | 接活与验收时 |
+| `review-2026-09-12.md` | 历史快照：完成度/精度债务/性能瓶颈 | 了解全局由来 |
+| `coverage-audit-2026-09-13.md` | 四层测试通路与缺口 G1–G11 | 查测试覆盖 |
+| `ablation-audit-2026-09-13.md` | 特性消融与断言灵敏度 | 查断言强度 |
+| `uncertainty.md` | 收敛性/定标/换算（活文档） | 做精度与门槛决策 |
+| `report-037-heap-crash.md` | bundle 退出崩溃取证 | 动 bundle/验收判据 |
+| `report-038-kairos-v023-retest.md` | Kairos 侧复测记录 | 对接 Kairos |
+
+## 基线速查（一句话版，权威值在 README）
+
+- 契约 case：**v1.29**（`maxAlphaCo 0.015` / `nSubCycles 8` /
+  `alpha nCorrectors 1` / 能量 `tol 1e-5`）→ 守恒 **5.010e-04**（阈值
+  1e-3）、全周期 **15,212 步**；变更历史见 README 第 8 节；
+- 数值定标：守恒误差 **∝ dt**（同网格）且固定 dt 下随加密一阶变差；
+  余量↔成本换算见 `uncertainty.md`；
+- 并行规则（两条血泪）：① 循环内的集合通信不能随 rank 变化的 patch/
+  分支数变化（046）；② 函数体内的集合通信要求**所有**提前返回与分支
+  全局一致（054）。防线用例：`parallelMassBudget`；`parallelTrappedAir`
+  待 harness 用例复用语义修复后落地（054 §5/§8）；
+- 性能：墙钟热点是界面机制（050 剖面）；已落地杠杆见 README 第 7 节，
+  阴性清单见 `tasks/041` §4y 与 052/053。
 
 ## 任务索引
+
+### 契约周期与工艺（001–012/018/030/031/039）
 
 | 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
 |------|------|--------|------|------|----------|
@@ -46,18 +86,23 @@
 | [010](tasks/010-gate-freeze-physics.md) | 闸口冻结物理（局部温度/剪切判据） | P2 | **done**（温度判据实现+用例；契约物理触发依赖 016） | 006/016 | 3–5 天 |
 | [011](tasks/011-wall-slip.md) | 壁面滑移模型 | P2 | **done**（Navier 滑移 Couette 对拍 3.3e-9） | 无 | 3–5 天 |
 | [012](tasks/012-multi-cycle-mold-steady-state.md) | 多周期模温与周期稳态 | P2 | **done**（周期循环 + 400 周期模温收敛验收） | 002/008 | 3–5 天 |
+| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（定位 psi/rho 拆分；massFixGlobal 修正，40 MPa 1.1e-5） | 009 | 3–5 天 |
+| [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **done**（PVT 指标 + voidFraction 场 + 精确 Tait + PVT 对拍 1.6e-6 + 质量预算 4.1e-4） | 018 | 1–2 周 |
+| [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | **done**（Function1 曲线 + switchTime + 用例） | 006/016 | 1–2 周 |
+| [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | **done**（根因=时间截断 dt^1.6；maxDeltaT 1e-4 → 无修正器 2.58e-4，176×） | 018 | 1–2 周 |
+| [039](tasks/039-void-cavitation-closure.md) | 汽蚀空洞的闭锁约束与标定（033 跟进） | P1 | **done**（`moldingVoidClosure` 闭锁上限：void 与 Cv/Cc 无关、质量漂移 ≤0.13%、验证器含质量/闭锁判据；完全退化平衡仍待两场模块） | 033 | 1–2 天 |
+
+### 多物理与材料（013–016/019/022–028/033/034/036/040）
+
+| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
+|------|------|--------|------|------|----------|
 | [013](tasks/013-warpage-shrinkage-residual-stress.md) | 翘曲/收缩/残余应力（超模块范围） | P3 | **done**（拆分为 013a/013b，均完成） | 001–012 | 数周起 |
 | [013a](tasks/013a-shrinkage-indicators.md) | PVT 一致收缩/残余应力指标 | P3 | **done**（S 与热应力指标；用例 max(S) −0.008→0.298） | 001/002 | 3–5 天 |
 | [013b](tasks/013b-structural-warpage.md) | 结构翘曲集成（顺序耦合，022 落地） | P2 | **done**（MVP：PVT 自由应变映射 + 双层收缩板基准 4.2% + 应力自平衡） | 013a/022 | 2–4 周 |
 | [014](tasks/014-crystallization-kinetics.md) | 结晶动力学（半结晶聚合物） | P3 | **done**（Nakamura/Avrami + χ 场/潜热耦合；Jeffery 级解析验证） | 001 | 1–2 周 |
 | [015](tasks/015-fiber-orientation.md) | 纤维取向与各向异性 | P3 | **done**（Folgar-Tucker + Jeffery 轨道 <1e-6；局部 a 场） | 001/002 | 2–4 周 |
 | [016](tasks/016-runner-system-coupling.md) | 流道/热流道耦合 | P3 | **done**（1D 网络 + 入口/保压耦合；多浇口分流解析验证） | 001/006 | 1–2 周 |
-| [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
-| [018](tasks/018-high-pressure-conservation-closeout.md) | 高压可压缩界面守恒收尾（009 收口） | P0 | **done**（定位 psi/rho 拆分；massFixGlobal 修正，40 MPa 1.1e-5） | 009 | 3–5 天 |
-| [018a](tasks/018a-shrinkage-void-model.md) | 封冻后收缩空洞/负压建模（018 拆分） | P1 | **done**（PVT 指标 + voidFraction 场 + 精确 Tait + PVT 对拍 1.6e-6 + 质量预算 4.1e-4） | 018 | 1–2 周 |
 | [019](tasks/019-mold-3d-conjugate-heat-transfer.md) | 模具三维共轭传热（008 落地） | P0 | **done**（四基准：多周期/Robin 冷却/002 极限/周期稳态；2026-09-13 多周期回归修复：`nCycles 6` + 验证器按顶出事件计周期、≥3 增量硬要求；三维水区受上游模块限制） | 008/002 | 1–2 周 |
-| [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
-| [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | **done**（fillTime/airTrap 场 + 熔接痕对称性 0.554%） | 006/003 | 1–2 周 |
 | [022](tasks/022-warpage-shrinkage-mvp.md) | 翘曲/收缩 MVP（013 分阶段落地） | P1 | **done**（解析翘曲/残余应力 + `solidDisplacement` 三维悬臂基准 5.46%） | 001–012 | 2–4 周 |
 | [023](tasks/023-residual-stress-model.md) | 残余应力模型 | P2 | **done**（1D 自平衡弹性解 + 解析验证） | 022 | 1–2 周 |
 | [024](tasks/024-crystallization-integration.md) | 结晶动力学集成（014 落地） | P2 | **done**（随流输运 + η(χ) + DSC 标定工作流） | 001/014 | 1–2 周 |
@@ -65,38 +110,59 @@
 | [026](tasks/026-runner-system-integration.md) | 流道/热流道耦合集成（016 落地） | P2 | **done**（多浇口分流 + 热流道温度；阀浇口为增强） | 001/006/016 | 1–2 周 |
 | [027](tasks/027-viscoelastic-constitutive-model.md) | 粘弹性本构模型 | P2 | **done**（本构+解析验证+fvModel 动量耦合） | 001/007 | 1–2 周 |
 | [028](tasks/028-pressure-dependent-viscosity.md) | 压力依赖粘度模型 | P2 | **done**（CrossWlf D3 压致增稠验证 517.92→533.91 Pa·s） | 001 | 3–5 天 |
-| [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **done**（22.3 万单元基准、强扩展 1.49×@4、弱扩展 59%、内存报告） | 009/018 | 2–4 周 |
-| [030](tasks/030-multistage-process-profiles.md) | 多级注射/保压工艺曲线与过程控制（补充） | P1 | **done**（Function1 曲线 + switchTime + 用例） | 006/016 | 1–2 周 |
-| [031](tasks/031-pressure-mass-consistency.md) | 保压压力方程质量一致定式（根治 018，去修正器） | P0 | **done**（根因=时间截断 dt^1.6；maxDeltaT 1e-4 → 无修正器 2.58e-4，176×） | 018 | 1–2 周 |
-| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **done**（1M 单元 2.0 GB/6.5 s·步；nSubCycles8 −26%；perf-scaling 含内存/每步；带宽受限为长期项） | 029/018 | 2–4 周 |
 | [033](tasks/033-void-tension-field-model.md) | 空洞/张力场建模（018a 阶段 4） | P1 | **done**（会计式交付：tensionLimit 账目 + Tait 逆 + 用例预算 4.1e-4 无修正器；场耦合钉需两场模块，九次实验定论） | 018a/031 | 1–2 周 |
 | [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b | 3–5 周 |
-| [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | **done**（GCI/有界误差报告；阈值 10%→8%） | 017/022/013b | 1–2 周 |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 | 3–6 周 |
-| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
-| [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
-| [039](tasks/039-void-cavitation-closure.md) | 汽蚀空洞的闭锁约束与标定（033 跟进） | P1 | **done**（`moldingVoidClosure` 闭锁上限：void 与 Cv/Cc 无关、质量漂移 ≤0.13%、验证器含质量/闭锁判据；完全退化平衡仍待两场模块） | 033 | 1–2 天 |
 | [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
-| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | **done**（量化入口 + 计时矩阵：能量容差 10× → 墙钟 −24%、验收通过；未改缺省，记为按需选项） | 032 | 周级 |
-| [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
+
+### 验证与不确定度（017/020/021/035/043/044/049/051）
+
+| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
+|------|------|--------|------|------|----------|
+| [017](tasks/017-benchmark-validation.md) | 基准验证（解析/文献基准） | P1 | **done**（Couette/滑移/Stefan 三项自动验收；商用对拍无授权条件） | 001/002/006 | 1–2 周 |
+| [020](tasks/020-fountain-flow-benchmark.md) | 喷泉流基准验证 | P1 | **done**（前沿 0.008%、剖面 L2 1.64%、喷泉特征、时间收敛） | 001/006/017 | 1–2 周 |
+| [021](tasks/021-weld-line-air-trap-prediction.md) | 熔接痕与气穴预测 | P1 | **done**（fillTime/airTrap 场 + 熔接痕对称性 0.554%） | 006/003 | 1–2 周 |
+| [035](tasks/035-uncertainty-quantification.md) | 数值不确定性量化（网格/时间收敛，验证器收紧） | P2 | **done**（GCI/有界误差报告；阈值 10%→8%） | 017/022/013b | 1–2 周 |
 | [043](tasks/043-untested-optional-branches.md) | 未触发可选分支的用例覆盖（gateSealRamp/深层热阻/χ-η/质量修正器） | P2 | **done**（四项全交付：gateSealRamp、massFixGlobal、深层热阻、χ-η 耦合） | 018/008/024/031 | 1–2 天 |
 | [044](tasks/044-parameter-coverage-strength.md) | 参数覆盖补齐与模式-only 用例强化（pressureRamp 等） | P2 | **done**（潜热断言、G8 清零、pressureRamp 三路径、Nu 分支均交付；powerLaw 核实为扫描假阳性、原已被执行） | 038/006/012/016 | 1–2 天 |
+| [049](tasks/049-external-benchmark-calibration.md) | 外部精度标定 MVP（公开 benchmark 对拍） | P2 | **done**（1D 润滑参照入 fountainFlow：实测 −3.09%，残差=离散壁面剪切 −3.13% 解析解释） | 017/020 | 1–2 天 |
+| [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | **done**（① 结案：细网格 L2 反升=验证器测站假象；②③④ 记录不做的理由） | 020/021/035/036/043 | 1–2 天 |
+
+### 性能与并行（029/032/041/045/046/047/048/050/052/053/054）
+
+| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
+|------|------|--------|------|------|----------|
+| [029](tasks/029-solver-performance-optimization.md) | 求解器性能优化（并行/内存/大规模算例） | P1 | **done**（22.3 万单元基准、强扩展 1.49×@4、弱扩展 59%、内存报告） | 009/018 | 2–4 周 |
+| [032](tasks/032-parallel-performance.md) | 并行与线性求解性能优化（百万单元预算） | P1 | **done**（1M 单元 2.0 GB/6.5 s·步；nSubCycles8 −26%；perf-scaling 含内存/每步；带宽受限为长期项） | 029/018 | 2–4 周 |
+| [041](tasks/041-memory-traffic-longterm.md) | 内存流量优化的长期跟踪（032 跟进） | P3 | **done**（量化入口 + 计时矩阵：能量容差 10× → 墙钟 −24%、验收通过；未改缺省，记为按需选项） | 032 | 周级 |
 | [045](tasks/045-platform-parallel-coverage.md) | 平台与并行覆盖范围（arm64 重型验证/并行矩阵） | P3 | **done**（口径决策 B：数值回归基线 x86_64、arm64 仅构建+模型测试、差异 1–10% 记录在案） | CI/032/041 | 1–3 天（含 CI 时间成本评估） |
 | [046](tasks/046-parallel-boundary-patch-collectives.md) | 并行死锁：边界 patch 循环内的归约（issue #7） | P0 | **done**（根因＝processor patch 数按 rank 不同；4 进程真实件复测通过 + `parallelMassBudget` 防线） | 无 | 1–2 天 |
 | [047](tasks/047-contract-grid-time-convergence.md) | 契约 case 网格/时间收敛（1e-3 余量归因） | P1 | **done**（误差 ∝ dt^1.0（三点 0.97–1.06）×网格一阶；自适应 dt 使加密更稳但墙钟 ~20–30×） | 031/035 | 1–2 天 |
 | [048](tasks/048-cost-lever-combination.md) | 求解成本杠杆组合实测与每步通信削减 | P1 | **done**（组合 −43.6%；**E=组合+dt÷2 支配基线：−23% 墙钟且余量 6%→48%**，契约变更建议见 §3c） | 032/041 | 1–2 天 |
-| [049](tasks/049-external-benchmark-calibration.md) | 外部精度标定 MVP（公开 benchmark 对拍） | P2 | **done**（1D 润滑参照入 fountainFlow：实测 −3.09%，残差=离散壁面剪切 −3.13% 解析解释） | 017/020 | 1–2 天 |
 | [050](tasks/050-million-cell-capacity-profiling.md) | 百万单元产能：通信占比 profiling 与定位决策 | P2 | **done**（通信 7–10% ≪ 30%：不投上游通信改造；定位 10⁵ 单元级） | 032/041 | 2–4 天 |
-| [051](tasks/051-accuracy-explanation-cleanup.md) | 精度解释缺口与验证强度清理（小项合集） | P3 | **done**（① 结案：细网格 L2 反升=验证器测站假象；②③④ 记录不做的理由） | 020/021/035/036/043 | 1–2 天 |
-
 | [052](tasks/052-interface-cost-levers.md) | 界面机制的下一批杠杆：alpha 修正器与 MULES 策略 | P1 | **done**（`nCorrectors 2→1`：同批 −30% 墙钟、守恒 5.010e-04，已入 v1.29；`MULESCorr yes` 阴性） | 047/048/050/009 | 1–2 天 |
 | [053](tasks/053-adaptive-alpha-subcycles.md) | 自适应 alpha 子循环表（nSubCycles 的 Function1） | P1 | **done**（阴性 −2%，机理=填充期占 95–99% 步数；顺带量化 (nSubCycles,nCorrectors) 与熔接痕对称性的取舍） | 052 | 1 天 |
 | [054](tasks/054-trapped-air-rank-divergence.md) | 并行死锁 #2：`reportTrappedAir` 的按 rank 提前返回 | P0 | **done**（fountainFlow @4 复现/修复前后对照；防线用例受 harness 状态污染影响，列后续；§8 记录 `0/` 污染发现） | 046 | 0.5–1 天 |
 
+### 流程/防线与发布（037/038/042）
+
+| 编号 | 标题 | 优先级 | 状态 | 依赖 | 预估规模 |
+|------|------|--------|------|------|----------|
+| [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
+| [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
+| [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
 （001–054 已完成；052/053 为界面机制的旋钮探索，054 为第二处并行死锁。）
 
-整体审查报告：[`review-2026-09-12.md`](review-2026-09-12.md)（完成度审计、
-精度债务、性能瓶颈与优化机会）。
+审计与报告（按时间）：
+
+- [`review-2026-09-12.md`](review-2026-09-12.md)——完成度审计、精度债务、
+  性能瓶颈（历史快照）；
+- [`report-037-heap-crash.md`](report-037-heap-crash.md)——bundle 退出
+  阶段堆破坏取证（含 2026-09-14 的栈与边界补充）；
+- [`report-038-kairos-v023-retest.md`](report-038-kairos-v023-retest.md)
+  ——Kairos 侧 v0.2.3 复测记录；
+- [`uncertainty.md`](uncertainty.md)——收敛性、定标与余量↔成本换算
+  （活文档）。
 测试覆盖审计：[`coverage-audit-2026-09-13.md`](coverage-audit-2026-09-13.md)
 （四层测试通路核对；缺口 G1–G11 已落为任务 042–045，见上表）。
 消融与代码检查：[`ablation-audit-2026-09-13.md`](ablation-audit-2026-09-13.md)

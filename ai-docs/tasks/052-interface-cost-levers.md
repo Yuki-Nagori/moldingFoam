@@ -92,3 +92,5 @@
 
 - `scripts/lever-experiment.sh`（变体扩展）
 - 文档：本文件、README §7、`ai-docs/tasks/048-cost-lever-combination.md`
+
+> 相关：053（子循环函数表）、041 §4y（界面旋钮的有效项与阴性汇总）。

@@ -33,7 +33,7 @@
 ## 2. 代码检查结果
 
 - **编译告警（干净全量重建）**：修复前 **9 条**，全部为 `-Wreorder`
-  （`moldingStage.C:39` 1 处、`moldingFoam.C:109` 2 处：成员初始化列表与
+  （`moldingStage` 构造函数 1 处、`moldingFoam` 构造函数 2 处：成员初始化列表与
   声明顺序不一致）；按声明顺序重排后 **0 条**（`moldingFoam.H` 中
   `pressureRamp_/gateSealRamp_`、`freezeOffTemperature_/trapAirAlpha_`、
   `condAniso_/aInitial_` 三对）。重排只改列表顺序，实际初始化顺序本就是
@@ -104,3 +104,12 @@ rm -rf src/Make/*Opt tests/Make/*Opt && xmake 2>&1 | grep -c warning:
 合计 159 个 PASS 断言、0 FAIL。**未在本地跑**：17 个重型数值验证（CHT 等）
 与 4 子域契约——按既定分工留待 nightly；由于本地提交尚未推送，CI 侧
 尚未验证这批改动（这是当前唯一未闭环的验证面）。
+
+---
+
+## 复核 2026-09-14
+
+- 消融矩阵未全量重跑（043/044 已补齐当年 INSENSITIVE 的四项断言并逐项
+  验证）；重跑留到下一次大规模改动前，见 `tasks/051` §1a ④；
+- 本会话新增的界面/并行改动（048 v1.28、052 v1.29、054 修复）已各自带
+  验收与回归证据，未纳入本快照的消融范围。

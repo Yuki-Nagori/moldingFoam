@@ -149,3 +149,5 @@ dt 归一"的口径，三点自洽 ✓。
 
 - 新增：`scripts/contract-grid-study.sh`（或 validation 下的变体 case）
 - 文档：`ai-docs/uncertainty.md`、README §7、本文件
+
+> 相关：048（成本杠杆组合）、052/053（界面旋钮与子循环表）。

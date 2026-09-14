@@ -15,7 +15,7 @@
   workflow——037 报告自身即写明「建议接入：CI（快）或夜间
   （`bash scripts/smoke-exit.sh case-contract`）」，但至今只能手工跑；
 - **G7**：038 的 P1 防线缺回归——`fillVelocityWarn` 阈值无任何用例配置、
-  预警文本无断言；`src/moldingFoam/moldingFoam.C:1876` 的「非有限快速
+  预警文本无断言；`moldingFoam::postSolve()` 的「非有限快速
   失败」`FatalError` 从未被触发（属失败路径，可接受，但 README 的
   P1 防线 claim 与测试不匹配）。
 
@@ -84,7 +84,7 @@
   触发），`expectedPatterns` 断言
   `Nominal inlet melt velocity .* exceeds the warning threshold`；实测预警
   出现、用例其余断言与 `verify-box-fill.py`（逃逸 7.83%）不变；
-- **非有限快速失败**：`moldingFoam.C:1876` 的 FatalError 属失败路径，构造
+- **非有限快速失败**：`moldingFoam::postSolve()` 的 FatalError 属失败路径，构造
   稳定复现需刻意发散的输入且无法保证跨平台可复现——本任务按 §3 的方案 C
   记录为「仅实现、不做回归」，并在审计文档 G7 标注（预警侧已闭环）；
 - 回归：boxFill 用例标准流程（patterns + 验证器）PASS。

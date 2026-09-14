@@ -130,3 +130,5 @@ fill ≈ 0.894 触发（与 v1.27 一致，压力型），闸口封冻/顶出判
 - `src/moldingFoam/moldingFoam.C`（诊断门控）
 - `case-contract/`（只读；变体在 scratch 副本）
 - 文档：README §7、`ai-docs/tasks/041-memory-traffic-longterm.md`、本文件
+
+> 相关：047（dt/网格定标）、052（界面修正器）、053（子循环表）。

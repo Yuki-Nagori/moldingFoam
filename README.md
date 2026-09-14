@@ -1084,6 +1084,26 @@ MULES 修正遍数）由 2 改为 1（v1.29）：同批 4 子域对照墙钟 **6
 模板（现为 (6,2)）可直接套用同一张表。自适应 `nSubCycles` 表实测仅
 −2%（填充期占 95–99% 步数），已否决。
 
+### 并行规则（防线，任务 046/054）
+
+分解后的网格**每个 rank 的边界 patch 数与填充分布都不同**，因此：
+
+1. **集合通信不得放在随 rank 变化的循环里**：`forAll(boundaryField(), patchi)`
+   的迭代次数按 rank 不同（processor patch 只属于本 rank 参与的界面），
+   循环内的 `gSum`/`gMax`/`reduce` 会按 rank 调用不同次数 → 通信错配、
+   死锁（046）；归约一律移到循环外一次做完，或先按 patch 类型过滤到
+   "每个 rank 都有的真实 patch"。
+2. **含集合通信的函数，其所有提前返回与分支必须全局一致**：本地计数
+   （如"本 rank 没有气相单元"）不能直接做 `return` 条件，必须先
+   `reduce`/`returnReduce` 成全局值（054，`reportTrappedAir` 的
+   `nAir == 0` 就是反例）。
+
+防线用例：`parallelMassBudget`（046）经 `system/nProcs` 在 nightly 的
+`test-solver` 里跑串行+并行两遍；`parallelTrappedAir` 待 harness 用例
+复用语义修复后落地（`ai-docs/tasks/054` §5/§8）。
+另见 054 §8：**一次运行会把已注册相场写进 `0/`**，用例目录复跑前需清理，
+否则初态与首次不同。
+
 ## 8. 契约 case（对接规范）
 
 `case-contract/` 的字典布局**就是外部 case 生成器的对接接口**。所有

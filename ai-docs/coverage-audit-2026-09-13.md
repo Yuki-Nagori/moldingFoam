@@ -67,7 +67,7 @@
   无用例开启（highPressure 以注释关闭 `massFixGlobal`，验证的是 031 的
   「无修正器 2.58e-4」口径）→ 修正器打开时的守恒行为无回归保护。
 - **G7 038 防线断言**：`fillVelocityWarn` 阈值从未被配置、预警文本无
-  断言；`moldingFoam.C:1876` 的「非有限快速失败」`FatalError` 路径
+  断言；`moldingFoam::postSolve()`（非有限快速失败 `FatalError` 路径）
   从未被触发（属失败路径，可接受，但与 README 的 P1 防线claim不完全对应）。
 
 ### P3 — 强度不足或次要旋钮
@@ -143,3 +143,16 @@ G8 中的 `cycleReset`/`gateFreeze` 与 G10 的 arm64 口径决策是本批任�
 runnerNetwork 用例执行）；G9 的 Nu 分支 → 已由 044 交付（新增
 `nuCorrelation` 用例）。**G9 至此全部结清**。后续优化方向：把扫描改为
 「赋值行 + 内联子字典」双模式，避免同类假阳性。
+
+---
+
+## 复核 2026-09-14
+
+- **G1–G11 全部关闭或转为决策记录**：G1/G2/G5/G6/G8/G9 → 042–044；
+  G3/G4/G7 → 042/044；G10（平台口径）→ 045 决策 B；G11（性能手工基准）
+  → 041 长期项；
+- 本审计的"未闭合"表述已被 046–054 取代：并行覆盖新增
+  `parallelMassBudget`（046）与 `parallelTrappedAir`（054，待 harness
+  复用语义修复后落地）；精度侧由 047/049/051 收口；
+- 引用约定：本仓库代码一律用函数/符号名（行号会随编辑失效），
+  见 `ai-docs/README.md` 的「文档约定」。

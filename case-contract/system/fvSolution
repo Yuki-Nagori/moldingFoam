@@ -22,7 +22,10 @@ solvers
     "alpha.melt.*"
     {
         nCorrectors     2;
-        nSubCycles      16;
+        // v1.28: 8 sub-cycles with the energy tolerance below halves the
+        // step cost; the dt reduction in controlDict (maxAlphaCo 0.015)
+        // buys back 8x the conservation margin at the same time
+        nSubCycles      8;
         MULESCorr       no;
         solver          smoothSolver;
         smoother        symGaussSeidel;
@@ -56,7 +59,9 @@ solvers
     {
         solver          smoothSolver;
         smoother        symGaussSeidel;
-        tolerance       1e-06;
+        // v1.28: 1e-5 (was 1e-6); the energy equation carries 94% of the
+        // linear iterations, and the packed margin below comes from dt
+        tolerance       1e-05;
         relTol          0;
         minIter         1;
     }

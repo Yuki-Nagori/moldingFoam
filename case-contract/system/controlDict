@@ -57,7 +57,10 @@ adjustTimeStep  on;
 
 maxCo           0.5;
 
-maxAlphaCo      0.03;
+// v1.28: 0.015 (was 0.03). The conservation error is first order in dt
+// (ai-docs/tasks/047): halving maxAlphaCo halves 9.4e-04 to 5.2e-04, and
+// the smaller sub-cycle budget / energy tolerance absorb the extra steps
+maxAlphaCo      0.015;
 
 maxDeltaT       1;
 

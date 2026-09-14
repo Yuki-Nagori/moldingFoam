@@ -1,0 +1,14 @@
+# Guard for issue #7: the mass-budget boundary flux loops in
+# moldingFoam::postSolve sum over the boundary patches, so their
+# reductions must not sit inside the loop (a decomposed mesh has a
+# different number of processor patches on each rank). The case runs
+# twice in run-solver-tests.sh: serially and, because system/nProcs
+# exists, in parallel over the asymmetric decomposition declared in
+# system/decomposeParDict. Under the defect the parallel pass deadlocks
+# inside the first postSolve (bounded by the harness timeout).
+moldingFoam: filling
+moldingFoam: mass budget patch
+End
+# The fill-velocity feasibility warning must fire at the lowered
+# threshold (task 042; the key is calibrated low in moldingDict)
+Nominal inlet melt velocity .* exceeds the warning threshold

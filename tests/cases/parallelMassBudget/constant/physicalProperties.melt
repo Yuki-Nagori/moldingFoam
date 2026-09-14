@@ -1,0 +1,52 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object physicalProperties.melt;
+}
+thermoType
+{
+    type            heRhoThermo;
+    mixture         pureMixture;
+    transport       const;
+    thermo          hMelt;
+    equationOfState Tait;
+    specie          specie;
+    energy          sensibleInternalEnergy;
+}
+
+mixture
+{
+    specie
+    {
+        molWeight   1;
+    }
+
+    equationOfState
+    {
+        b1m         1.280000e-3;
+        b2m         7.500000e-7;
+        b1s         1.220000e-3;
+        b2s         3.000000e-7;
+        b3          1.400000e8;
+        b4          3.000000e-3;
+        b5          418.0000;
+        b6          0;
+        C           0.0894;
+        smoothBand  0.5;
+    }
+
+    thermodynamics
+    {
+        Cp          2500.0000;
+        latentHeat  0;
+        hf          0;
+    }
+
+    transport
+    {
+        mu          100;
+        Pr          4;
+    }
+}

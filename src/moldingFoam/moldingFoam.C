@@ -1926,13 +1926,25 @@ void Foam::solvers::moldingFoam::postSolve()
         m += Vc[i]*alphac[i]*rhoc[i];
     }
 
+    // Boundary-flux sum: a decomposed mesh carries a different number of
+    // processor patches on each rank (the real patches are common to all
+    // of them), so a collective inside a loop over all patches performs a
+    // different number of reductions on each rank and the run deadlocks as
+    // soon as the decomposition leaves two ranks with a different
+    // neighbour count (issue #7). Sum locally, reduce once after the loop;
+    // the processor patches are interior faces of the global mesh and
+    // carry no boundary flux, so skipping them also keeps the parallel
+    // sum identical to the serial one
     scalar flux = 0;
     const surfaceScalarField::Boundary& abf =
         alphaRhoPhi1.boundaryField();
 
     forAll(abf, patchi)
     {
-        flux += gSum(abf[patchi]);
+        if (!isA<processorFvPatch>(mesh.boundary()[patchi]))
+        {
+            flux += sum(abf[patchi]);
+        }
     }
 
     reduce(m, sumOp<scalar>());
@@ -1947,26 +1959,43 @@ void Foam::solvers::moldingFoam::postSolve()
     {
         forAll(phi.boundaryField(), patchi)
         {
-            fluxVol += gSum(phi.boundaryField()[patchi]);
-        }
-
-        const surfaceScalarField::Boundary& abfA =
-            alphaPhi1.boundaryField();
-
-        forAll(abfA, patchi)
-        {
-            fluxAlpha += gSum(abfA[patchi]);
-
-            if (gSum(mag(abf[patchi])) > small)
+            if (!isA<processorFvPatch>(mesh.boundary()[patchi]))
             {
-                Info<< "moldingFoam: mass budget patch " << mesh.boundary()[patchi].name()
-                    << ": alphaRhoPhi1 = " << gSum(abf[patchi])
-                    << " kg/s, alphaPhi1 = " << gSum(abfA[patchi])
-                    << " m^3/s" << endl;
+                fluxVol += sum(phi.boundaryField()[patchi]);
             }
         }
 
         reduce(fluxVol, sumOp<scalar>());
+
+        const surfaceScalarField::Boundary& abfA =
+            alphaPhi1.boundaryField();
+
+        // The real patches are visited with the per-patch reduction inside
+        // the loop (the print below wants a global value per patch): they
+        // are common to every rank, so the loop performs the same number
+        // of reductions everywhere
+        forAll(abfA, patchi)
+        {
+            if (isA<processorFvPatch>(mesh.boundary()[patchi]))
+            {
+                continue;
+            }
+
+            const scalar patchFlux(gSum(abf[patchi]));
+            const scalar patchAlphaFlux(gSum(abfA[patchi]));
+
+            fluxAlpha += patchAlphaFlux;
+
+            if (mag(patchFlux) > small)
+            {
+                Info<< "moldingFoam: mass budget patch "
+                    << mesh.boundary()[patchi].name()
+                    << ": alphaRhoPhi1 = " << patchFlux
+                    << " kg/s, alphaPhi1 = " << patchAlphaFlux
+                    << " m^3/s" << endl;
+            }
+        }
+
         reduce(fluxAlpha, sumOp<scalar>());
     }
 

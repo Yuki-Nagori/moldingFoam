@@ -1,0 +1,21 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object decomposeParDict;
+}
+// Deliberately asymmetric 4-way split (a 0-1-2-3 chain): the two end
+// ranks have one processor patch, the two middle ranks two. Reductions
+// that live inside a loop over boundary patches then run a different
+// number of times on each rank, which deadlocks the run (issue #7); a
+// decomposition where every rank has the same neighbour count cannot see
+// that class of bug (the contract case is one)
+numberOfSubdomains 4;
+method          hierarchical;
+hierarchicalCoeffs
+{
+    n       (4 1 1);
+    delta   1e-6;
+    order   xyz;
+}

@@ -1,0 +1,15 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class dictionary;
+    location "constant";
+    object phaseProperties;
+}
+phases (melt air);
+
+sigma
+{
+    type    constant;
+    sigma   [1 0 -2 0 0 0 0] 0.025;
+}

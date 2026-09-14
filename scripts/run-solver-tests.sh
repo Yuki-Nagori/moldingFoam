@@ -33,8 +33,67 @@ root=$(cd "$root" && pwd)
 
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
+# Allow more MPI ranks than detected cores (same reason as run-case.sh: CI
+# runners and small VMs expose fewer slots than the case asks for)
+export OMPI_MCA_rmaps_base_oversubscribe=1
+
 nFailed=0
 nCases=0
+
+# The assertions applied to a run log: non-zero exit, glibc heap
+# corruption, duplicated runtime selections and the expected patterns
+# (system/expectedPatterns) must all hold for the serial run and for the
+# optional parallel run of a case
+checkLog()
+{
+    local name="$1"
+    local stage="$2"
+
+    if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \
+            log.foamRun
+    then
+        echo "FAIL: $name ($stage): heap corruption reported at exit"
+        return 1
+    fi
+
+    if grep -qi "Duplicate entry" log.foamRun
+    then
+        echo "FAIL: $name ($stage): duplicate runtime-selection entries " \
+             "(multiple module copies loaded)"
+        return 1
+    fi
+
+    local pattern
+    while IFS= read -r pattern
+    do
+        case "$pattern" in
+            ''|'#'*) continue ;;
+        esac
+        if grep -Eq -- "$pattern" log.foamRun
+        then
+            echo "PASS: $name: $pattern"
+        else
+            echo "FAIL: $name ($stage): missing pattern: $pattern"
+            return 1
+        fi
+    done < system/expectedPatterns
+
+    if [ -f system/verifyScript ]
+    then
+        local verifier
+        verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' \
+            system/verifyScript | head -1)
+
+        if [ -n "$verifier" ] \
+           && ! python3 "$scriptDir/$verifier" "$caseDir"
+        then
+            echo "FAIL: $name ($stage): $verifier"
+            return 1
+        fi
+    fi
+
+    return 0
+}
 
 for caseDir in "$root"/*/
 do
@@ -46,7 +105,7 @@ do
     echo "== solver case: $name =="
     cd "$caseDir"
 
-    rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
+    rm -rf postProcessing processor* constant/polyMesh log.* 0.[0-9]* [1-9]*
     blockMesh > log.blockMesh 2>&1
 
     # A case may invert the expectation: system/expectFailure names a
@@ -84,41 +143,38 @@ do
         caseFailed=1
     fi
 
-    if grep -qiE "malloc_consolidate|corrupted (fastbin|size)|free\(\): invalid" \
-            log.foamRun; then
-        echo "FAIL: $name: heap corruption reported at exit"
+    if ! checkLog "$name" "serial"; then
         caseFailed=1
     fi
 
-    if grep -qi "Duplicate entry" log.foamRun; then
-        echo "FAIL: $name: duplicate runtime-selection entries (multiple " \
-             "module copies loaded)"
-        caseFailed=1
-    fi
-
-    while IFS= read -r pattern
-    do
-        case "$pattern" in
-            ''|'#'*) continue ;;
-        esac
-        if grep -Eq -- "$pattern" log.foamRun
-        then
-            echo "PASS: $name: $pattern"
-        else
-            echo "FAIL: $name: missing pattern: $pattern"
-            caseFailed=1
-        fi
-    done < system/expectedPatterns
-
-    if [ -f system/verifyScript ]
+    # Optional parallel pass: system/nProcs holds the number of subdomains
+    # and system/decomposeParDict the decomposition. The case is then run
+    # again under mpirun, which is what catches rank-dependent collective
+    # counts: a reduction inside a loop over boundary patches runs a
+    # different number of times on each rank whenever the decomposition
+    # leaves them with different neighbour counts, and the run deadlocks
+    # (issue #7). The timeout turns a deadlock into a failure of this
+    # suite instead of a hanging job
+    if [ -f system/nProcs ]
     then
-        verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' \
-            system/verifyScript | head -1)
+        nProcs=$(head -1 system/nProcs)
+        timeoutS="${MOLDINGFOAM_PARALLEL_TIMEOUT:-300}"
 
-        if [ -n "$verifier" ] \
-           && ! python3 "$scriptDir/$verifier" "$caseDir"
+        rm -rf processor* log.decomposePar
+        foamDictionary -entry numberOfSubdomains -set "$nProcs" \
+            system/decomposeParDict > /dev/null
+
+        if ! decomposePar -force > log.decomposePar 2>&1; then
+            echo "FAIL: $name (parallel $nProcs): decomposePar failed"
+            caseFailed=1
+        elif ! timeout "$timeoutS" mpirun -np "$nProcs" foamRun -parallel \
+                > log.foamRun 2>&1
         then
-            echo "FAIL: $name: $verifier"
+            echo "FAIL: $name (parallel $nProcs): mpirun failed or timed " \
+                 "out after ${timeoutS}s (a timeout points at a parallel " \
+                 "deadlock, e.g. a rank-dependent collective count)"
+            caseFailed=1
+        elif ! checkLog "$name" "parallel $nProcs"; then
             caseFailed=1
         fi
     fi

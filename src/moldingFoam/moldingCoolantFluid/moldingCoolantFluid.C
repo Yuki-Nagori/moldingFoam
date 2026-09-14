@@ -15,6 +15,7 @@ License
 #include "fvmDdt.H"
 #include "fvmDiv.H"
 #include "fvmLaplacian.H"
+#include "processorFvPatch.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -85,13 +86,24 @@ void Foam::solvers::moldingCoolantFluid::thermophysicalPredictor()
     {
         const volScalarField& kappa = thermo_->kappa();
 
+        // A decomposed coolant mesh carries a different number of processor
+        // patches on each rank, so a collective inside a loop over all
+        // patches performs a different number of reductions on each rank
+        // and the run deadlocks as soon as two ranks have a different
+        // neighbour count (issue #7): visit the real patches only and
+        // reduce once per quantity
         scalar qNet = 0;
 
         forAll(T_.boundaryField(), patchi)
         {
+            if (isA<processorFvPatch>(mesh_.boundary()[patchi]))
+            {
+                continue;
+            }
+
             const fvPatchScalarField& Tp = T_.boundaryField()[patchi];
 
-            qNet += gSum
+            qNet += sum
             (
                 kappa.boundaryField()[patchi]
                *Tp.snGrad()
@@ -99,20 +111,29 @@ void Foam::solvers::moldingCoolantFluid::thermophysicalPredictor()
             );
         }
 
+        reduce(qNet, sumOp<scalar>());
+
         scalar mdot = 0;
         scalar mdotT = 0;
 
         forAll(phi_.boundaryField(), patchi)
         {
+            if (isA<processorFvPatch>(mesh_.boundary()[patchi]))
+            {
+                continue;
+            }
+
             const fvsPatchScalarField& phip = phi_.boundaryField()[patchi];
             const scalar mf = gSum(phip);
 
             if (mf > small)
             {
                 mdot += mf;
-                mdotT += gSum(phip*T_.boundaryField()[patchi]);
+                mdotT += sum(phip*T_.boundaryField()[patchi]);
             }
         }
+
+        reduce(mdotT, sumOp<scalar>());
 
         Info<< "moldingCoolantFluid: net boundary heat = " << qNet
             << " W, outlet mdot = " << gAverage(rho)*mdot

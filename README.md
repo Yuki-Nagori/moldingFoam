@@ -351,6 +351,7 @@ $ xmake run test
 
 | 用例 | 检查 |
 |------|------|
+| `parallelMassBudget` | 4 子域**不对称分解**（hierarchical `n (4 1 1)`）下的质量预算通量归约：串行+并行两 pass 均到 endTime（issue #7 并行死锁防线） |
 | `cycleReset` | 顶出后按 `nCycles` 重置流场并进入第 2 周期（并行/串行均可） |
 | `moldCycles` | 模温跨周期保留、无跳变并逐周期升温（`verify-mold-cycles.py` 数值校验） |
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
@@ -374,6 +375,17 @@ $ xmake run test
 
 用例可带 `system/verifyScript` 指定数值验证脚本（在
 `system/expectedPatterns` 正则检查之后运行）。
+
+用例可带 `system/nProcs`（子域数）+ `system/decomposeParDict`：此时在
+串行 pass 之后再跑一次并行 pass（`decomposePar -force` +
+`mpirun -np N foamRun -parallel`），日志断言与串行相同，超时
+（`MOLDINGFOAM_PARALLEL_TIMEOUT`，缺省 300 s）即判失败。这是并行通信
+缺陷的回归入口——分解后的网格**每个 rank 的边界 patch 数不同**
+（processor patch 只属于该 rank 参与的界面），凡是把归约放进
+`forAll(boundaryField(), patchi)` 循环的代码都会按 rank 调用不同次数而
+死锁（issue #7：真实件 4 进程在第 1 个时间步后卡住）；对称分解（如契约
+case，每 rank 邻居数相同）看不到这一类缺陷，故 `parallelMassBudget` 用
+hierarchical `n (4 1 1)` 刻意造出 4/5/5/4 的不对称 patch 数。
 
 新增特性时优先补一个 `tests/cases/<name>` 小 case，把契约 case 留给
 集成级回归。
@@ -763,6 +775,11 @@ K(T,p) = Kmax·exp(−4ln2·(T−Tmax(p))²/W²),  Tmax(p) = Tmax0 + dTdp·p
 moldingFoam: mass budget: m = 8.1012857e-05 kg, accumulated boundary
 flux = -6.4037049e-06 kg, residual = -1.5170103e-06 kg
 ```
+
+通量按**真实边界 patch**（inlet/vent/walls）求和：processor patch 是
+全局网格的内部面、且其个数按 rank 不同，既不属于边界通量，也不能在
+循环内做归约（issue #7）。因此并行与串行的通量口径一致，同一 case 的
+残差在 1/2/4 进程下同量级（实测 7.9e-06 / −2.9e-08 / −3.8e-05 kg）。
 
 ### 三维冷却水模块（`moldingCoolantFluid`，任务 036 路线 A）
 

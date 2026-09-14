@@ -1,0 +1,59 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// 10 mm cube, SI units (task 038 reference of the sample-case
+// investigation): the generator's mesh was in raw millimetres, i.e. a
+// 10 m box for OpenFOAM; here the geometry is scaled to 0.01 m
+convertToMeters 1;
+
+vertices
+(
+    (0 0 0)
+    (0.01 0 0)
+    (0.01 0.01 0)
+    (0 0.01 0)
+    (0 0 0.01)
+    (0.01 0 0.01)
+    (0.01 0.01 0.01)
+    (0 0.01 0.01)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (10 10 10) simpleGrading (1 1 1)
+);
+
+edges
+();
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces ((0 3 2 1));
+    }
+    vent
+    {
+        type patch;
+        faces ((4 5 6 7));
+    }
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 1 5 4)
+            (2 3 7 6)
+            (1 2 6 5)
+            (3 0 4 7)
+        );
+    }
+);
+
+mergePatchPairs
+();

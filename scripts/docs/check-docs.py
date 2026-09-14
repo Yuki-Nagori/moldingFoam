@@ -74,11 +74,15 @@ for name, path in doc_files:
             problems.append("%s: README section %s does not exist"
                             % (name, section))
 
-    for m in re.finditer(r"tests/cases/([A-Za-z0-9_]+)", text):
-        case = m.group(1)
-        if not os.path.isdir(os.path.join(root, "tests", "cases", case)):
-            problems.append("%s: references missing case tests/cases/%s"
-                            % (name, case))
+    # a *done* task must reference cases that exist; planned tasks may
+    # announce cases they are going to add (the reference is the promise)
+    done = re.search(r"(?m)^-\s*状态[：:].*done", text) is not None
+    if done:
+        for m in re.finditer(r"tests/cases/([A-Za-z0-9_]+)", text):
+            case = m.group(1)
+            if not os.path.isdir(os.path.join(root, "tests", "cases", case)):
+                problems.append("%s: references missing case tests/cases/%s"
+                                % (name, case))
 
 # every task should also be reachable from the index by its number
 for name in task_files:

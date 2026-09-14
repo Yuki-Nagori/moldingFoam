@@ -9,10 +9,27 @@
 #******************************************************************************
 #******************************************************************************
 # Acceptance verification for the fountain-flow channel: the melt front
-# position must follow the injected volume (Q t/(h w) within 5%) and the
+# position must follow the injected volume (Q t/(h w) within 5%), the
 # developed velocity profile well behind the front must match the
 # analytic Newtonian slit profile u = 1.5 u_mean (1 - (2y/h - 1)^2)
-# within 10% (L2).
+# within 10% (L2), and the developed injection pressure gradient at
+# x = 5.25 mm must match the 1D lubrication (Hele-Shaw / parallel-plate)
+# reference within 10%.
+#
+# The pressure check is the case's external-reference leg: the injection
+# pressure of a Newtonian slit at constant flow rate is an industry
+# standard 1D result, dp/dx = 12 mu u_mean/h^2 with mu = rho(T, p) nu
+# taken from the case's own Tait and powerLaw dictionaries, independent
+# of the solver's discretisation. The reference is the 2D slit: the z
+# direction is one cell thick and its no-slip walls resolve no profile,
+# so the 3D rectangular-duct law (12x higher for this 2x4 mm
+# cross-section) does not apply. Sampled at the developed station
+# x = 5.25 mm: deeper stations are contaminated by the fountain
+# recirculation (the last ~2 h behind the front carry about half the
+# developed gradient, which pulls a global p_gate-vs-L fit ~15% below
+# the reference). The measured -3.1% deviation matches the -3.1%
+# discrete wall shear of the half-cell no-slip boundary condition on the
+# 8-cell gap, i.e. it is discretisation, not model error.
 #
 # Usage: verify-fountain-flow.py <caseDir>   (exits non-zero on failure)
 #******************************************************************************
@@ -60,6 +77,125 @@ def cell_index(i, j):
     if i < 42:
         return 304 + (i - 38) + 4*j
     return 336 + (i - 42) + 38*j
+
+
+TAIT_COEFFS = ("b1m", "b2m", "b1s", "b2s", "b3", "b4", "b5", "b6", "C")
+
+
+def dict_entry(path, key):
+    """First 'key value;' entry of an OpenFOAM dictionary."""
+    with open(path) as handle:
+        m = re.search(r"(?m)^\s*" + key + r"\s+([^\s;]+)\s*;", handle.read())
+    return m.group(1) if m else None
+
+
+def read_tait(case_dir):
+    path = os.path.join(case_dir, "constant", "physicalProperties.melt")
+    coeffs = {}
+    for key in TAIT_COEFFS:
+        value = dict_entry(path, key)
+        if value is None:
+            return None
+        coeffs[key] = float(value)
+    return coeffs
+
+
+def melt_density(case_dir, temperature):
+    """Tait melt density [kg/m^3] at the injection temperature, p = 1e5."""
+    t = read_tait(case_dir)
+    if t is None:
+        return None
+    p = 1e5
+    Tt = t["b5"] + t["b6"]*p
+    v0 = t["b1m"] + t["b2m"]*(temperature - Tt)
+    B = t["b3"]*math.exp(-t["b4"]*temperature)
+    f = 1.0 - t["C"]*math.log(max(1.0 + p/B, 1e-30))
+    return 1.0/(v0*f)
+
+
+def check_lubrication_pressure(case_dir, time_name):
+    """Injection pressure gradient at the developed station x = 5.25 mm.
+
+    Reference: the 1D lubrication (Hele-Shaw / parallel-plate) result for
+    a Newtonian slit at constant flow rate,
+        dp/dx = 12 mu u_mean / h^2,   mu = rho(T, p) nu,
+    with rho from the case's Tait and nu from its powerLaw dictionary.
+    This is an industry-standard external reference: it is independent of
+    the solver's discretisation.
+
+    The gradient is sampled at the station the velocity-profile check
+    already uses (x = 5.25 mm), which is ~1.3 h from the inlet and (for
+    the final time) ~3.7 h behind the front. A station further back is
+    contaminated by the fountain recirculation (the last ~2 h behind the
+    front carry roughly half the fully developed gradient, which pulls a
+    global p_gate-vs-L fit ~15% below the reference).
+
+    Returns True on pass, False on failure, None when the case is not a
+    constant-viscosity Newtonian configuration.
+    """
+    transport = os.path.join(case_dir, "constant", "momentumTransport")
+    model = dict_entry(transport, "viscosityModel")
+    k = dict_entry(transport, "k")
+    n = dict_entry(transport, "n")
+    if model != "powerLaw" or k is None or n is None or float(n) != 1.0:
+        print("  lubrication pressure check skipped: the case is not a "
+              "constant-viscosity powerLaw (n = 1) configuration "
+              "(viscosityModel = {})".format(model))
+        return None
+
+    nu = float(k)
+    temperature = dict_entry(
+        os.path.join(case_dir, "constant", "moldingDict"), "meltTemperature")
+    rho = melt_density(case_dir, float(temperature)) if temperature else None
+    if rho is None:
+        print("FAIL: cannot determine the melt density for the lubrication "
+              "reference")
+        return False
+    mu = rho*nu
+
+    prgh = scalars(read_field(
+        os.path.join(case_dir, time_name, "p_rgh"), "scalar"))
+    alpha = scalars(read_field(
+        os.path.join(case_dir, time_name, "alpha.melt"), "scalar"))
+    if prgh is None or alpha is None:
+        print("FAIL: cannot read p_rgh/alpha.melt for the lubrication "
+              "pressure check")
+        return False
+
+    # Station x = 5.25 mm is the centre of column 10 (0.5 mm cells in the
+    # first block); sample the gradient over the two neighbouring columns
+    # on the mid-plane row
+    iStation = 10
+    j = NCY//2
+    iFront = max(i for i in range(NCX)
+                 if alpha[cell_index(i, j)] >= 0.5)
+    dx = 0.5e-3
+    grad = (prgh[cell_index(iStation + 1, j)]
+            - prgh[cell_index(iStation - 1, j)])/(2.0*dx)
+
+    print("  lubrication pressure: mu = rho*nu = {:.1f}*{:.3g} = "
+          "{:.1f} Pa s".format(rho, nu, mu))
+    print("  developed gradient at x = 5.25 mm (front at column {}): "
+          "dp/dx = {:.4g} Pa/m vs 1D slit reference {:.4g} Pa/m"
+          .format(iFront, grad, -12.0*mu*UMEAN/H**2))
+
+    if iFront < iStation + 16:
+        print("FAIL: the front is too close to the sampling station for a "
+              "developed-region pressure check")
+        return False
+
+    ref = -12.0*mu*UMEAN/H**2
+    dev = (grad - ref)/ref
+    print("  deviation = {:+.2%}".format(dev))
+
+    if abs(dev) > 0.10:
+        print("FAIL: the developed injection pressure gradient does not "
+              "follow the 1D lubrication reference")
+        return False
+
+    print("PASS: the developed injection pressure gradient follows the "
+          "1D lubrication (Hele-Shaw) reference")
+    return True
 
 
 def main():
@@ -157,11 +293,15 @@ def main():
               "(no fountain signature)")
         fail = True
 
+    pressure_ok = check_lubrication_pressure(case_dir, tProf)
+    if pressure_ok is False:
+        fail = True
+
     if fail:
         sys.exit(1)
 
-    print("PASS: the front position and the developed velocity profile "
-          "match the analytic reference")
+    print("PASS: the front position, the developed velocity profile and "
+          "the injection pressure match the analytic reference")
 
 
 if __name__ == "__main__":

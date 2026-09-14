@@ -2,10 +2,11 @@
 # 048 experiment: cost-lever combination on the contract case.
 #
 # Variants (all other settings identical to case-contract):
-#   A  baseline        nSubCycles 16, energy tolerance 1e-6
+#   A  baseline        nSubCycles 16, energy tolerance 1e-6, maxAlphaCo 0.03
 #   B  nSubCycles 8
 #   C  energy tolerance 1e-5
 #   D  both (8 + 1e-5)
+#   E  both + maxAlphaCo 0.015 (dt halved: buys back the conservation margin)
 #
 # Each variant runs on its own scratch copy of case-contract (the contract
 # case itself is never touched). Runs are interleaved and repeated so the
@@ -33,11 +34,13 @@ for v in "${variants[@]}"
 do
     nsub=16
     tol="1e-6"
+    alphaCo=""
     case "$v" in
         A) ;;
         B) nsub=8 ;;
         C) tol="1e-5" ;;
         D) nsub=8; tol="1e-5" ;;
+        E) nsub=8; tol="1e-5"; alphaCo=0.015 ;;
         *) echo "unknown variant '$v'" >&2; exit 1 ;;
     esac
 
@@ -78,7 +81,20 @@ src = patch_block(src, r'"\(U\|e\|T\)\.\*"\s*\{', 'tolerance', tol)
 open(path, 'w').write(src)
 PY
 
-    echo "=== variant $v (nSubCycles $nsub, tol $tol) -> $work"
+    if [ -n "$alphaCo" ]
+    then
+        python3 - "$work/system/controlDict" "$alphaCo" <<'PATCH'
+import re, sys
+path, value = sys.argv[1], sys.argv[2]
+src = open(path).read()
+new = re.sub(r'(?m)^(maxAlphaCo\s+)[^\s;]+;', lambda mo: mo.group(1) + value + ';', src, count=1)
+if new == src:
+    raise SystemExit("maxAlphaCo not found in controlDict")
+open(path, 'w').write(new)
+PATCH
+    fi
+
+    echo "=== variant $v (nSubCycles $nsub, tol $tol, maxAlphaCo ${alphaCo:-contract}) -> $work"
     start=$(date +%s)
     bash "$scriptDir/run-case.sh" "$work" 4 > "$out" 2>&1
     rc=$?
@@ -89,7 +105,7 @@ PY
     cons=$(grep -E "Mass conservation relative error" "$out" | tail -1 | sed 's/.*error = //')
     accept=$(grep -c "All acceptance checks passed" "$out")
 
-    echo "RESULT variant=$v rc=$rc wall=${wall}s steps=$steps execTime=${exec_time:-?}s masscon=${cons:-?} accepted=$accept" | tee -a "$root/results.txt"
+    echo "RESULT variant=$v alphaCo=${alphaCo:-contract} rc=$rc wall=${wall}s steps=$steps execTime=${exec_time:-?}s masscon=${cons:-?} accepted=$accept" | tee -a "$root/results.txt"
 done
 
 echo "=== results ($root/results.txt) ==="

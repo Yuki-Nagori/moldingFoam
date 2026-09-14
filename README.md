@@ -367,7 +367,7 @@ $ xmake run test
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
-| `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille（`verify-fountain-flow.py`） |
+| `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille，**注入压力梯度 vs 1D 润滑（Hele-Shaw）参考 −3.09%**（≤10%，残差=8 层网格半格壁面剪切的 −3.13%，`verify-fountain-flow.py`） |
 | `moldCHT-cycle` | 多周期多区域 CHT：6 周期模温 354→432 K，每周期增量 15.0→11.0 K 单调递减（末值/首值 0.74，CI x86_64）（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
 | `moldCHT-cooled` | 模具外壁 Robin 对流冷却：能量平衡含冷却热流（22.1 J）实测 0.314%（`verify-moldcht-cooled.py`） |
 | `moldCHT-lumped` | 002 集总极限对照：薄层 CHT 平衡温度 373.862 vs 集总 373.901 K（1.05e-4）（`verify-moldcht-lumped.py`） |
@@ -999,8 +999,14 @@ thermoType
 | 组合（`nSubCycles 8`、能量 `tol 1e-5`） | **382 s**（382 / 382，−43.6%） | 9.936e-04 |
 
 组合把墙钟压到 56% 且两轮零波动，但守恒余量只剩 0.6%（跨平台差异
-记录为 1–10%）——**作为长算例生产选项可用，不作为 CI 缺省**；要让
-它进缺省，需先把守恒余量做大（见下）。
+记录为 1–10%）——**作为长算例生产选项可用，不作为 CI 缺省**。
+
+**组合 + dt 减半（`maxAlphaCo 0.015`）实测支配基线**：墙钟中位 545 s
+（−19.6% 对基线中位数，样本 518/572）**且**守恒 5.164e-04（余量 6.1% → 48%，完整验收
+PASS）——组合的单步节省（0.66×）抵消了 dt 减半的步数翻倍（1.98×）。
+**建议下一次契约修订采用该组设置**（涉及与 Kairos 的冻结接口，本仓库
+只测量与建议，变更走契约版本流程，见
+`ai-docs/tasks/048-cost-lever-combination.md` §3c）。
 
 ### 数值：契约 case 的守恒误差 ∝ dt（任务 047，2026-09-14）
 

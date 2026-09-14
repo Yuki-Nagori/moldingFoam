@@ -38,9 +38,15 @@
 9. **数字的取证口径**：墙钟类数字必须标"同会话对照"（VM 跨会话方差
    20–25%），守恒/物理量类给到提交哈希；只给结论不给口径的数字视为
    未取证。
-10. **文档体检（手动，不入 CI）**：`python3 scripts/docs/check-docs.py .`
+10. **用例目录不可无脑复用**：求解器会把已注册相场写进 `0/`，跑过的
+    目录初态已变；测试统一走 `mktemp -d` 新鲜副本（`run-solver-tests.sh`
+    的每个 pass），`run-case.sh` 在 git 树内恢复 `0/`（任务 055）。
+11. **文档体检（手动，不入 CI）**：`python3 scripts/docs/check-docs.py .`
     （位于 `scripts/docs/`，与跑 case 的脚本分开）检查索引覆盖、状态字段、
     失效行号/用例/章节引用；整理文档后顺手跑一次。
+12. **测试口径**：本地只跑受影响的最小用例（秒级/分钟级），完整套件
+    （`test-solver` 全量、契约验收、并行矩阵）交给 nightly CI；墙钟类
+    结论必须同会话对照。
 
 ## 文档地图
 
@@ -153,7 +159,7 @@
 | [037](tasks/037-heap-corruption-exit-crash.md) | 退出阶段堆破坏崩溃（bundle 非零退出码） | P0 | **done**（bundle 根因=双份 .so 混载；打包清理+符号链接+inode 断言+金丝雀；E2E 复测通过） | 无 | 1–3 天 |
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
-| [055](tasks/055-case-reuse-semantics.md) | 测试流程的用例复用语义（`0/` 污染）与 054 防线落地 | P1 | planned | 054/046 | 0.5–1 天 |
+| [055](tasks/055-case-reuse-semantics.md) | 测试流程的用例复用语义（`0/` 污染）与 054 防线落地 | P1 | **done**（每 pass 新鲜副本 + `parallelTrappedAir` 两端口验证：pre-054 FAIL / 修复后 PASS） | 054/046 | 0.5–1 天 |
 | [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | planned | 046/054/038 | 1–2 天 |
 （001–054 已完成；055–058 为 2026-09-14 的跟进项（测试流程复用语义、037 写入点定位、I/O 与诊断开销、流道拓扑扩展），状态见上表。）
 

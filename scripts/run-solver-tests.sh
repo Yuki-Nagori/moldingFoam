@@ -85,7 +85,7 @@ checkLog()
             system/verifyScript | head -1)
 
         if [ -n "$verifier" ] \
-           && ! python3 "$scriptDir/$verifier" "$caseDir"
+           && ! python3 "$scriptDir/$verifier" "$PWD"
         then
             echo "FAIL: $name ($stage): $verifier"
             return 1
@@ -103,7 +103,15 @@ do
     name=$(basename "$caseDir")
 
     echo "== solver case: $name =="
-    cd "$caseDir"
+
+    # Run from a fresh copy: a run mutates the case it runs in (the solver
+    # writes every registered phase field into 0/ at startTime, and the
+    # parallel pass used to run in the same directory as the serial one),
+    # so a reused directory starts from a different initial state and the
+    # two passes are not comparable (task 055)
+    work=$(mktemp -d)
+    cp -r "$caseDir"/. "$work"/
+    cd "$work"
 
     rm -rf postProcessing processor* constant/polyMesh log.* 0.[0-9]* [1-9]*
     blockMesh > log.blockMesh 2>&1
@@ -160,11 +168,25 @@ do
         nProcs=$(head -1 system/nProcs)
         timeoutS="${MOLDINGFOAM_PARALLEL_TIMEOUT:-300}"
 
+        # The parallel pass must start from a fresh copy as well: sharing
+        # the serial pass's directory leaves the fields it added to 0/ and
+        # its written time directories behind, and the parallel run then
+        # diverges (observed: the ranks split inside reportTrappedAir and
+        # deadlock at the last fill step - task 055)
+        cd /
+        rm -rf "$work"
+        work=$(mktemp -d)
+        cp -r "$caseDir"/. "$work"/
+        cd "$work"
+
         rm -rf processor* log.decomposePar
         foamDictionary -entry numberOfSubdomains -set "$nProcs" \
             system/decomposeParDict > /dev/null
 
-        if ! decomposePar -force > log.decomposePar 2>&1; then
+        if ! blockMesh > log.blockMesh 2>&1; then
+            echo "FAIL: $name (parallel $nProcs): blockMesh failed"
+            caseFailed=1
+        elif ! decomposePar -force > log.decomposePar 2>&1; then
             echo "FAIL: $name (parallel $nProcs): decomposePar failed"
             caseFailed=1
         elif ! timeout "$timeoutS" mpirun -np "$nProcs" foamRun -parallel \
@@ -182,7 +204,11 @@ do
     if [ "$caseFailed" -ne 0 ]
     then
         nFailed=$((nFailed + 1))
+        echo "     (run directory kept for inspection: $work)"
         tail -20 log.foamRun || true
+    else
+        cd /
+        rm -rf "$work"
     fi
 done
 

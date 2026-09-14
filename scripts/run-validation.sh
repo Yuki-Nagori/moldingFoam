@@ -44,6 +44,16 @@ verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' system/ve
 }
 
 rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
+# The solver writes registered phase fields into the time-0 directories at
+# startTime; restore them from git so a repeated run starts clean (task 055)
+if git -C "$caseDir" rev-parse --is-inside-work-tree > /dev/null 2>&1
+then
+    for d in 0 */0
+    do
+        [ -d "$d" ] || continue
+        git -C "$caseDir" clean -fdxq -- "$d" 2>/dev/null || true
+    done
+fi
 
 blockMesh > log.blockMesh 2>&1
 

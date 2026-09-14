@@ -37,8 +37,16 @@ cd "$caseDir"
 
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-# Clean a previous run
+# Clean a previous run. The solver writes every registered phase field
+# into 0/ at startTime (T.air, T.melt, ...), so a directory that has been
+# run before starts from a different initial state; drop those files when
+# the case lives in a git working tree (task 055)
 rm -rf processor* postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
+if git -C "$caseDir" rev-parse --is-inside-work-tree > /dev/null 2>&1 \
+   && [ -n "$(git -C "$caseDir" ls-files -- 0/ 2>/dev/null)" ]
+then
+    git -C "$caseDir" clean -fdxq -- 0/ 2>/dev/null || true
+fi
 
 blockMesh > log.blockMesh 2>&1
 

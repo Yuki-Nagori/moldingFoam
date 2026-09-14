@@ -1,0 +1,6 @@
+# Guard for the parallel divergence class of tasks 046/054: a rank that is
+# fully filled while another still holds air used to send the ranks down
+# different communication paths inside reportTrappedAir. The parallel pass
+# deadlocks on pre-054 code (harness timeout) and completes now.
+moldingFoam: trapped air
+End

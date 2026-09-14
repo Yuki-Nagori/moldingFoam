@@ -1,0 +1,12 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object decomposeParDict;
+}
+// scotch 4-way split: the gate-side rank fills up while the ranks ahead of
+// the front still hold air - the divergence that deadlocks
+// reportTrappedAir before the task-054 fix
+numberOfSubdomains 4;
+method          scotch;

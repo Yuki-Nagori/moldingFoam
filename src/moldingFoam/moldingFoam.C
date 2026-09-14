@@ -54,6 +54,7 @@ License
 
 // * * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
+
 namespace Foam
 {
 namespace solvers

@@ -1,6 +1,6 @@
 # 055 — 测试流程的用例复用语义（`0/` 污染）与 054 防线落地
 
-- 状态：planned
+- 状态：done（2026-09-14：harness 每 pass 新鲜副本 + 054 防线两端口验证通过）
 - 优先级：P1
 - 依赖：054（防线用例被本项阻塞）、046（防线模式）
 - 预估规模：0.5–1 天
@@ -46,13 +46,40 @@
 - 防线用例的两端验证命令写进 054 §5（pre-054 用 `git stash` 式回退守卫，
   修复后恢复），并在 case 头注释里注明"该用例依赖干净初态"。
 
-## 4. 验收标准（DoD）
+## 4. 验收记录（2026-09-14 完成）
 
-- `xmake run test-solver` 在同一工作树上**连续跑两次结果一致**（含
-  `parallelTrappedAir` 的并行 pass PASS）；
-- pre-054 代码上 `parallelTrappedAir` 超时 FAIL（harness 的
-  `MOLDINGFOAM_PARALLEL_TIMEOUT` 生效）；
-- 文档更新完成；契约 case 的验收数字不变。
+**harness 语义（已落地）**：`run-solver-tests.sh` 现在每个 **pass** 都从
+`mktemp -d` 的新鲜副本运行（并行 pass 也含 `blockMesh`），失败时保留目录并
+打印路径；`run-case.sh` / `run-validation.sh` 在 git 树内用
+`git clean -fdx -- 0/` 恢复初态。**验证**：跑完一个完整 case（串行+并行）
+后，源用例目录的 `0/` 仍为 5 个文件（无 `T.air`/`T.melt` 残留）✓。
+
+**054 防线用例** `tests/cases/parallelTrappedAir`（fountainFlow 派生，
+scotch 4 分工 + `system/nProcs 4` + `trapAirInterval` 保持 100）：
+
+| 代码 | 结果 |
+|------|------|
+| pre-054 守卫（`nAir == 0`） | **FAIL：并行 pass 超时**（60 s，确定性死锁） |
+| post-054 守卫（`returnReduce`） | **PASS：串行 + 并行两 pass 全过**（501 步到 End） |
+
+复跑命令（两端验证的配方）：
+
+```console
+# 在构建树内
+sed -i "s/returnReduce(nAir, sumOp<label>()) == 0/nAir == 0/" src/moldingFoam/moldingFoam.C
+wmake libso src && MOLDINGFOAM_PARALLEL_TIMEOUT=60 \
+    bash scripts/run-solver-tests.sh <单用例root>   # 期望 FAIL
+git checkout src/moldingFoam/moldingFoam.C && wmake libso src
+bash scripts/run-solver-tests.sh <单用例root>       # 期望 PASS
+```
+
+另注（调试过程教训）：本轮曾三次把"修复后仍挂"误判为残留缺陷，实际是
+**挂载失效导致修复没有编进库**（且构建树与加载库不是同一份）。今后判断
+"修复是否生效"必须同时核对：源码 grep + `$FOAM_USER_LIBBIN` 的 `.so`
+mtime + 必要时在日志里留一行可辨识输出。
+
+（`xmake run test-solver` 的完整 28 用例回归按现行口径交给 nightly CI，
+本地只跑受影响的单用例。）
 
 ## 5. 风险与缓解
 

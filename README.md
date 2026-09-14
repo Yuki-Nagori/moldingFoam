@@ -381,7 +381,10 @@ $ xmake run test
 用例可带 `system/nProcs`（子域数）+ `system/decomposeParDict`：此时在
 串行 pass 之后再跑一次并行 pass（`decomposePar -force` +
 `mpirun -np N foamRun -parallel`），日志断言与串行相同，超时
-（`MOLDINGFOAM_PARALLEL_TIMEOUT`，缺省 300 s）即判失败。这是并行通信
+（`MOLDINGFOAM_PARALLEL_TIMEOUT`，缺省 300 s）即判失败。**每个 pass 都在
+`mktemp -d` 的新鲜副本里运行**：一次运行会把已注册相场写进 `0/`
+（`T.air`/`T.melt`）并写出时间目录，共享目录会让后一个 pass 从不同的初态
+开始（任务 055）；失败时目录保留并打印路径。这是并行通信
 缺陷的回归入口——分解后的网格**每个 rank 的边界 patch 数不同**
 （processor patch 只属于该 rank 参与的界面），凡是把归约放进
 `forAll(boundaryField(), patchi)` 循环的代码都会按 rank 调用不同次数而

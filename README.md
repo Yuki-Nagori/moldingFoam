@@ -1504,6 +1504,7 @@ moldingFoam/
 ├── validation/moldCHT/      双区域共轭传热导热基准（`xmake run moldCHT`）
 ├── validation/moldCHT-fill/ 双区域共轭传热充填基准（同上目标）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）
+├── scripts/docs/            check-docs.py（ai-docs 索引/引用体检，手动运行）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
                              run-validation.sh、run-solver-tests.sh
                              run-moldcht.sh、verify-couette.py

@@ -12,7 +12,8 @@ Checks (each failure is a maintenance defect, not a style opinion):
 5. no reference to a README section that does not exist
    ("README 第 N 节", "README §N").
 
-Usage: check-docs.py [repoRoot]     (exits non-zero on findings)
+Usage: python3 scripts/docs/check-docs.py [repoRoot]   (manual tool;
+       exits non-zero on findings)
 """
 import os
 import re

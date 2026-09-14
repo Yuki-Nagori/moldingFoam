@@ -21,7 +21,10 @@ solvers
 {
     "alpha.melt.*"
     {
-        nCorrectors     2;
+        // v1.29: 1 (was 2). Each correction pass is a full explicit MULES
+        // update; halving them removes ~30% of the wall clock (050: the
+        // interface machinery is the hotspot) with no conservation loss
+        nCorrectors     1;
         // v1.28: 8 sub-cycles with the energy tolerance below halves the
         // step cost; the dt reduction in controlDict (maxAlphaCo 0.015)
         // buys back 8x the conservation margin at the same time

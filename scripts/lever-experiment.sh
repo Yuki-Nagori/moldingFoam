@@ -7,6 +7,10 @@
 #   C  energy tolerance 1e-5
 #   D  both (8 + 1e-5)
 #   E  both + maxAlphaCo 0.015 (dt halved: buys back the conservation margin)
+#      E is the v1.28 contract default: use it as the baseline for F/G/H
+#   F  E with alpha nCorrectors 1 (halve the explicit alpha correction passes)
+#   G  E with MULESCorr yes (limiter-only corrections instead of explicit MULES)
+#   H  F + G
 #
 # Each variant runs on its own scratch copy of case-contract (the contract
 # case itself is never touched). Runs are interleaved and repeated so the
@@ -35,12 +39,17 @@ do
     nsub=16
     tol="1e-6"
     alphaCo=""
+    alphaCorr=""
+    mulesCorr=""
     case "$v" in
         A) ;;
         B) nsub=8 ;;
         C) tol="1e-5" ;;
         D) nsub=8; tol="1e-5" ;;
         E) nsub=8; tol="1e-5"; alphaCo=0.015 ;;
+        F) nsub=8; tol="1e-5"; alphaCo=0.015; alphaCorr=1 ;;
+        G) nsub=8; tol="1e-5"; alphaCo=0.015; mulesCorr=yes ;;
+        H) nsub=8; tol="1e-5"; alphaCo=0.015; alphaCorr=1; mulesCorr=yes ;;
         *) echo "unknown variant '$v'" >&2; exit 1 ;;
     esac
 
@@ -52,9 +61,10 @@ do
     rm -rf "$work"/processor* "$work"/postProcessing "$work"/constant/polyMesh \
         "$work"/log.* "$work"/0.[0-9]* "$work"/[1-9]*
 
-    python3 - "$work/system/fvSolution" "$nsub" "$tol" <<'PY'
+    python3 - "$work/system/fvSolution" "$nsub" "$tol" "$alphaCorr" "$mulesCorr" <<'PY'
 import re, sys
-path, nsub, tol = sys.argv[1], sys.argv[2], sys.argv[3]
+path, nsub, tol, alphaCorr, mulesCorr = (
+    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
 src = open(path).read()
 
 def patch_block(text, header_re, key, value):
@@ -77,6 +87,10 @@ def patch_block(text, header_re, key, value):
     return text[:start] + new + text[i:]
 
 src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'nSubCycles', nsub)
+if alphaCorr:
+    src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'nCorrectors', alphaCorr)
+if mulesCorr:
+    src = patch_block(src, r'"alpha\.melt\.\*"\s*\{', 'MULESCorr', mulesCorr)
 src = patch_block(src, r'"\(U\|e\|T\)\.\*"\s*\{', 'tolerance', tol)
 open(path, 'w').write(src)
 PY
@@ -87,9 +101,9 @@ PY
 import re, sys
 path, value = sys.argv[1], sys.argv[2]
 src = open(path).read()
-new = re.sub(r'(?m)^(maxAlphaCo\s+)[^\s;]+;', lambda mo: mo.group(1) + value + ';', src, count=1)
-if new == src:
+if not re.search(r'(?m)^maxAlphaCo\s+', src):
     raise SystemExit("maxAlphaCo not found in controlDict")
+new = re.sub(r'(?m)^(maxAlphaCo\s+)[^\s;]+;', lambda mo: mo.group(1) + value + ';', src, count=1)
 open(path, 'w').write(new)
 PATCH
     fi

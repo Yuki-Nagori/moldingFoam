@@ -186,6 +186,9 @@ private:
         //  the cost of every boundary update
         static const label maxTreeIterations_;
 
+        //- Relative flow tolerance for the bounded fixed-point solve
+        scalar treeTolerance_;
+
 
     // Private Member Functions
 

@@ -65,13 +65,21 @@ Foam::moldingRunnerNetwork::moldingRunnerNetwork(const dictionary& dict)
     treeLeafOf_(),
     gateOpenTime_(),
     gateCloseTime_(),
-    anyValveTiming_(false)
+    anyValveTiming_(false),
+    treeTolerance_(dict.lookupOrDefault<scalar>("treeConvergenceTolerance", 1e-14))
 {
     if (cp_ <= 0)
     {
         FatalIOErrorInFunction(dict)
             << "The runner melt specific heat must be positive: cp = "
             << cp_ << exit(FatalIOError);
+    }
+
+    if (treeTolerance_ <= 0)
+    {
+        FatalIOErrorInFunction(dict)
+            << "treeConvergenceTolerance must be positive: "
+            << treeTolerance_ << exit(FatalIOError);
     }
 
     if (rho_ <= 0)
@@ -378,7 +386,7 @@ Foam::scalar Foam::moldingRunnerNetwork::split
             gateQ[i] = 0.5*gateQ[i] + 0.5*qNew;
         }
 
-        if (change < 1e-14*max(mag(Q), small))
+        if (change < treeTolerance_*max(mag(Q), small))
         {
             break;
         }

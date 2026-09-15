@@ -209,3 +209,7 @@ baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创
 
 CI 步骤显式加载 `/opt/openfoam14/etc/bashrc`；脚本在环境缺失时以配置错误
 退出，避免把环境问题误记为结构数值失败。
+
+补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
+明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
+均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。

@@ -10,6 +10,7 @@ import tempfile
 import unittest
 
 from dual_domain_input import InputError, read, read_experiment, validate
+from dual_domain_quadrature import integrate, points, validate_rule
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = ROOT / "tests/fixtures/dual-domain-v1.sample.json"
@@ -275,6 +276,29 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(summary["experimentSchemaVersion"], "dual-domain-experiment/v1")
         self.assertFalse(summary["solverReady"])
         self.assertFalse(summary["materialResolved"])
+
+
+class QuadratureTests(unittest.TestCase):
+    def test_fixed_rule_and_mapping(self):
+        self.assertTrue(validate_rule())
+        self.assertEqual(len(points(1.0)), 8)
+        self.assertAlmostEqual(points(2.0)[0], -0.9602898564975363)
+        self.assertAlmostEqual(points(2.0)[-1], 0.9602898564975363)
+        self.assertAlmostEqual(integrate(lambda _: 1.0, 2.0), 2.0, places=14)
+        self.assertAlmostEqual(integrate(lambda z: z, 2.0), 0.0, places=14)
+
+    def test_polynomial_golden_through_degree_15(self):
+        # GL-8 integrates every polynomial through degree 15 exactly on [-1,1].
+        for degree in range(16):
+            expected = 0.0 if degree % 2 else 2.0 / (degree + 1)
+            actual = integrate(lambda z, n=degree: z ** n, 2.0)
+            self.assertAlmostEqual(actual, expected, places=13, msg=f"degree={degree}")
+
+    def test_invalid_thickness_is_rejected(self):
+        for value in (0, -1, float("nan"), float("inf"), True, "1"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    points(value)
 
 
 if __name__ == "__main__":

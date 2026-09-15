@@ -48,6 +48,8 @@ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-
 
 当前支持 manifest/网格版本、显式单位、相对路径回读、材料引用、阶段、
 温度/时长和严格递增保压曲线校验，16 个测试纳入双架构 PR CI。
+固定厚度积分规则由 `scripts/dual_domain_quadrature.py` 提供，8 点
+Gauss–Legendre 仅用于契约/golden，尚未接入物理 solver。
 路径相对于 manifest 所在目录解析；禁止绝对路径及向父目录逃逸。
 将来本地 Mug 实验可把 manifest 放在本地 JSON 同目录并使用其相对文件名。
 

@@ -58,6 +58,12 @@ CrossWlf/Tait 目录执行 git diff 无差异。CD 的 Set the release version
 材料数值 golden、OF14 dictionary 读取、8 点厚度积分及 v1.1.0/Kairos 键映射仍未完成，
 任务继续保持 `in-progress`。
 
+随后新增 `scripts/dual_domain_quadrature.py`：固定 quadrature-v1 的 8 点
+Gauss–Legendre 规则，`ξ∈[-1,1]`，`z=hξ/2`，正向为中面向外侧，物理权重
+为 `h*w/2`。两侧边界不是 Gauss 点；规则不自适应，非法厚度拒绝。
+多项式 0–15 次、常数/奇函数和规则对称性 golden 已通过；当前累计 23 个
+宿主输入/材料/积分测试通过（约 0.36 s，非 solver 性能）。
+
 ### 补充：T102 材料引用（2026-09-15）
 
 experiment manifest 引用 id=PP-REF-01、source=kairos-builtin。

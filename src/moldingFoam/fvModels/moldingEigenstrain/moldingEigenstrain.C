@@ -110,7 +110,8 @@ void Foam::fv::moldingEigenstrain::addSup
     // The solver assembles rho*fvModels().d2dt2(D) and d2dt2 is an ordinary
     // source assembly, so the source is added divided by rho: the outer
     // multiplication then restores div(threeK*eigenstrain)
-    const volScalarField& rho = thermo_.rho();
+    const tmp<volScalarField> tRho(thermo_.rho());
+    const volScalarField& rho = tRho();
 
     // Sign convention, measured on the graded-bar probe (task 040 §9c):
     // the source assembled through the d2dt2 hook reaches the equation with

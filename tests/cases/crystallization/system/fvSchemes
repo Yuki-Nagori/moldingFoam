@@ -54,4 +54,9 @@ snGradSchemes
     default         uncorrected;
 }
 
+fluxRequired
+{
+    T;
+}
+
 // ************************************************************************* //

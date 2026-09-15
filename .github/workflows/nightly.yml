@@ -57,6 +57,7 @@ jobs:
           xmake run couette 2>&1 | tee couette.txt
           xmake run couetteSlip 2>&1 | tee couetteSlip.txt
           xmake run stefan 2>&1 | tee stefan.txt
+          xmake run anisoConduction 2>&1 | tee anisoConduction.txt
           xmake run thermoelastic 2>&1 | tee thermoelastic.txt
           xmake run coolantWater 2>&1 | tee coolantWater.txt
           xmake run coolantMold 2>&1 | tee coolantMold.txt
@@ -68,6 +69,7 @@ jobs:
           path: |
             *.txt
             validation/stefan/log.foamRun
+            validation/anisoConduction/log.foamRun
             validation/thermoelastic/log.foamRun
             validation/coolantWater/log.foamRun
             validation/coolantMold/log.foamRun

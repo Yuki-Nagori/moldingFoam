@@ -357,6 +357,7 @@ $ xmake run test
 | 壁面滑移（`xmake run couetteSlip`） | Navier 滑移 Couette（滑移长度 0.2 mm）：速度剖面与 `u = U(y+b)/(h+b)` 对拍，实测 `max|u−u_ana|/U = 3.3e-9`（阈值 1e-4） |
 | 凝固（`xmake run stefan`） | 一维 Stefan 问题（常物性，隔离传导+潜热）：凝固前沿与**两相 Neumann 解**全时段对拍，最大相对误差 **0.25%**（阈值 1%），温度剖面 ≤0.34 K（阈值 1 K）；400 cell/0.02 s 与 800 cell/0.01 s 两档一致，已达方法本征精度（1 K 潜热带平滑） |
 | 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
+| 各向异性热导率（`xmake run anisoConduction`） | 静止平板（40 cell、0.02 s、绝热侧壁、两端定温）叠加半正弦本征模：衰减率由沿梯度方向的 `lambda = kappa (1 + a_yy 相关各向异性)` 决定。实测末幅值 **3.2596 K vs 解析 3.2584 K（0.036%）**；把耦合从实现里关掉（字典仍写 0.5）偏差 **11.3% → 判据 FAIL**（敏感性已证，阈值 2%） |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
@@ -725,9 +726,13 @@ Da/Dt = (W·a − a·W) + λ(D·a + a·D − 2A:D) + 2·CI·γ̇·(I − 3a)
   可改名），`moldingDict.fiberOrientation.conductivityAnisotropy` 把能量
   方程的 `kappa` 换成型别张量 `lambda = kappa (I + aniso (a − I/3))`（隐式
   `fvm::laplacian`，迹保持：各向同性取向时退回标量 kappa）；
-- **但这两条耦合目前没有断言**（`fiberOrientation` 用例执行它们，验证器只
-  断言取向输运与各向异性收缩）→ 关掉耦合现有用例仍全绿。验证设计与验收
-  见 `ai-docs/tasks/060`；
+- **各向异性热导率已有断言**：`validation/anisoConduction`（`xmake run
+  anisoConduction`）用静止平板的半正弦本征模衰减率反比于沿梯度的
+  `lambda`——实测与解析差 0.036%，而把该耦合从实现里关掉偏差 11.3%
+  （判据 FAIL），敏感性已证；
+- **Lipscomb 黏度耦合仍无断言**（`fiberOrientation` 用例执行它，但该 case
+  里因子接近 1、效果 <0.5%，无法作判据）→ 判据设计与验收见
+  `ai-docs/tasks/060`；
 - 缺省不写时行为不变（`conductivityAnisotropy` 缺省 0、`lipscombRatio`
   缺省 1）；纤维浓度/断裂为后续扩展。
 
@@ -1680,6 +1685,7 @@ moldingFoam/
 ├── validation/couette/      解析验证 case（黏性生热，`xmake run couette`）
 ├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
 ├── validation/stefan/       解析验证 case（凝固/潜热，`xmake run stefan`）
+├── validation/anisoConduction/  各向异性热导率（本征模衰减率，`xmake run anisoConduction`）
 ├── validation/moldCHT/      双区域共轭传热导热基准（`xmake run moldCHT`）
 ├── validation/moldCHT-fill/ 双区域共轭传热充填基准（同上目标）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）

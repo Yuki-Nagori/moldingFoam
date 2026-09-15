@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Stefan benchmark: the process groups are present only because moldingFoam
+    requires them; no boundary uses the stage, so the run is a pure
+    conduction/solidification problem. The ejection temperature is
+    unreachable.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      moldingDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+injection
+{
+    meltTemperature  392;
+}
+
+packing
+{
+    switchFraction   1;
+    switchPressure   1e9;
+
+    pressure
+    {
+        type            constant;
+        value           1e5;
+    }
+}
+
+cooling
+{
+    ejectionTemperature  100;
+    releasePressure      1e5;
+}
+
+viscousDissipation  false;
+
+// Anisotropic thermal conductivity (task 034/060): lambda = kappa (I +
+// anisotropy (a - I/3)). With fibres along the gradient this raises the
+// conductivity along that direction by 2/3 * 0.5 = 33%, which is what the
+// initial sine mode's decay rate measures (verify-aniso-conduction.py)
+fiberOrientation
+{
+    aspectRatio            20;
+    interactionCoefficient 0.01;
+    closure                quadratic;
+    conductivityAnisotropy 0.5;
+}
+
+// ************************************************************************* //

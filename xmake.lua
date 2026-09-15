@@ -600,6 +600,32 @@ target("stefan")
     end)
 target_end()
 
+target("anisoConduction")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the anisotropic conduction validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-validation.sh")
+            .. " validation/anisoConduction")
+        if ok ~= 0 then
+            os.raise("anisotropic conduction validation failed; see "
+                .. "validation/anisoConduction/log.foamRun")
+        end
+    end)
+target_end()
+
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
 -- dirs, compressed into build/moldingFoam-<version>-<arch>.tar.xz. The

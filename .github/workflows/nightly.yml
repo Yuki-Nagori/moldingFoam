@@ -182,6 +182,45 @@ jobs:
           path: smoke-exit.txt
           retention-days: 14
 
+  cycle-restart:
+    # Task 064: exercise the dedicated two-way decomposition and cycle-state
+    # verifier nightly; this remains outside the per-PR budget.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Multi-cycle checkpoint contract (2 subdomains)
+        run: |
+          set -o pipefail
+          source /opt/openfoam14/etc/bashrc
+          bash scripts/run-case.sh tests/cases/moldCycles 2 2>&1 | tee moldCycles.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-cycle-restart-logs
+          path: |
+            moldCycles.txt
+            tests/cases/moldCycles/log.*
+            tests/cases/moldCycles/postProcessing/**
+          retention-days: 14
+
+  uncertainty-manifest:
+    # Keep the task-069 matrix definition executable and reviewable nightly.
+    # The actual nine-row solve is intentionally resource-governed by the
+    # nightly orchestrator rather than by a developer workstation.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Emit uncertainty matrix manifest
+        run: scripts/uncertainty-matrix.sh --emit | tee uncertainty-matrix.tsv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightly-uncertainty-matrix
+          path: uncertainty-matrix.tsv
+          retention-days: 14
+
   report:
     needs:
       - model-tests
@@ -191,6 +230,8 @@ jobs:
       - validation-cht
       - contract
       - exit-path-smoke
+      - cycle-restart
+      - uncertainty-manifest
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 10

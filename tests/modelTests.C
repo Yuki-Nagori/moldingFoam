@@ -1569,6 +1569,27 @@ void fiberOrientationTests()
     tensor gradU(tensor::zero);
     gradU(0, 1) = gammaDot;
 
+    // Independent hybrid endpoints: isotropic fourth moment gives
+    // (A:D)xy = 2 Dxy/15; rank-one orientation must equal quadratic.
+    {
+        IStringStream ih("aspectRatio 3; interactionCoefficient 0; closure hybrid;");
+        IStringStream iq("aspectRatio 3; interactionCoefficient 0; closure quadratic;");
+        dictionary dh(ih), dq(iq);
+        moldingFiberOrientation hybrid(dh), quadratic(dq);
+        const symmTensor iso(symmTensor::I/3);
+        checkBool
+        (
+            "fiberOrientation: hybrid isotropic shear slope is lambda/5",
+            mag(hybrid.dadt(iso, gradU).xy() - lambda/5) < 1e-14
+        );
+        const symmTensor aligned(0.64, 0.48, 0, 0.36, 0, 0);
+        checkBool
+        (
+            "fiberOrientation: hybrid aligned endpoint equals quadratic",
+            mag(hybrid.dadt(aligned, gradU) - quadratic.dadt(aligned, gradU)) < 1e-14
+        );
+    }
+
     // Shape factor
     checkBool
     (

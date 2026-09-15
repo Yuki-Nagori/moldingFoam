@@ -125,7 +125,7 @@ Foam::symmTensor Foam::moldingFiberOrientation::AcolonD
         return aD*a;
     }
 
-    // Hybrid closure: A = f A_linear + (1 - f) A_quadratic,
+    // Hybrid closure: A = (1 - f) A_linear + f A_quadratic,
     // f = 1 - 27 det(a)
     const scalar f(1 - 27*det(a));
 
@@ -160,7 +160,7 @@ Foam::symmTensor Foam::moldingFiberOrientation::AcolonD
                 )/7;
 
             result[symmIndex(i, j)] =
-                f*linear + (1 - f)*aD*a[symmIndex(i, j)];
+                (1 - f)*linear + f*aD*a[symmIndex(i, j)];
         }
     }
 

@@ -119,6 +119,9 @@ fill-pack-cool 和冻结工艺数值。相对路径以 manifest 目录为基准�
 修改前：无 moldingFoam T102 读取入口或 fixture 单测。
 修改后：合成薄壁 fixture 的 4 节点/2 面及 1 mm 厚度数组正确回读；本地真实覆盖输入
 另记录 4,417/8,834 规模，但未作为提交内容或精度证据；
+新增 `scripts/dual_domain_case.py` 将已校验 JSON 写入显式 `dualDomainMesh`；
+experiment manifest 另写 `dualDomainProperties`，将 220/50 °C 转为 493.15/323.15 K，
+将 MPa 转 Pa，保压时间保持秒。输出文件名受限，不能写入 `polyMesh`。
 非法输入非零退出，成功仍标 solverReady=false。
 精度与性能：仅输入契约通过；物理解精度、质量残差、墙钟和内存未测。
 未完成：OF14 字典生成/读取与 FOAM IO 错误、配对/法向/中面语义、

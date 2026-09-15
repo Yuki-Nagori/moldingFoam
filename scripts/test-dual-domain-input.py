@@ -161,6 +161,26 @@ class InputTests(unittest.TestCase):
             self.assertNotEqual(run.returncode, 0)
             self.assertIn("dualDomainMesh", run.stderr)
 
+    def test_experiment_emits_process_dictionary_in_si(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "dual-domain-v1-experiment-manifest.json"
+            mesh = root / "dual-domain-v1.sample.json"
+            manifest.write_bytes((FIXTURE.parent / "dual-domain-v1-experiment-manifest.json").read_bytes())
+            mesh.write_bytes(FIXTURE.read_bytes())
+            output = root / "constant" / "dualDomainMesh"
+            run = subprocess.run([sys.executable, str(EMITTER), "--experiment",
+                                  str(manifest), str(output)], capture_output=True,
+                                 text=True, timeout=5)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            props = output.with_name("dualDomainProperties").read_text()
+            self.assertIn("targetUnits \"K Pa s\";", props)
+            self.assertIn("meltTemperature 493.15;", props)
+            self.assertIn("cavityTemperature 323.15;", props)
+            self.assertIn("(0 922900)", props)
+            self.assertIn("(0.20000000000000001 27628200)", props)
+            self.assertIn("(315.0797 27628200)", props)
+
 
 class ExperimentTests(unittest.TestCase):
     def setUp(self):

@@ -35,6 +35,7 @@ OpenFOAM 字典转换：
 $ python3 scripts/test-dual-domain-input.py
 $ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json
 $ python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
+$ python3 scripts/dual_domain_case.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json /tmp/dual-case/constant/dualDomainMesh
 ```
 
 转换结果只包含明确的 Dual Domain 节点、三角形、厚度、梁和耦合列表，执行

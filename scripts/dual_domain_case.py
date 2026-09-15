@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 import sys
 
-from dual_domain_input import InputError, read
+from dual_domain_input import InputError, read, read_experiment
 
 
 def vec(values):
@@ -57,18 +57,62 @@ couplings
 '''
 
 
+def emit_properties(manifest):
+    process = manifest["process"]
+    knots = "\n".join(
+        f"        ({float(t):.17g} {float(p) * 1e6:.17g})"
+        for t, p in process["packingPressureCurveMpa"])
+    return f'''FoamFile
+{{
+    format ascii;
+    class dictionary;
+    location "constant";
+    object dualDomainProperties;
+}}
+
+schemaVersion dual-domain-experiment/v1;
+stage {manifest["stage"]};
+materialId {manifest["material"]["id"]};
+sourceUnits "C MPa s";
+targetUnits "K Pa s";
+meltTemperature {float(process["meltTemperatureC"]) + 273.15:.15g};
+cavityTemperature {float(process["moldTemperatureC"]) + 273.15:.15g};
+coreTemperature {float(process["moldTemperatureC"]) + 273.15:.15g};
+injectionTime {float(process["injectionTimeS"]):.17g};
+packingPressure
+(
+{knots}
+);
+coolingTime {float(process["coolingTimeS"]):.17g};
+'''
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--experiment", action="store_true",
+                        help="also emit dualDomainProperties from experiment manifest")
+    parser.add_argument("--properties-output", type=Path,
+                        help="output path for dualDomainProperties")
     args = parser.parse_args()
     try:
         output = args.output
         if output.name != "dualDomainMesh":
             raise InputError("output: filename must be dualDomainMesh")
-        data = read(args.input)
+        manifest = None
+        if args.experiment:
+            manifest, data = read_experiment(args.input)
+        else:
+            data = read(args.input)
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(emit(data), encoding="utf-8")
+        if args.experiment:
+            properties = args.properties_output or output.with_name("dualDomainProperties")
+            if properties.name != "dualDomainProperties":
+                raise InputError("properties-output: filename must be dualDomainProperties")
+            properties.parent.mkdir(parents=True, exist_ok=True)
+            properties.write_text(emit_properties(manifest), encoding="utf-8")
         print(f"wrote {output} (nodes={len(data['nodes'])}, triangles={len(data['triangles'])})")
         return 0
     except (InputError, OSError, ValueError) as error:

@@ -62,6 +62,7 @@ viscoelasticStress::viscoelasticStress
     fvModel(name, modelType, mesh, dict),
     model_(dict),
     UName_("U"),
+    transportStress_(dict.lookupOrDefault<Switch>("transportStress", false)),
     tau_
     (
         IOobject
@@ -106,6 +107,14 @@ void viscoelasticStress::addSup
     if (timeIndex_ != mesh().time().timeIndex())
     {
         const scalar dt = mesh().time().deltaTValue();
+
+        if (transportStress_)
+        {
+            const surfaceScalarField& phi =
+                mesh().lookupObject<surfaceScalarField>("phi");
+            tau_ -= dt*fvc::div(phi, tau_);
+        }
+
         const volTensorField gradU(fvc::grad(U));
 
         symmTensorField& tauc = tau_.primitiveFieldRef();

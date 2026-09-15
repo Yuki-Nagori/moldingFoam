@@ -44,7 +44,8 @@ Description
     \endverbatim
 
     The stress is advanced once per time step with the local velocity
-    gradient (RK2); advection of tau is the next stage.
+    gradient (RK2). Set \\c transportStress to true to include explicit
+    conservative advection of tau with the case flux field.
 
 SourceFiles
     viscoelasticStress.C
@@ -80,6 +81,9 @@ class viscoelasticStress
 
         //- Velocity field name
         word UName_;
+
+        //- Explicit conservative stress advection (default false for legacy)
+        bool transportStress_;
 
         //- Extra stress field [Pa]
         mutable volSymmTensorField tau_;

@@ -36,11 +36,13 @@ $ python3 scripts/test-dual-domain-input.py
 $ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json
 $ python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
 $ python3 scripts/dual_domain_case.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json /tmp/dual-case/constant/dualDomainMesh
+$ python3 scripts/dual_domain_material.py /path/to/shared-material.json
 ```
 
 转换结果只包含明确的 Dual Domain 节点、三角形、厚度、梁和耦合列表，执行
 mm→m 换算，不创建 `constant/polyMesh`。真实 Mug 导出 JSON 可作为命令的
 输入路径在本地读取，但不提交仓库；缺少双面匹配、法向、边界或积分规则时
+材料校验只确认 Cross-WLF/Tait 参数契约，实际公式复用现有模型，不复制实现；
 仍不能进入物理求解。开发路线与验收状态见
 [`ai-docs/tasks/072-dual-domain-program.md`](ai-docs/tasks/072-dual-domain-program.md)。
 

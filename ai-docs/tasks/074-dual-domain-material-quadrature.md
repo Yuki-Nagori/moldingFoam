@@ -49,6 +49,15 @@ CrossWlf/Tait 目录执行 git diff 无差异。CD 的 Set the release version
 
 ## 验证与状态纪律
 
+### 首批材料契约实现（2026-09-15）
+
+新增 `scripts/dual_domain_material.py`，严格校验共享 Cross-WLF/Tait 参数集合、
+有限性和关键正值约束；输出 `formulaSource=shared-CrossWlf-Tait` 且
+`evaluated=false`，不复制或重实现公式。输入缺键、未知键和非法数值返回非零。
+输入测试新增材料正/负例；总计 20 个宿主测试通过（约 0.44 s，非 solver 性能）。
+材料数值 golden、OF14 dictionary 读取、8 点厚度积分及 v1.1.0/Kairos 键映射仍未完成，
+任务继续保持 `in-progress`。
+
 ### 补充：T102 材料引用（2026-09-15）
 
 experiment manifest 引用 id=PP-REF-01、source=kairos-builtin。

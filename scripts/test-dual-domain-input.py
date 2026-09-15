@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = ROOT / "tests/fixtures/dual-domain-v1.sample.json"
 READER = ROOT / "scripts/dual_domain_input.py"
 EMITTER = ROOT / "scripts/dual_domain_case.py"
+MATERIAL = ROOT / "scripts/dual_domain_material.py"
 
 
 class InputTests(unittest.TestCase):
@@ -180,6 +181,24 @@ class InputTests(unittest.TestCase):
             self.assertIn("(0 922900)", props)
             self.assertIn("(0.20000000000000001 27628200)", props)
             self.assertIn("(315.0797 27628200)", props)
+
+    def test_material_contract_requires_shared_parameter_set(self):
+        material = {"modelVersion": "shared-v1", "crossWLF":
+                    {k: 1.0 for k in ("n", "tauStar", "D1", "D2", "D3", "A1", "A2")},
+                    "tait": {k: 1.0 for k in ("b1m", "b2m", "b1s", "b2s", "b3", "b3s",
+                                                "b4", "b4s", "b5", "b6", "C", "smoothBand")}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "material.json"
+            path.write_text(json.dumps(material))
+            run = subprocess.run([sys.executable, str(MATERIAL), str(path)],
+                                 capture_output=True, text=True, timeout=5)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)["formulaSource"], "shared-CrossWlf-Tait")
+            material["tait"].pop("smoothBand")
+            path.write_text(json.dumps(material))
+            run = subprocess.run([sys.executable, str(MATERIAL), str(path)],
+                                 capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(run.returncode, 0)
 
 
 class ExperimentTests(unittest.TestCase):

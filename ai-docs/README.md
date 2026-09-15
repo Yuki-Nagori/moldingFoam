@@ -99,21 +99,21 @@
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | in-progress（非零 startTime 与串行续跑已验收；np2 重分解待验收） |
-| [065](tasks/065-tait-domain-derivative-consistency.md) | Tait 有效域、截断导数与逆求解稳健性 | P1 | in-progress（导数/逆解/极端负压有限性已验收；正式越界策略待 nightly） |
+| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | **done**（nightly 2-way cycle-restart 与 contract 通过） |
+| [065](tasks/065-tait-domain-derivative-consistency.md) | Tait 有效域、截断导数与逆求解稳健性 | P1 | **done**（model-tests nightly 通过） |
 
 #### 多物理耦合稳定性
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | in-progress（本地 transport/重启/两相最小闭环通过；高 We 与 CI 待验收） |
-| [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | in-progress（账目已实现并接入 crystallization nightly；闭合残差待运行结果） |
+| [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | **done**（solver-cases nightly 通过） |
+| [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | **done**（energy budget 日志与 crystallization nightly 通过） |
 
 #### 效率与验证基础设施
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | in-progress（收敛告警与缓存失效键已验收；墙钟基准待 nightly） |
+| [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | **done**（model-tests/solver-cases nightly 通过） |
 | [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（矩阵 nightly 入口已提交；九行组合待执行） |
 
 #### 未完成项跟进顺序

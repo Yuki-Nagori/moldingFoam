@@ -1,6 +1,6 @@
 # 063：审查问题收口——模型闭合、能量与历史状态一致性
 
-- 状态：in-progress
+- 状态：done
 - 优先级：P1
 
 ## 背景与范围
@@ -87,3 +87,8 @@ R1–R8 已落地；另由两步重启复现发现并修复入口未写出 runne
 
 随后在同一 of14 会话执行 `verify-review-regression.py`，重启/预算/np4 质量
 诊断、汽蚀状态及生热倍率全部通过；该结果不替代完整契约与双架构 CI。
+
+
+### nightly 收口 2026-09-15
+
+Nightly run 34946060723 全部 job 通过：model-tests、solver-cases、contract、validation、cycle-restart、exit-path-smoke。R1–R8 与共享 DoD 收口。

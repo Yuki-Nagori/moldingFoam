@@ -1,6 +1,6 @@
 # 067：完整能量账目与耦合精度约束
 
-- 状态：in-progress
+- 状态：done
 - 优先级：P2
 - 依赖：063 / 001 / 007 / 024 / 035
 - 来源：2026-09-15 整体复核；承接 063 以外的明确剩余项
@@ -98,3 +98,8 @@ nightly 覆盖已接入 `tests/cases/crystallization`：启用 `energyBudget tru
 nightly 首次运行暴露 case 契约缺少 `fluxRequired { T; }`，`fvMatrix::flux()`
 按 OpenFOAM 约定对此主动终止。已在 crystallization 的 `fvSchemes` 补齐声明；
 of14 单 case 复现现通过，日志同时命中 crystallinity、energy budget 和 End。
+
+
+### nightly 收口 2026-09-15
+
+Nightly run 34946060723 的 solver-cases 通过；crystallization case 命中 energy budget、crystallinity 与 End。

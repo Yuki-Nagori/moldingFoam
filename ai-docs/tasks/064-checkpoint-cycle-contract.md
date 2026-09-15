@@ -1,6 +1,6 @@
 # 064：检查点完整性与多周期时间语义
 
-- 状态：in-progress
+- 状态：done
 - 优先级：P1
 - 依赖：063 / 061 / 012 / 030
 - 来源：2026-09-15 整体复核；承接 063 以外的明确剩余项
@@ -61,3 +61,8 @@ nightly 契约。
 为使该验收可重放，`tests/cases/moldCycles/system/decomposeParDict` 已补入，
 采用沿长边方向的 2-way hierarchical 分解；本次仅完成配置补齐，未将未执行的
 并行恢复运行标记为通过。
+
+
+### nightly 收口 2026-09-15
+
+Nightly run 34946060723 的 cycle-restart（2 子域）与 contract job 通过；非零启动、串行续跑及并行契约完成验收。

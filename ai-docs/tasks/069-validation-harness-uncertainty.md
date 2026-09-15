@@ -56,3 +56,9 @@
 验证 case 的粗/中/细网格与 `dt/2, dt, 2dt` 九行矩阵。默认 `--dry-run` 只生成
 TSV 清单，避免本地误触发大规模运行；CI 编排器可消费同一清单，在新鲜副本中
 逐行执行并回填误差与性能证据。
+
+### nightly 收口复核 2026-09-15
+
+nightly run `34946060723` 的 `uncertainty-manifest` job 已通过并上传九行清单；
+该 workflow 当前验证的是矩阵定义和可追溯 artifact，九行实际求解仍需资源预算
+允许后单独执行，故本任务保留 `in-progress`。

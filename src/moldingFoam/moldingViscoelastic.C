@@ -125,11 +125,23 @@ Foam::symmTensor Foam::moldingViscoelastic::advance
     const scalar dt
 ) const
 {
-    const symmTensor k1(dtauDt(tau, L));
-    const symmTensor tauMid(symm(tau + 0.5*dt*k1));
-    const symmTensor k2(dtauDt(tauMid, L));
+    // Keep the explicit RK2 relaxation step bounded when a solver time step
+    // is large relative to the material relaxation time.  The constitutive
+    // equation is unchanged; only the integration interval is subdivided.
+    const label nSub = max<label>(1, ceil(dt/(0.25*lambda_)));
+    const scalar subDt = dt/scalar(nSub);
+    symmTensor result(tau);
 
-    return symm(tau + dt*k2);
+    for (label sub = 0; sub < nSub; ++sub)
+    {
+        const symmTensor k1(dtauDt(result, L));
+        const symmTensor tauMid(symm(result + 0.5*subDt*k1));
+        const symmTensor k2(dtauDt(tauMid, L));
+
+        result = symm(result + subDt*k2);
+    }
+
+    return result;
 }
 
 

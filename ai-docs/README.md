@@ -106,7 +106,7 @@
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | planned |
+| [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | in-progress（RK2 材料限步已提交；输运/相区对照待验收） |
 | [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | planned |
 
 #### 效率与验证基础设施

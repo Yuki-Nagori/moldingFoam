@@ -400,6 +400,22 @@ void taitTests()
             ok
         );
     }
+
+    // A pressure below the nominal Tait offset is an out-of-domain probe,
+    // but the regularised evaluation must remain finite and diagnostic-safe.
+    {
+        const scalar pExtreme = -1.2e8;
+        const scalar TExtreme = 500;
+
+        checkBool
+        (
+            "Tait: extreme negative pressure remains finite after regularisation",
+            isValidScalar(tait.rho(pExtreme, TExtreme))
+         && isValidScalar(tait.psi(pExtreme, TExtreme))
+         && isValidScalar(tait.alphav(pExtreme, TExtreme))
+         && isValidScalar(tait.CpMCv(pExtreme, TExtreme))
+        );
+    }
 }
 
 

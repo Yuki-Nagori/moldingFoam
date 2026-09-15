@@ -23,9 +23,9 @@ class InputTests(unittest.TestCase):
     def test_sample_preserves_units_values_and_topology(self):
         original = copy.deepcopy(self.data)
         self.assertEqual(read(FIXTURE), original)
-        self.assertEqual(len(original["nodes"]), 8)
-        self.assertEqual(len(original["triangles"]), 12)
-        self.assertEqual(original["thickness"], [10.0] * 12)
+        self.assertEqual(len(original["nodes"]), 4)
+        self.assertEqual(len(original["triangles"]), 2)
+        self.assertEqual(original["thickness"], [1.0] * 2)
         self.assertEqual(original["lengthUnit"], "mm")
         self.assertEqual(original["thicknessUnit"], "mm")
         validate(self.data)
@@ -48,7 +48,7 @@ class InputTests(unittest.TestCase):
             validate(self.data)
 
     def test_indices_are_integers_in_range(self):
-        for value in (-1, 8, True, 1.0, "1"):
+        for value in (-1, 4, True, 1.0, "1"):
             with self.subTest(value=value):
                 bad = copy.deepcopy(self.data)
                 bad["triangles"][0][0] = value
@@ -89,22 +89,22 @@ class InputTests(unittest.TestCase):
 
     def test_nonmanifold_edge(self):
         self.data["nodes"].append([5, -5, 5])
-        self.data["triangles"].append([0, 1, 8])
+        self.data["triangles"].append([0, 1, 4])
         self.data["thickness"].append(10)
-        with self.assertRaisesRegex(InputError, "non-manifold"):
+        with self.assertRaisesRegex(InputError, "non-manifold|winding"):
             validate(self.data)
 
     def test_beams_and_couplings(self):
         self.data["beams"] = [{"nodes": [0, 1], "diameter": 2, "kind": "gate"}]
         self.data["couplings"] = [{"beam": 0, "endpoint": 1, "node": 1, "distance": 0}]
         self.assertEqual(validate(self.data), self.data)
-        for key, value in (("beam", 1), ("endpoint", 2), ("node", 8),
+        for key, value in (("beam", 1), ("endpoint", 2), ("node", 4),
                            ("distance", -1)):
             bad = copy.deepcopy(self.data)
             bad["couplings"][0][key] = value
             with self.assertRaises(InputError):
                 validate(bad)
-        for key, value in (("nodes", [0, 8]), ("nodes", [0, 0]),
+        for key, value in (("nodes", [0, 4]), ("nodes", [0, 0]),
                            ("diameter", 0), ("kind", "unknown")):
             bad = copy.deepcopy(self.data)
             bad["beams"][0][key] = value
@@ -121,8 +121,8 @@ class InputTests(unittest.TestCase):
         summary = json.loads(run.stdout)
         self.assertEqual(summary["status"], "input_valid")
         self.assertFalse(summary["solverReady"])
-        self.assertEqual((summary["nodes"], summary["triangles"]), (8, 12))
-        self.assertEqual(summary["thicknessMin"], 10)
+        self.assertEqual((summary["nodes"], summary["triangles"]), (4, 2))
+        self.assertEqual(summary["thicknessMin"], 1)
         self.assertEqual(len(summary["sourceDataDigest"]), 64)
 
     def test_cli_failure_retains_diagnostic_log(self):

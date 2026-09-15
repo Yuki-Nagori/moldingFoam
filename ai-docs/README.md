@@ -90,16 +90,43 @@
 |---|---|---|---|
 | [063](tasks/063-review-closure-state-consistency.md) | 审查问题收口：闭合、能量与历史状态一致性 | P1 | in-progress（R1–R8 本地修复与最小回归完成；完整 CI 待验收） |
 
-### 2026-09-15 复核后的后续任务
+### 当前专项收口（按风险分类，2026-09-15）
+
+这些任务来自最近一次整体复核，按“结果正确性与状态恢复”“多物理耦合”“效率与验证”
+分类。状态以各任务文件为准；`in-progress` 表示已有可审查的增量，但仍未满足共享 DoD。
+
+#### 结果正确性与状态恢复（P1）
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | planned |
+| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | in-progress（非零 startTime 判定已修复；完整契约待验收） |
 | [065](tasks/065-tait-domain-derivative-consistency.md) | Tait 有效域、截断导数与逆求解稳健性 | P1 | planned |
+
+#### 多物理耦合稳定性
+
+| 编号 | 标题 | 优先级 | 状态 |
+|---|---|---|---|
 | [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | planned |
 | [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | planned |
-| [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | planned |
-| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | planned |
+
+#### 效率与验证基础设施
+
+| 编号 | 标题 | 优先级 | 状态 |
+|---|---|---|---|
+| [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | in-progress（上限告警已提交；缓存设计待基准） |
+| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（timeout/失败证据已提交；不确定度矩阵待执行） |
+
+#### 未完成项跟进顺序
+
+| 顺序 | 下一步 | 退出条件 |
+|---|---|---|
+| 1 | 065：先做 Tait 极端负压/逆求解小模型，确定拒绝或正则化策略 | 有限性、单调性和逆残差断言通过 |
+| 2 | 066：增加均匀剪切应力输运与材料限步对照 | 串/并行、重启和相区权重结果一致 |
+| 3 | 067：建立压力功、黏性耗散、潜热和 clamp 的闭合账目 | 能量残差有界并进入 nightly |
+| 4 | 068/069：补缓存失效键及三网格/三时间步验证矩阵 | 小基准通过，完整矩阵交 CI |
+
+所有顺序均遵循 `diagnostics.md` 的最小复现和单变量对照原则；未满足共享 DoD
+前不把任务标记为 done。
 
 ### 契约周期与工艺（17 项）
 

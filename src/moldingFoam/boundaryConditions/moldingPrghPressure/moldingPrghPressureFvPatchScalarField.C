@@ -186,7 +186,11 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
             const fvsPatchField<scalar>& phip =
                 patch().patchField<surfaceScalarField, scalar>(phi);
 
-            pTarget -= network_->pressureDrop(mag(gSum(phip)));
+            pTarget -= network_->pressureDrop
+            (
+                mag(gSum(phip)),
+                patch().time().value()
+            );
         }
 
         // Ramp from the gate pressure captured when packing started:

@@ -61,7 +61,11 @@ Foam::moldingRunnerNetwork::moldingRunnerNetwork(const dictionary& dict)
     treeChildren_(),
     treeRoots_(),
     treeOrder_(),
-    treeLeaves_()
+    treeLeaves_(),
+    treeLeafOf_(),
+    gateOpenTime_(),
+    gateCloseTime_(),
+    anyValveTiming_(false)
 {
     if (cp_ <= 0)
     {
@@ -282,6 +286,37 @@ Foam::scalar Foam::moldingRunnerNetwork::feedPressureDrop(const scalar Q) const
 }
 
 
+bool Foam::moldingRunnerNetwork::gateOpen(const label g, const scalar t) const
+{
+    return t >= gateOpenTime_[g] && t < gateCloseTime_[g];
+}
+
+
+void Foam::moldingRunnerNetwork::readValve
+(
+    const dictionary& gateDict,
+    const label g
+)
+{
+    gateOpenTime_[g] = gateDict.lookupOrDefault<scalar>("gateOpenTime", 0.0);
+    gateCloseTime_[g] =
+        gateDict.lookupOrDefault<scalar>("gateCloseTime", great);
+
+    if (gateCloseTime_[g] <= gateOpenTime_[g])
+    {
+        FatalIOErrorInFunction(gateDict)
+            << "A gate valve must close after it opens: gateOpenTime = "
+            << gateOpenTime_[g] << ", gateCloseTime = " << gateCloseTime_[g]
+            << exit(FatalIOError);
+    }
+
+    if (gateOpenTime_[g] != 0 || gateCloseTime_[g] != great)
+    {
+        anyValveTiming_ = true;
+    }
+}
+
+
 Foam::scalar Foam::moldingRunnerNetwork::split
 (
     const scalar Q,
@@ -353,10 +388,106 @@ Foam::scalar Foam::moldingRunnerNetwork::split
 }
 
 
+Foam::scalar Foam::moldingRunnerNetwork::splitValved
+(
+    const scalar Q,
+    const scalar Tnode,
+    const scalar t,
+    scalarList& gateQ
+) const
+{
+    const label n = gates_.size();
+
+    gateQ.setSize(n);
+
+    boolList open(n, false);
+
+    label nOpen = 0;
+
+    forAll(gates_, i)
+    {
+        open[i] = gateOpen(i, t);
+
+        if (open[i])
+        {
+            ++nOpen;
+        }
+    }
+
+    // All valves shut: nothing flows and the network develops no drop
+    if (nOpen == 0)
+    {
+        forAll(gateQ, i)
+        {
+            gateQ[i] = 0;
+        }
+
+        return 0;
+    }
+
+    forAll(gates_, i)
+    {
+        gateQ[i] = (open[i] ? Q/scalar(nOpen) : 0);
+    }
+
+    // Same fixed-point iteration and under-relaxation as split(), over the
+    // open branches only (1000 iterations mirrors split())
+    scalar dp = 0;
+
+    for (label iter = 0; iter < 1000; ++iter)
+    {
+        scalar sumInvR = 0;
+        scalarList R(n, scalar(0));
+
+        forAll(gates_, i)
+        {
+            if (!open[i])
+            {
+                continue;
+            }
+
+            const scalar D = gates_[i].diameter;
+            const scalar gd = shearRate(gateQ[i], D);
+
+            R[i] = 128*eta(gd, Tnode)*gates_[i].length
+              /(constant::mathematical::pi*D*D*D*D);
+
+            sumInvR += 1/R[i];
+        }
+
+        dp = Q/sumInvR;
+
+        scalar change = 0;
+
+        forAll(gates_, i)
+        {
+            if (!open[i])
+            {
+                continue;
+            }
+
+            const scalar qNew = dp/R[i];
+
+            change = max(change, mag(qNew - gateQ[i]));
+            gateQ[i] = 0.5*gateQ[i] + 0.5*qNew;
+        }
+
+        if (change < 1e-14*max(mag(Q), small))
+        {
+            break;
+        }
+    }
+
+    return dp;
+}
+
+
 void Foam::moldingRunnerNetwork::readGates(const dictionary& gatesDict)
 {
     const wordList names(gatesDict.toc());
     gates_.setSize(names.size());
+    gateOpenTime_.setSize(names.size());
+    gateCloseTime_.setSize(names.size());
 
     forAll(names, i)
     {
@@ -377,6 +508,8 @@ void Foam::moldingRunnerNetwork::readGates(const dictionary& gatesDict)
                 << gates_[i].length << ", diameter = " << gates_[i].diameter
                 << exit(FatalIOError);
         }
+
+        readValve(g, i);
     }
 }
 
@@ -539,6 +672,7 @@ void Foam::moldingRunnerNetwork::readTree(const dictionary& treeDict)
     treeRoots_.setSize(nRoots);
     treeLeaves_.setSize(nLeaves);
     treeOrder_.setSize(n);
+    treeLeafOf_.setSize(n, label(-1));
 
     label r = 0;
     label k = 0;
@@ -574,12 +708,20 @@ void Foam::moldingRunnerNetwork::readTree(const dictionary& treeDict)
         }
     }
 
-    // Fill the gate view the boundaries use
+    // Fill the gate view the boundaries use, with the node lookup the
+    // solver needs for the valve state of a leaf
     gates_.setSize(treeLeaves_.size());
+    gateOpenTime_.setSize(treeLeaves_.size());
+    gateCloseTime_.setSize(treeLeaves_.size());
 
     forAll(treeLeaves_, g)
     {
-        gates_[g] = treeSeg_[treeLeaves_[g]];
+        const label i = treeLeaves_[g];
+
+        gates_[g] = treeSeg_[i];
+        treeLeafOf_[i] = g;
+
+        readValve(treeDict.subDict(names[i]), g);
     }
 }
 
@@ -587,6 +729,7 @@ void Foam::moldingRunnerNetwork::readTree(const dictionary& treeDict)
 Foam::scalar Foam::moldingRunnerNetwork::solveTree
 (
     const scalar Q,
+    const scalar t,
     scalarList& leafQ,
     scalarList& leafT
 ) const
@@ -615,6 +758,39 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
     scalarList Tout(n, TfeedOut);
     scalarList Req(n, scalar(0));
 
+    // A branch takes flow only when it carries an open gate: a leaf follows
+    // its valve, a node is active when any of its descendants is
+    boolList active(n, false);
+
+    forAll(treeOrder_, k)
+    {
+        const label i = treeOrder_[n - 1 - k];
+
+        if (treeChildren_[i].empty())
+        {
+            active[i] = gateOpen(treeLeafOf_[i], t);
+        }
+        else
+        {
+            forAll(treeChildren_[i], c)
+            {
+                if (active[treeChildren_[i][c]])
+                {
+                    active[i] = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    forAll(q, i)
+    {
+        if (!active[i])
+        {
+            q[i] = 0;
+        }
+    }
+
     scalar dpChild = 0;
 
     for (label iter = 0; iter < maxTreeIterations_; ++iter)
@@ -625,7 +801,10 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
             const label i = treeOrder_[k];
 
             Tin[i] = (treeParent_[i] < 0 ? TfeedOut : Tout[treeParent_[i]]);
-            Tout[i] = segmentTemperature(treeSeg_[i], Tin[i], q[i]);
+            Tout[i] =
+                (active[i]
+              ? segmentTemperature(treeSeg_[i], Tin[i], q[i])
+              : Tin[i]);
         }
 
         // Own and equivalent resistances, children before parents: a node's
@@ -635,23 +814,27 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
         {
             const label i = treeOrder_[n - 1 - k];
 
+            if (!active[i])
+            {
+                Req[i] = 0;
+                continue;
+            }
+
             const scalar R = segmentResistance(treeSeg_[i], q[i], Tin[i]);
 
-            if (treeChildren_[i].empty())
-            {
-                Req[i] = R;
-            }
-            else
-            {
-                scalar invSum = 0;
+            scalar invSum = 0;
 
-                forAll(treeChildren_[i], c)
+            forAll(treeChildren_[i], c)
+            {
+                const label j = treeChildren_[i][c];
+
+                if (active[j])
                 {
-                    invSum += 1/Req[treeChildren_[i][c]];
+                    invSum += 1/Req[j];
                 }
-
-                Req[i] = R + 1/invSum;
             }
+
+            Req[i] = (invSum > 0 ? R + 1/invSum : R);
         }
 
         // Flow targets: the equal-pressure-drop split at every node, each
@@ -663,14 +846,20 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
 
         forAll(treeRoots_, r)
         {
-            invSumRoot += 1/Req[treeRoots_[r]];
+            const label i = treeRoots_[r];
+
+            if (active[i])
+            {
+                invSumRoot += 1/Req[i];
+            }
         }
 
         forAll(treeRoots_, r)
         {
             const label i = treeRoots_[r];
 
-            qTgt[i] = Q*(1/Req[i])/invSumRoot;
+            qTgt[i] =
+                (active[i] && invSumRoot > 0 ? Q*(1/Req[i])/invSumRoot : 0);
         }
 
         forAll(treeOrder_, k)
@@ -686,14 +875,20 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
 
             forAll(treeChildren_[i], c)
             {
-                invSum += 1/Req[treeChildren_[i][c]];
+                const label j = treeChildren_[i][c];
+
+                if (active[j])
+                {
+                    invSum += 1/Req[j];
+                }
             }
 
             forAll(treeChildren_[i], c)
             {
                 const label j = treeChildren_[i][c];
 
-                qTgt[j] = qTgt[i]*(1/Req[j])/invSum;
+                qTgt[j] =
+                    (active[j] && invSum > 0 ? qTgt[i]*(1/Req[j])/invSum : 0);
             }
         }
 
@@ -721,7 +916,7 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
         const label i = treeLeaves_[g];
 
         leafQ[g] = q[i];
-        leafT[g] = Tout[i];
+        leafT[g] = (active[i] ? Tout[i] : TfeedOut);
     }
 
     return dpChild;
@@ -730,19 +925,28 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-Foam::scalar Foam::moldingRunnerNetwork::pressureDrop(const scalar Q) const
+Foam::scalar Foam::moldingRunnerNetwork::pressureDrop
+(
+    const scalar Q,
+    const scalar t
+) const
 {
     if (treeMode_)
     {
         scalarList leafQ;
         scalarList leafT;
 
-        return feedPressureDrop(Q) + solveTree(Q, leafQ, leafT);
+        return feedPressureDrop(Q) + solveTree(Q, t, leafQ, leafT);
     }
 
     const scalar Tnode = segmentTemperature(feed_, inletTemperature_, Q);
 
     scalarList gateQ;
+
+    if (anyValveTiming_)
+    {
+        return feedPressureDrop(Q) + splitValved(Q, Tnode, t, gateQ);
+    }
 
     return feedPressureDrop(Q) + split(Q, Tnode, gateQ);
 }
@@ -751,7 +955,8 @@ Foam::scalar Foam::moldingRunnerNetwork::pressureDrop(const scalar Q) const
 Foam::scalar Foam::moldingRunnerNetwork::gateFlow
 (
     const label g,
-    const scalar Q
+    const scalar Q,
+    const scalar t
 ) const
 {
     if (treeMode_)
@@ -759,7 +964,7 @@ Foam::scalar Foam::moldingRunnerNetwork::gateFlow
         scalarList leafQ;
         scalarList leafT;
 
-        solveTree(Q, leafQ, leafT);
+        solveTree(Q, t, leafQ, leafT);
 
         return leafQ[g];
     }
@@ -767,6 +972,14 @@ Foam::scalar Foam::moldingRunnerNetwork::gateFlow
     const scalar Tnode = segmentTemperature(feed_, inletTemperature_, Q);
 
     scalarList gateQ;
+
+    if (anyValveTiming_)
+    {
+        splitValved(Q, Tnode, t, gateQ);
+
+        return gateQ[g];
+    }
+
     split(Q, Tnode, gateQ);
 
     return gateQ[g];
@@ -776,7 +989,8 @@ Foam::scalar Foam::moldingRunnerNetwork::gateFlow
 Foam::scalar Foam::moldingRunnerNetwork::gateTemperature
 (
     const label g,
-    const scalar Q
+    const scalar Q,
+    const scalar t
 ) const
 {
     if (treeMode_)
@@ -784,7 +998,7 @@ Foam::scalar Foam::moldingRunnerNetwork::gateTemperature
         scalarList leafQ;
         scalarList leafT;
 
-        solveTree(Q, leafQ, leafT);
+        solveTree(Q, t, leafQ, leafT);
 
         return leafT[g];
     }
@@ -792,6 +1006,14 @@ Foam::scalar Foam::moldingRunnerNetwork::gateTemperature
     const scalar Tnode = segmentTemperature(feed_, inletTemperature_, Q);
 
     scalarList gateQ;
+
+    if (anyValveTiming_)
+    {
+        splitValved(Q, Tnode, t, gateQ);
+
+        return segmentTemperature(gates_[g], Tnode, gateQ[g]);
+    }
+
     split(Q, Tnode, gateQ);
 
     return segmentTemperature(gates_[g], Tnode, gateQ[g]);

@@ -168,6 +168,19 @@ private:
         //- Leaf node indices: the gates, in dictionary order
         labelList treeLeaves_;
 
+        //- Gate index of each tree node (-1 for nodes that are not leaves)
+        labelList treeLeafOf_;
+
+        //- Gate opening time [s], one per gate
+        scalarList gateOpenTime_;
+
+        //- Gate closing time [s], one per gate
+        scalarList gateCloseTime_;
+
+        //- Any gate carries valve timing; false keeps both the flat split
+        //  and the tree solve bit-for-bit unchanged
+        bool anyValveTiming_;
+
         //- Fixed-point budget of one tree solve: the work is
         //  O(maxTreeIterations_ * nodes) with no nesting, so this bounds
         //  the cost of every boundary update
@@ -199,12 +212,27 @@ private:
         //- Pressure drop of the feed segment at the total flow rate [Pa]
         scalar feedPressureDrop(const scalar Q) const;
 
+        //- Is gate g open at time t?
+        bool gateOpen(const label g, const scalar t) const;
+
         //- Equal-pressure-drop flow split of the parallel branches;
         //  returns the branch pressure drop and fills the branch flows
         scalar split
         (
             const scalar Q,
             const scalar Tnode,
+            scalarList& gateQ
+        ) const;
+
+        //- As split(), but over the open branches only: a closed gate
+        //  carries no flow and the remaining branches share the total.
+        //  Kept separate from split() so that cases without valve timing
+        //  keep their exact results.
+        scalar splitValved
+        (
+            const scalar Q,
+            const scalar Tnode,
+            const scalar t,
             scalarList& gateQ
         ) const;
 
@@ -215,14 +243,19 @@ private:
         //  becoming the gates
         void readTree(const dictionary& treeDict);
 
+        //- Read the optional valve timing of one gate
+        void readValve(const dictionary& gateDict, const label g);
+
         //- Tree network solve: one bounded fixed point over the whole tree,
         //  parents before children for the flow and temperatures, children
-        //  before parents for the equivalent resistances; returns the
+        //  before parents for the equivalent resistances; branches that
+        //  carry no open gate are inactive and take no flow. Returns the
         //  pressure drop from the feed node to the leaves and fills the
         //  leaf flows and leaf temperatures
         scalar solveTree
         (
             const scalar Q,
+            const scalar t,
             scalarList& leafQ,
             scalarList& leafT
         ) const;
@@ -253,14 +286,17 @@ public:
 
     // Member Functions
 
-        //- Total network pressure drop at the total flow rate [Pa]
-        scalar pressureDrop(const scalar Q) const;
+        //- Total network pressure drop at the total flow rate [Pa]. A gate
+        //  is open for gateOpenTime <= t < gateCloseTime; closed branches
+        //  carry no flow and the open ones share the total.
+        scalar pressureDrop(const scalar Q, const scalar t = 0) const;
 
-        //- Volumetric flow rate through gate g [m^3/s]
-        scalar gateFlow(const label g, const scalar Q) const;
+        //- Volumetric flow rate through gate g [m^3/s] (zero while closed)
+        scalar gateFlow(const label g, const scalar Q, const scalar t = 0) const;
 
         //- Melt temperature at gate g [K]
-        scalar gateTemperature(const label g, const scalar Q) const;
+        scalar gateTemperature(const label g, const scalar Q, const scalar t = 0)
+        const;
 
         //- Number of gates
         label nGates() const

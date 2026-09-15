@@ -154,7 +154,12 @@ void moldingRunnerTemperatureFvPatchScalarField::updateCoeffs()
         Q = mag(gSum(phip));
     }
 
-    const scalar Tg = network_->gateTemperature(gateIndex, Q);
+    const scalar Tg = network_->gateTemperature
+    (
+        gateIndex,
+        Q,
+        patch().time().value()
+    );
 
     operator==(Tg);
 

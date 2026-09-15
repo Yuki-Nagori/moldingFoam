@@ -250,7 +250,12 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
 
         if (network_.valid())
         {
-            Q = network_->gateFlow(gateIndex_, totalFlowRate_);
+            Q = network_->gateFlow
+            (
+                gateIndex_,
+                totalFlowRate_,
+                patch().time().value()
+            );
         }
 
         operator==(patch().nf()*(-Q/area_));

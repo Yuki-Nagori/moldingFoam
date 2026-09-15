@@ -385,6 +385,7 @@ $ xmake run test
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | `runnerTree` | 流道树拓扑（两级、各支路带自己的管段）：分流比 15.38 vs 解析 15.25（0.87%；扁平网络会是 32）（`verify-runner-tree.py`） |
+| `runnerValve` | 逐浇口阀时序：gate2 在 t=0.6 s 关闭，开阀期份额 6.052e-09 vs 解析 6.061e-09，关阀后该入口归零、gate1 接手全部流量（`verify-runner-valve.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
 | `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille，**注入压力梯度 vs 1D 润滑（Hele-Shaw）参考 −3.09%**（≤10%，残差=8 层网格半格壁面剪切的 −3.13%，`verify-fountain-flow.py`） |
 | `moldCHT-cycle` | 多周期多区域 CHT：6 周期模温 354→432 K，每周期增量 15.0→11.0 K 单调递减（末值/首值 0.74，CI x86_64）（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
@@ -774,16 +775,29 @@ Hagen–Poiseuille 压降
   解析串联/并联阻力网络（定黏度 rtol 1e-12）、扁平树与旧 `gates` 逐位
   一致、三级树对幂律合并系数 `a = ΣL/D^(3n+1)`，以及求解耗时上界
   （2000 次三级树求解 < 5 s CPU）；
+- **逐浇口阀时序**（058）：每个浇口（扁平 `gates` 的条目或 `tree` 的叶子）
+  可选 `gateOpenTime`（缺省 0）与 `gateCloseTime`（缺省 `great`），浇口在
+  `gateOpenTime <= t < gateCloseTime` 内通流：关闭的分支流量为 0，其余
+  分支按等压降**分担总流量**（一个节点若其下所有浇口都关闭则整条支路不
+  通流）；切换取时间步级（瞬时），切换前后总流量守恒。关闭浇口的
+  `gateTemperature` 报其上游节点温度。未写这两个键时两条求解路径都
+  **逐位不变**（内部按"有无阀时序"分支）；
+- 模型级验证（`xmake run test`，续）：`runnerValve` 两项——扁平网络关阀后
+  关闭支路流量为 0、开通支路取全部流量、压降退化为单支路解析值；树上
+  叶子晚开时其兄弟先独占流量；
 - 求解器耦合：`0/U` 的 `moldingInletVelocity` 可选
   `runner`/`gate`/`totalFlowRate`，入口流量取网络分流（按阻力分配）；
   `0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期闸口压力 =
-  保压目标 − 当前流量下的流道压降；
+  保压目标 − 当前流量下的流道压降；两者（含 `moldingRunnerTemperature`）
+  都把当前时间传给网络，故阀时序在三处边界上一致；
 - 集成用例：`tests/cases/runnerNetwork`（单浇口，入口质量流与 ρQ 一致
   1.6%）、`tests/cases/multiGate`（扁平双浇口，分流比 32.30 vs 解析 32）、
   `tests/cases/runnerTree`（两级树、各浇口带自己的管段，分流比 15.38 vs
-  解析 15.25，扁平网络会是 32）；缺省不写 `runner` 时行为不变。
-- 尚未支持（`ai-docs/tasks/058`）：逐浇口的流量/压力曲线与阀浇口开/关
-  时序；非圆截面仅能按等效水力直径近似。
+  解析 15.25，扁平网络会是 32）、`tests/cases/runnerValve`（gate2 在
+  t=0.6 s 关闭：开阀期份额 6.052e-09 vs 解析 6.061e-09，关阀后归零且
+  gate1 接手全部流量）；缺省不写 `runner` 时行为不变。
+- 尚未支持（`ai-docs/tasks/058`）：逐浇口的**流量/压力曲线**（目前只有
+  开/关时序，流量由网络分流决定）；非圆截面仅能按等效水力直径近似。
 
 ### 黏性生热（`viscousDissipation`，任务 007）
 
@@ -1681,7 +1695,7 @@ x86_64 为准、arm64 差异记录在案（任务 045 的口径决策 B）。为
 | job | 内容 |
 |-----|------|
 | `model-tests` | `xmake run test` |
-| `solver-cases` | `xmake run test-solver`（29 用例） |
+| `solver-cases` | `xmake run test-solver`（30 用例） |
 | `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold/highPressure |
 | `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
 | `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |

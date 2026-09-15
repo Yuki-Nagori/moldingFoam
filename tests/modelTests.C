@@ -1331,6 +1331,119 @@ void runnerTreeTests()
 }
 
 
+const char* runnerValveFlatDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+gates
+{
+    g1 { length 0.02; diameter 0.004; }
+    g2 { length 0.02; diameter 0.002; gateCloseTime 0.5; }
+}
+)";
+
+const char* runnerValveTreeDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+tree
+{
+    m1 { parent feed; length 0.05; diameter 0.005; }
+    g1 { parent m1;   length 0.02; diameter 0.004; }
+    g2 { parent m1;   length 0.02; diameter 0.003; gateOpenTime 0.5; }
+}
+)";
+
+
+void runnerValveTests()
+{
+    const scalar Q = 3e-6;
+
+    const scalar dpg1 =
+        moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.004, Q);
+    // the flat dictionary closes a 2 mm gate, the tree one a 3 mm leaf
+    const scalar dpg2f =
+        moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.002, Q);
+    const scalar dpg2t =
+        moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.003, Q);
+
+    const scalar dpFeed =
+        moldingRunnerNetwork::hagenPoiseuille(100, 0.1, 0.006, Q);
+    const scalar dpM1 =
+        moldingRunnerNetwork::hagenPoiseuille(100, 0.05, 0.005, Q);
+
+    // A gate closing at t = 0.5: while open the flat split is unchanged,
+    // after it the closed branch takes no flow and the open one takes all
+    {
+        IStringStream is(runnerValveFlatDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q1open = network.gateFlow(0, Q, 0.4);
+        const scalar Q2open = network.gateFlow(1, Q, 0.4);
+        const scalar dpOpen = network.pressureDrop(Q, 0.4);
+
+        const scalar Q1shut = network.gateFlow(0, Q, 0.6);
+        const scalar Q2shut = network.gateFlow(1, Q, 0.6);
+        const scalar dpShut = network.pressureDrop(Q, 0.6);
+
+        Info<< "    valve (flat): open Q1 = " << Q1open << ", shut Q1 = "
+            << Q1shut << ", Q2 = " << Q2shut << " m^3/s" << endl;
+
+        const scalar Q1e = Q*dpg2f/(dpg1 + dpg2f);
+
+        checkBool
+        (
+            "runnerValve: a closed gate takes no flow and the rest share "
+            "the total",
+            relDiff(Q1open, Q1e) < 1e-10
+         && relDiff(Q2open, Q - Q1e) < 1e-10
+         && relDiff(dpOpen, dpFeed + dpg1*dpg2f/(dpg1 + dpg2f)) < 1e-10
+         && relDiff(Q1shut, Q) < 1e-10
+         && mag(Q2shut) < 1e-20
+         && relDiff(Q1shut + Q2shut, Q) < 1e-10
+         && relDiff(dpShut, dpFeed + dpg1) < 1e-10
+        );
+    }
+
+    // The same on a tree: a leaf that opens late leaves the whole manifold
+    // to its sibling before the opening time
+    {
+        IStringStream is(runnerValveTreeDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar Q1shut = network.gateFlow(0, Q, 0.4);
+        const scalar Q2shut = network.gateFlow(1, Q, 0.4);
+        const scalar dpShut = network.pressureDrop(Q, 0.4);
+
+        const scalar Q1open = network.gateFlow(0, Q, 0.6);
+        const scalar Q2open = network.gateFlow(1, Q, 0.6);
+
+        Info<< "    valve (tree): before opening Q1 = " << Q1shut
+            << ", after Q1 = " << Q1open << ", Q2 = " << Q2open
+            << " m^3/s" << endl;
+
+        const scalar Q1e = Q*dpg2t/(dpg1 + dpg2t);
+
+        checkBool
+        (
+            "runnerValve: a shut tree leaf leaves the flow to its sibling",
+            relDiff(Q1shut, Q) < 1e-10
+         && mag(Q2shut) < 1e-20
+         && relDiff(dpShut, dpFeed + dpM1 + dpg1) < 1e-10
+         && relDiff(Q1open, Q1e) < 1e-10
+         && relDiff(Q2open, Q - Q1e) < 1e-10
+         && relDiff(Q1open + Q2open, Q) < 1e-10
+        );
+    }
+}
+
+
 const char* crystallizationDictString = R"(
 avramiExponent 2;
 rateConstant 0.1;
@@ -2363,6 +2476,7 @@ int main()
     pressureDependentViscosityTests();
     runnerNetworkTests();
     runnerTreeTests();
+    runnerValveTests();
     ventOrificeTests();
     crossWlfTests();
 

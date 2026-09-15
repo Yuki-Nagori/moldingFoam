@@ -295,3 +295,22 @@ CI 收口补充：`scripts/uncertainty-matrix.sh` 现对 thermoelastic 与 warpa
 补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
 明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
 均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。
+
+### nightly 复测补记（2026-09-15，run 34967136574）
+
+最新 nightly 的 `uncertainty-manifest` 失败来自真实结构判据，不是环境、缓存或
+Dual Domain 代码：
+
+| case / grid / dt | 求解器 | 解析误差 | 静态末段变化 | 结论 |
+|---|---|---:|---:|---|
+| thermoelastic 0.5 / 0.5 | 完成 | 10.914% | 0.002470 | 失败 |
+| thermoelastic 1 / 1 | 完成 | 5.453% | 通过 | 通过 |
+| thermoelastic 2 / 2 | 完成 | 57.713% | 0.592503（末步跳变） | 失败 |
+| warpagePlate 0.5 / 0.5 | 完成 | 3.216% | 通过 | 通过 |
+| warpagePlate 1 / 1 | 完成 | 2.142% | 0.004086 | 失败 |
+| warpagePlate 2 / 2 | 完成 | 11.136% | 0.012384 | 失败 |
+
+moldCHT 三行均通过。原始证据在 nightly artifact `nightly-uncertainty-matrix`，
+其中每行保留 `runner.log` 与 `structural-convergence.json`。当前需要修复
+结构静态迭代/细网格离散稳定性；不能调高 8% 门槛或关闭
+`UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE` 来宣告通过。

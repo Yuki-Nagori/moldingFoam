@@ -196,3 +196,13 @@ of14 复读结果：48×80 基准最后三个窗口变化为 0.000830、0.000712
 `End` 标记不足以证明静态解。检查已接入 nightly 的 thermoelastic 与
 warpagePlate 步骤，当前异常会失败并上传日志；探索矩阵的 MEASURED 模式
 不能绕过该防线。
+
+新增 `scripts/diag/repro-structural-convergence.sh` 作为 S2 可重放入口：它对
+baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创建
+新鲜副本，默认每行 120 s 超时，输出 rc、墙钟、最终时间、静态收敛状态和日志
+路径。任一求解失败或 `not_converged` 都使整批失败，且不会自动选择参数或修改
+上游求解器。
+
+该入口已接入 nightly structural job，并上传 TSV、每个变体的工作目录、原始
+日志与收敛 JSON。它是诊断防线，不能把任一未收敛变体变成通过；根因修复仍
+需在同一证据表中给出修复前后精度与达到同一收敛判据的成本。

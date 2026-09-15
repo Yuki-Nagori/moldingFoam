@@ -101,6 +101,13 @@ jobs:
           xmake run shrinkBar 2>&1 | tee shrinkBar.txt
           xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
           xmake run eigenstrainGraded 2>&1 | tee eigenstrainGraded.txt
+      - name: Structural convergence diagnostics
+        run: |
+          set +e
+          scripts/diag/repro-structural-convergence.sh validation/thermoelastic structural-convergence.tsv
+          rc=$?
+          cat structural-convergence.tsv
+          exit $rc
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -113,6 +120,8 @@ jobs:
             validation/shrinkBar/log.run
             validation/anisoShrinkBar/log.run
             validation/eigenstrainGraded/log.run
+            structural-convergence.tsv
+            structural-convergence-work-*/**
           retention-days: 14
 
   validation-cht:

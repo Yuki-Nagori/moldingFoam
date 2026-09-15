@@ -66,8 +66,8 @@ void moldingSolidDisplacement::pressureCorrector()
         // the terminal displacement jump seen in the convergence matrix.
         const bool residualDecreased = initialResidual <= previousInitialResidual_;
         const bool incrementBounded =
-            previousIncrement_ <= SMALL
-         || increment <= 1.5*previousIncrement_;
+            previousIncrement_ > SMALL
+         && increment <= 1.5*previousIncrement_;
         if (mesh.schemes().steady() && accFac > 1 && residualDecreased && incrementBounded)
         {
             D += (accFac - 1)*(D - D.oldTime());

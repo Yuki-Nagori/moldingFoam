@@ -206,3 +206,6 @@ baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创
 该入口已接入 nightly structural job，并上传 TSV、每个变体的工作目录、原始
 日志与收敛 JSON。它是诊断防线，不能把任一未收敛变体变成通过；根因修复仍
 需在同一证据表中给出修复前后精度与达到同一收敛判据的成本。
+
+CI 步骤显式加载 `/opt/openfoam14/etc/bashrc`；脚本在环境缺失时以配置错误
+退出，避免把环境问题误记为结构数值失败。

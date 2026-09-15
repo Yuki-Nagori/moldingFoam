@@ -5,6 +5,10 @@ caseDir=$(cd "${1:?usage: $0 <case> [output.tsv]}" && pwd)
 output=${2:-structural-convergence.tsv}
 timeoutS=${STRUCTURAL_DIAG_TIMEOUT:-120}
 repoDir=$(cd "$(dirname "$0")/../.." && pwd)
+if [[ -z "${WM_PROJECT_DIR:-}" ]]; then
+  echo 'error: source OpenFOAM-14 etc/bashrc before running diagnostics' >&2
+  exit 2
+fi
 mkdir -p "$(dirname "$output")"
 workRoot="$(dirname "$output")/structural-convergence-work-$$"
 mkdir "$workRoot"

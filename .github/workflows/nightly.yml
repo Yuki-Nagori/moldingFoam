@@ -103,6 +103,7 @@ jobs:
           xmake run eigenstrainGraded 2>&1 | tee eigenstrainGraded.txt
       - name: Structural convergence diagnostics
         run: |
+          source /opt/openfoam14/etc/bashrc
           set +e
           scripts/diag/repro-structural-convergence.sh validation/thermoelastic structural-convergence.tsv
           rc=$?

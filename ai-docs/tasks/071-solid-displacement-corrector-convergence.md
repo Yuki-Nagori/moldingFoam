@@ -71,6 +71,20 @@ OpenFOAM-14 的 `solidDisplacement::pressureCorrector()` 读取
 本次仅改项目模块，未修改 `/opt/openfoam14`；OF14 编译、结构精度、校正次数、
 墙钟和内存尚未复测，不能据此宣称 069/070 已通过。
 
+### of14 最小复测（2026-09-15）
+
+在 VM 原生 ext4 临时工作树中完成：
+
+| 检查 | 配置/规模 | 结果 | 成本口径 |
+|---|---|---|---|
+| 编译 | OpenFOAM-14 arm64、当前提交 | 通过 | xmake 构建约 43 s；非 solver 墙钟 |
+| modelTests | 现有完整模型测试 | 全部通过 | `xmake run test` 约 11 s |
+| thermoelastic smoke | 原网格、20 步、solver=moldingSolidDisplacement | rc=0，正常 `End` | 0.33 s ExecutionTime |
+| warpagePlate smoke | 原网格、20 步、solver=moldingSolidDisplacement | rc=0，正常 `End` | 0.05 s ExecutionTime |
+
+两项 smoke 仅验证启动、推进和有限输出，不代表 10000 步静态收敛或解析精度；
+完整矩阵仍需 nightly 同会话验收。
+
 ## 实施记录 2026-09-15：模块覆写完成
 
 新增 `moldingSolidDisplacement` 派生模块（`src/moldingFoam/`），复用官方

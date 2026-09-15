@@ -332,3 +332,7 @@ moldCHT 三行均通过。原始证据在 nightly artifact `nightly-uncertainty-
 `moldingSolidDisplacement` 成员状态 `previousInitialResidual_`，在连续时间步间
 保留上一求解的初始残差；重启时从 `GREAT` 安全启动。该修改仍待 of14 编译和
 最小结构运行验证，不能把代码审查当作数值证据。
+
+of14 最小 smoke 复测（当前提交）已通过 thermoelastic 与 warpagePlate 各 20 步，
+确认本次模块修改可编译、可启动并正常结束；未测 10000 步精度、静态窗口、内存
+和矩阵成本，不能替代 nightly 失败证据。

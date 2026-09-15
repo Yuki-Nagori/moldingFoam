@@ -1676,6 +1676,8 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     // crystallinity is advanced with the exact Avrami step over dt and
     // the released latent heat rho L dchi/dt heats the melt; the source
     // is added to the integrated source directly
+    scalar latentEnergyStep = 0;
+
     if (crystallization_.valid())
     {
         const scalar dt(runTime.deltaTValue());
@@ -1721,9 +1723,11 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
             const scalar chiNew =
                 crystallization_->advance(chiOld, Tc[i], pc[i], dt);
 
-            src[i] +=
+            const scalar latentSource =
                 Vc[i]*crystallization_->latentHeat()
                *ac[i]*rc[i]*(chiNew - chiOld)/dt;
+            src[i] += latentSource;
+            latentEnergyStep += latentSource*dt;
 
             maxDchiDt = max(maxDchiDt, mag(chiNew - chiOld)/dt);
             chic[i] = chiNew;
@@ -1735,6 +1739,7 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
         {
             Info<< "moldingFoam: crystallinity: max(chi) = "
                 << gMax(chic) << ", max(dchi/dt) = " << maxDchiDt
+                << ", latent energy this step = " << latentEnergyStep << " J"
                 << " 1/s" << endl;
         }
     }
@@ -1746,13 +1751,23 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     {
         const tmp<volScalarField> tDiss(viscousDissipationSource());
         const volScalarField& diss = tDiss();
+        scalar dissEnergyStep = 0;
+        const scalar dt(runTime.deltaTValue());
+
+        forAll(diss.primitiveField(), i)
+        {
+            dissEnergyStep +=
+                mesh.V()[i]*diss.primitiveField()[i]*dt;
+        }
 
         TEqn.source() += mesh.V()*diss.primitiveField();
 
         if (runTime.timeIndex() % 50 == 0)
         {
             Info<< "moldingFoam: viscous dissipation: max Phi = "
-                << gMax(diss.primitiveField()) << " W/m^3" << endl;
+                << gMax(diss.primitiveField()) << " W/m^3"
+                << ", energy this step = " << dissEnergyStep << " J"
+                << endl;
         }
     }
 

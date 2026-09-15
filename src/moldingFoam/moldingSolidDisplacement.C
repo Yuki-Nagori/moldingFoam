@@ -53,18 +53,20 @@ void moldingSolidDisplacement::pressureCorrector()
         // Re-evaluate the residual for every corrector.  The upstream
         // implementation stores the first solve residual and reuses it in
         // the loop condition, so nCorrectors > 1 cannot converge correctly.
-        residual = DEqn.solve().max().initialResidual();
+        const auto performance = DEqn.solve().max();
+        const scalar initialResidual = performance.initialResidual();
+        residual = performance.finalResidual();
 
         // The steady acceleration is an extrapolation of the displacement
         // increment.  Do not extrapolate after a residual increase: on fine
         // meshes that amplifies an under-resolved corrector and can produce
         // the terminal displacement jump seen in the convergence matrix.
-        const bool residualDecreased = residual <= previousResidual;
+        const bool residualDecreased = initialResidual <= previousResidual;
         if (mesh.schemes().steady() && accFac > 1 && residualDecreased)
         {
             D += (accFac - 1)*(D - D.oldTime());
         }
-        previousResidual = residual;
+        previousResidual = initialResidual;
 
         if (!compactNormalStress)
         {

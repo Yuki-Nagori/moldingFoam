@@ -63,6 +63,14 @@ OpenFOAM-14 的 `solidDisplacement::pressureCorrector()` 读取
 `initialResidual` 一次，循环条件继续读取该值；没有逐校正残差更新。该结果与
 070 的 B3 成本证据一致。
 
+### 停止条件修正补记（2026-09-15）
+
+项目覆写现分别保存每次求解的 `initialResidual()` 与 `finalResidual()`：前者只
+用于判断是否允许加速外推，后者用于 `pressureCorrector()` 校正循环的停止条件。
+此前把初始残差同时用于停止判断，会让循环无法反映本次校正后的实际收敛程度。
+本次仅改项目模块，未修改 `/opt/openfoam14`；OF14 编译、结构精度、校正次数、
+墙钟和内存尚未复测，不能据此宣称 069/070 已通过。
+
 ## 实施记录 2026-09-15：模块覆写完成
 
 新增 `moldingSolidDisplacement` 派生模块（`src/moldingFoam/`），复用官方

@@ -32,7 +32,9 @@ boundaryField
 
     hotEnd
     {
-        type            noSlip;
+        // Vent: the melt front (alpha = 1 everywhere here) seals it on the
+        // first step, which is the state the restart must restore
+        type            moldingVentVelocity;
     }
 
     sides

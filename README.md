@@ -360,7 +360,7 @@ $ xmake run test
 | 各向异性热导率（`xmake run anisoConduction`） | 静止平板（40 cell、0.02 s、绝热侧壁、两端定温）叠加半正弦本征模：衰减率由沿梯度方向的 `lambda = kappa (1 + a_yy 相关各向异性)` 决定。实测末幅值 **3.2596 K vs 解析 3.2584 K（0.036%）**；把耦合从实现里关掉（字典仍写 0.5）偏差 **11.3% → 判据 FAIL**（敏感性已证，阈值 2%） |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
 | Lipscomb 各向异性黏度（`xmake run anisoViscosity`） | 45° 取向的 Couette 剪切（周期通道、移动壁 1 m/s、γ̇ = 1000 1/s）：无修正的壁面力可由 CrossWlf 解析给出（ratio=1 实测 36.2145 N vs 解析 36.2143 N，六位吻合）。耦合开启（`lipscombRatio 4`）实测 **+17.97%**、`8` 时 **+44.19%**；判据取「增幅 ≥ 8%」的下界（取向在剪切里被 Jeffery 项转动，精确因子是历史相关的），把实现里的修正关掉后增幅归零 → **FAIL**（敏感性已证） |
-| 重启续跑（`xmake run restartContinuity`） | 连续跑到 t_end 的场 vs「跑到 t_end/2 再 `startFrom latestTime` 续跑」的场对拍：T/p/p_rgh/alpha.melt 相对差 **3.3e-8 / 1.0e-7 / 1.0e-7 / 0**（正在 `writePrecision 8` 的写入精度量级），非平凡性检查（至少一个场相对初值移动 ≥1e-4，实测 T 移动 2.19%）|
+| 重启续跑（`xmake run restartContinuity`） | 连续跑到 t_end 的场 vs「跑到 t_end/2 再 `startFrom latestTime` 续跑」的场对拍：T/p/p_rgh/alpha.melt 相对差 **3.3e-8 / 1.0e-8 / 1.0e-7 / 0**（正在 `writePrecision 8` 的写入精度量级）；另比对 `moldingStage` 状态行（`stage/switchTime/gateSealed/ventSealed/gateSealTime`）——case 里 α≡1 同时触发保压、闸口封冻与排气封堵，末态 **`1 0 1 1 0.02` 两边完全一致**（该判据在修复"重启丢 `gateSealTime_`"前是 FAIL 的）|
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
 
 ### 快速求解器特性用例（`xmake run test-solver`）

@@ -86,12 +86,11 @@
 
 ## 5. 剩余覆盖与已知边界
 
-1. ~~`moldingStage` 的密封状态持久化~~：**已覆盖**（见 §3a）——载体虽然静止，
-   但 α≡1 使 `max(alpha) ≥ ventSealAlpha` 与 V/P 切换都触发，实测末状态
-   `1 0 1 0 0.02` 里 `packing` 与 `gateSealed` 均为 1，状态比对是精确的；
-   仍**未覆盖**的是 `ventSealed = 1` 的路径（本 case 没有排气 patch）——
-   要覆盖它需要把 case 的一个 patch 改成 `moldingVentVelocity`（留在 062
-   候选里，属"锦上添花"）；
+1. ~~`moldingStage` 的密封状态持久化~~：**已全部覆盖**（见 §3a）——载体虽然
+   静止，但 α≡1 使 `max(alpha) ≥ ventSealAlpha` 与 V/P 切换都触发；再把
+   `hotEnd` 改成排气口（`moldingVentVelocity` + `moldingVentPressure`）后，
+   实测末状态 **`1 0 1 1 0.02`**：`packing`、`gateSealed`、`ventSealed` 三者
+   皆 1，且连续跑与重启跑的状态行**逐字段一致**（精确比对，无需容差）；
 2. **自适应时间步下的重启不可逐位复现**：`adjustTimeStep on` 时 dt 的历史
    不持久化（重启从字典的 `deltaT` 重新起算，上游同行为），所以这类 case 的
    重启只能到容差级一致——值得写进 README 的"重启"说明，避免被误读为

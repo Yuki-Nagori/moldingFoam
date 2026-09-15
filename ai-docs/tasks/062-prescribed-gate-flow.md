@@ -1,6 +1,6 @@
 # 062 — 流量受控浇口（逐浇口给定流量，其余按阻力分配）
 
-- 状态：planned（设计已定稿，可直接执行；本轮先纠正 058 §2d 的错误论据）
+- 状态：planned（设计已定稿 + **已做过一轮实现尝试并回退**，四条实测教训见 §7，可直接接着做）
 - 优先级：P2
 - 依赖：016/026（流道网络）、058（树拓扑与阀时序）、030（工艺曲线）
 - 预估规模：2–3 天（含两个求解器 + 用例 + 敏感性实验）
@@ -86,3 +86,40 @@
 
 > 相关：058（树拓扑/阀时序；§2d 的错误论据已补记更正）、030（总流量曲线）、
 > 061 与 `diagnostics.md` §4c（敏感性实验的纪律）。
+
+## 7. 实现尝试记录（2026-09-15，已回退；四条实测教训）
+
+按 §2/§3 实做了一遍（扁平 `splitValved` + 树 `solveTree` + 三处派发 + 解析 +
+4 条模型测试），结果：
+
+- **模型层全绿**：给定浇口保流量（1e-06）、自由浇口吃剩余（2e-06）、
+  **阀优先于给定值**（关阀后 0、自由浇口吃满 3e-06）、树里给定叶子
+  （8e-07 + 2.2e-06）、无自由浇口时压降取流量加权平均（3.65e+06 Pa）——
+  §2 的语义在模型层已被证实可实现；
+- **用例层全红**：五个 runner 用例（multiGate/runnerNetwork/runnerProfile/
+  runnerTree/runnerValve）启动即崩。根因：**`PtrList` 的拷贝构造在含空项时
+  直接 `abort`**，而 `moldingInletVelocity` 的 `clone()` 会拷贝
+  `moldingRunnerNetwork`（`new moldingRunnerNetwork(*pivpvf.network_)`），
+  我把 `gateFlowProfile_.setSize(n)` 造出 n 个空项 → 默认拷贝构造炸掉。
+  模型测试不拷贝网络 → 绿；用例一拷贝 → 红（这个"模型绿、用例红"的分裂
+  很有诊断价值）。
+
+**四条教训（下次直接照做）**：
+
+1. `Function1s::unitSets` **没有默认构造** → 用
+   `Function1<scalar>::New(name, unitSet(dimTime), unitSet(dimVolume/dimTime),
+   dict)`（已编译通过）；
+2. `Function1::New(name, …)` 的 `name` 是**字典里的条目名**（它按该名去 dict
+   里找子字典）→ scalar 简写 `gateFlowRate` 必须包成条目
+   （`{"gateFlowRate": {"type": "constant", "value": q}}`），否则报
+   `keyword gateFlowRate is undefined`；
+3. `PtrList` 必须按闸口数 `setSize`（且 `prescribed()` 要做边界检查），否则
+   无 profile 的网络会越界索引；
+4. **阻塞点**：`PtrList` 含空项时不可拷贝 → 必须给 `moldingRunnerNetwork`
+   写**显式拷贝构造**（逐成员列出）或换容器（如按闸口名索引的
+   `HashTable<autoPtr<Function1<scalar>>>`）；且验收**必须包含用例层**，
+   只跑模型测试会给出假绿。
+
+回退原因：本轮余量不足以完成"显式拷贝构造 + 重建 + 五用例回归 + 敏感性"
+这一整套验证，按本仓库标准不提交未验证的网络改动。**语义设计不变**（§2），
+代码从 §3 的位置接着做即可。

@@ -31,13 +31,18 @@ KAPPA = ALPHA*DT/H
 def read_D(path):
     with open(path) as handle:
         text = handle.read()
+    section = text.split("boundaryField", 1)[0]
     m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*(\d+)"
-                  r"\s*\((.*?)\)\s*;", text, re.S)
-    if not m:
+                  r"\s*\((.*)", section, re.S)
+    if m:
+        n = int(m.group(1))
+        rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
+        return [[float(v) for v in row] for row in rows[:n]]
+    u = re.search(r"internalField\s+uniform\s*\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", section)
+    if u:
+        return [[float(v) for v in u.groups()]]
+    else:
         return None
-    n = int(m.group(1))
-    rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
-    return [[float(v) for v in row] for row in rows[:n]]
 
 
 def main():
@@ -59,6 +64,8 @@ def main():
     if D is None or nx < 2 or ny < 2:
         print("FAIL: cannot read the displacement field")
         sys.exit(1)
+    if len(D) == 1:
+        D = D*(nx*ny)
     if len(D) != nx*ny:
         ratio = ny/float(nx)
         nx = max(2, round((len(D)/ratio)**0.5))

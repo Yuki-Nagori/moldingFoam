@@ -31,18 +31,14 @@ def read_vector_field(path):
     with open(path, errors="replace") as f:
         txt = f.read()
 
-    m = re.search(
-        r"internalField\s+nonuniform\s+List<vector>\s*\n\s*\d+\s*\n\((.*?)\)\s*;",
-        txt,
-        re.S,
-    )
-    if m is None:
-        return None
-
-    return [
-        [float(x) for x in g.split()]
-        for g in re.findall(r"\(([^()]*)\)", m.group(1))
-    ]
+    section = txt.split("boundaryField", 1)[0]
+    m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*(\d+)\s*\((.*)", section, re.S)
+    if m:
+        n = int(m.group(1))
+        rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
+        return [[float(x) for x in g] for g in rows[:n]]
+    u = re.search(r"internalField\s+uniform\s*\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", section)
+    return [[float(x) for x in u.groups()]] if u else None
 
 
 def read_sigma_xx(path):
@@ -93,6 +89,8 @@ def main():
     if D is None or nx < 2 or ny < 2:
         print("FAIL: cannot read the displacement field")
         sys.exit(1)
+    if len(D) == 1:
+        D = D*(nx*ny)
     if len(D) != nx*ny:
         ratio = ny/float(nx)
         nx = max(2, round((len(D)/ratio)**0.5))

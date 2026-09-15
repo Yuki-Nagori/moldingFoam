@@ -189,6 +189,15 @@ private:
         //- Relative flow tolerance for the bounded fixed-point solve
         scalar treeTolerance_;
 
+        //- Optional last-point cache; keyed by flow rate and physical time
+        bool cacheRunnerSolve_;
+        mutable bool cacheValid_;
+        mutable scalar cacheQ_;
+        mutable scalar cacheT_;
+        mutable scalar cacheDp_;
+        mutable scalarList cacheLeafQ_;
+        mutable scalarList cacheLeafT_;
+
 
     // Private Member Functions
 

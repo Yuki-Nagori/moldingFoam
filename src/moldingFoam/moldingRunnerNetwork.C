@@ -66,7 +66,14 @@ Foam::moldingRunnerNetwork::moldingRunnerNetwork(const dictionary& dict)
     gateOpenTime_(),
     gateCloseTime_(),
     anyValveTiming_(false),
-    treeTolerance_(dict.lookupOrDefault<scalar>("treeConvergenceTolerance", 1e-14))
+    treeTolerance_(dict.lookupOrDefault<scalar>("treeConvergenceTolerance", 1e-14)),
+    cacheRunnerSolve_(dict.lookupOrDefault<Switch>("cacheRunnerSolve", false)),
+    cacheValid_(false),
+    cacheQ_(0),
+    cacheT_(0),
+    cacheDp_(0),
+    cacheLeafQ_(),
+    cacheLeafT_()
 {
     if (cp_ <= 0)
     {
@@ -748,6 +755,20 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
     leafQ.setSize(nLeaves);
     leafT.setSize(nLeaves);
 
+    if
+    (
+        cacheRunnerSolve_
+     && cacheValid_
+     && Q == cacheQ_
+     && t == cacheT_
+     && cacheLeafQ_.size() == nLeaves
+    )
+    {
+        leafQ = cacheLeafQ_;
+        leafT = cacheLeafT_;
+        return cacheDp_;
+    }
+
     if (n == 0 || nLeaves == 0)
     {
         leafQ = 0;
@@ -936,6 +957,16 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
 
         leafQ[g] = q[i];
         leafT[g] = (active[i] ? Tout[i] : TfeedOut);
+    }
+
+    if (cacheRunnerSolve_)
+    {
+        cacheQ_ = Q;
+        cacheT_ = t;
+        cacheDp_ = dpChild;
+        cacheLeafQ_ = leafQ;
+        cacheLeafT_ = leafT;
+        cacheValid_ = true;
     }
 
     return dpChild;

@@ -11,6 +11,15 @@ boundaryField
     inlet
     {
         type            moldingPrghPressure;
+        runner
+        {
+            inletTemperature 480;
+            cp               2400;
+            rho              800;
+            viscosity { type powerLaw; K 1e4; n 0.5; }
+            feed { length 0.05; diameter 0.004; }
+            gates { gate1 { length 0.01; diameter 0.002; } }
+        }
         refValue        uniform 1e5;
         refGradient     uniform 0;
         valueFraction   uniform 0;

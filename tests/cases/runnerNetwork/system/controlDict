@@ -10,7 +10,7 @@ libs            ("libmoldingFoam.so");
 startFrom       startTime;
 startTime       0;
 stopAt          endTime;
-endTime         0.5;
+endTime         1.8;
 deltaT          1e-05;
 writeControl    adjustableRunTime;
 writeInterval   0.5;
@@ -29,6 +29,18 @@ maxDeltaT       0.01;
 
 functions
 {
+    inletPressure
+    {
+        type            surfaceFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             yes;
+        patch           inlet;
+        operation       areaAverage;
+        fields          (p_rgh);
+    }
     inletMassFlow
     {
         type            surfaceFieldValue;

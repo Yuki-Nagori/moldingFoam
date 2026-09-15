@@ -375,7 +375,7 @@ $ xmake run test
 | `moldSteady` | 400 周期模温收敛到周期稳态（单周期增量 0.583 → 9.24e-4 K，`verify-mold-steady.py`） |
 | `gateFreeze` | 闸口温度型封冻判据：闸口 480 K、阈值 485 K → 首保压步封冻 |
 | `coolantChannel` | 1D 冷却水通道：350 K 水把 300 K 模温推高（沿程推进 + 并行一致，`verify-coolant-channel.py`） |
-| `runnerNetwork` | 入口流量由 1D 流道网络分流给出，入口质量流与 ρQ 一致（`verify-runner-network.py`） |
+| `runnerNetwork` | 入口流量由 1D 流道网络分流给出（填充期质量流与 ρQ 一致 2.4%），并覆盖**保压期闸口压力 = 保压目标 − 网络压降**（压降 >10% 目标的 4 个样本中位偏差 1.8%；判据用中位数以避开保压瞬态的个别振荡步）（`verify-runner-network.py`） |
 | `crystallization` | Nakamura/Avrami 结晶动力学：χ 单调有界增长到 0.99999，潜热耦合（`verify-crystallization.py`） |
 | `crystallizationAdvection` | χ 随流输运：新鲜熔体（χ=0）驱替初始 χ=1，熔体加权均值 0.029（`verify-crystallization-advection.py`） |
 | `fiberOrientationAdvection` | 取向张量随流输运：初始 a=xx 被 a=I/3 驱替，平均 a_xx=0.072，tr(a) 保持（`verify-fiber-orientation-advection.py`） |
@@ -790,8 +790,11 @@ Hagen–Poiseuille 压降
 - 求解器耦合：`0/U` 的 `moldingInletVelocity` 可选
   `runner`/`gate`/`totalFlowRate`，入口流量取网络分流（按阻力分配）；
   `0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期闸口压力 =
-  保压目标 − 当前流量下的流道压降；两者（含 `moldingRunnerTemperature`）
-  都把当前时间传给网络，故阀时序在三处边界上一致；
+  保压目标 − 当前流量下的流道压降（**这条路径由 `runnerNetwork` 用例
+  覆盖**：该 case 填满后进入保压，验证器按幂律解析式核对
+  `p_gate = p_保压 − Δp(Q)`，取压降占目标 >10% 的样本中位偏差 1.8%）；
+  两者（含 `moldingRunnerTemperature`）都把当前时间传给网络，故阀时序在
+  三处边界上一致；
 - **网络总流量的来源**（058 起）：有 `runner` 时网络按"总流量"分流，总流量
   取 030 的 `volumetricFlowRateProfile`（给了就用它），否则用标量
   `totalFlowRate`；没有 `runner` 时仍按 030 的原语义（曲线优先于
@@ -1426,6 +1429,9 @@ boundaryField { ... }
 - 已知边界：**非均匀** ε* 的域内源 `div(threeK*eps*)` 尚未接入（上游
   solidDisplacement 无通用源钩子，需求解器级扩展）——取向梯度工况
   仍走既有标量等效映射（warpageAniso 2.7%）。
+  > 补记 2026-09-15：该域内源已由**任务 040** 交付（`moldingEigenstrain`
+  > 域内源 + 符号修正，永久基准 `eigenstrainGraded` 偏差 0.83% < 1.5%，
+  > 已接入 xmake/nightly），上面这条"尚未接入"已过期。
 
 **v1.23**（冻死短射防线，任务 038 T 失稳跟进）：
 
@@ -1454,6 +1460,10 @@ boundaryField { ... }
   20 m/s 才指示面积/流量错配；
 - 已知跟进：细网格 + 冷壁 + 小浇口的**填充期**能量方程失稳（T 残差
   先 NaN）已在本库复现（038 §6e），与保压阶跃不同源，另行处理。
+  > 补记 2026-09-15：已由**本版（v1.23）的冻死短射检测**解决——根因是
+  > 样品熔体导热极高导致型腔早已冻死而入口仍强制流量（038 §6e「填充期
+  > T 失稳（已修复）」），冻结占比判据 `freezeOffTemperature`/
+  > `freezeOffFraction` 封闸后稳定收尾，永久用例 `freezeOffGuard`。
 
 **v1.21**（充填稳定性防线与输出场契约，任务 038）：
 

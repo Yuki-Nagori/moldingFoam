@@ -10,12 +10,12 @@ injection
 }
 packing
 {
-    switchFraction   1;
+    switchFraction   0.98;
     switchPressure   1e9;
     pressure
     {
         type            constant;
-        value           1e5;
+        value           5e6;
     }
 }
 cooling

@@ -66,6 +66,28 @@ def completed_time(case):
     return max(times)[1]
 
 
+def section_rows(rows, nx, ny, x, length=30.0):
+    """Interpolate cell-centre rows at one fixed physical x section."""
+    if not (0.0 < x < length) or nx < 2 or len(rows) != nx*ny:
+        raise ValueError('section lies outside the mesh or field size is invalid')
+    centres = [(i + 0.5)*length/nx for i in range(nx)]
+    if x <= centres[0]:
+        left = right = 0
+    elif x >= centres[-1]:
+        left = right = nx - 1
+    else:
+        right = next(i for i, value in enumerate(centres) if value >= x)
+        left = right - 1
+    weight = 0.0 if left == right else (x-centres[left])/(centres[right]-centres[left])
+    return [[u + weight*(v-u) for u, v in zip(rows[left+nx*j], rows[right+nx*j])]
+            for j in range(ny)]
+
+
+def section_average(rows, nx, ny, x, length=30.0):
+    values = section_rows(rows, nx, ny, x, length)
+    return [sum(row[k] for row in values)/ny for k in range(len(values[0]))]
+
+
 def measure(quantity, value, reference, error, threshold, time):
     if not all(math.isfinite(v) for v in (value, reference, error, threshold, float(time))):
         raise ValueError('non-finite metric')

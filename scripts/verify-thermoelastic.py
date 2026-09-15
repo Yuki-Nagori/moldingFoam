@@ -27,7 +27,7 @@ L = 30.0
 KAPPA = ALPHA*DT/H
 
 
-from validation_metrics import mesh_dimensions, field, completed_time, measure
+from validation_metrics import mesh_dimensions, field, completed_time, measure, section_average
 
 
 def main():
@@ -36,12 +36,12 @@ def main():
     nx, ny = mesh_dimensions(case_dir)
     D = field(os.path.join(case_dir, t_last, "D"), "vector", 3, nx*ny)
 
-    # Sample the last cell-centre column and average across the thickness.
-    dyEnd = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
+    # Sample one fixed physical section at every mesh level.
+    xSample = 29.5
+    dyEnd = section_average(D, nx, ny, xSample)[1]
 
     # Compare at the sampled section centre.
-    xEnd = (nx - 0.5)*L/nx
-    dAna = KAPPA*xEnd*xEnd/2
+    dAna = KAPPA*xSample*xSample/2
 
     err = abs(abs(dyEnd) - dAna)/dAna
 

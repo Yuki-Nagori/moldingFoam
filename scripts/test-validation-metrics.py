@@ -55,7 +55,7 @@ class ValidationTests(unittest.TestCase):
                               env=env, capture_output=True, text=True)
 
     def test_threshold_and_invalid_data_are_distinct(self):
-        expected = 1.1e-5*20*(1.5*30/2)**2/2
+        expected = 1.1e-5*20*29.5**2/2
         self.path.write_text(f'internalField uniform (0 {-0.9*expected} 0);')
         self.assertNotEqual(self.run_verifier(False).returncode, 0)
         result = self.run_verifier(True)
@@ -94,7 +94,7 @@ class ValidationTests(unittest.TestCase):
         with table.open() as handle:
             rows = list(csv.DictReader(handle, delimiter='\t'))
         self.assertEqual(len(rows), 9)
-        self.assertTrue(all(row['rc'] == '1' for row in rows))
+        self.assertTrue(all(row['value'] == '' for row in rows))
         self.assertEqual(len(list(table.parent.glob('*/runner.log'))), 9)
 
     def test_cht_scalar_faults(self):

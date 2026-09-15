@@ -222,6 +222,11 @@ of14 复读结果：48×80 基准最后三个窗口变化为 0.000830、0.000712
 warpagePlate 步骤，当前异常会失败并上传日志；探索矩阵的 MEASURED 模式
 不能绕过该防线。
 
+S1 采样口径已落地：两个结构 verifier 现在在所有网格使用固定物理截面
+`x=29.5 m` 的 cell-centre 线性插值，并用同一截面计算解析值；保留字段长度、
+有限性和层间应力检查。旧的“最后一列中心”结果只作为历史证据，不再用于
+跨网格收敛阶比较。
+
 新增 `scripts/diag/repro-structural-convergence.sh` 作为 S2 可重放入口：它对
 baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创建
 新鲜副本，默认每行 120 s 超时，输出 rc、墙钟、最终时间、静态收敛状态和日志

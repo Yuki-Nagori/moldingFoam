@@ -25,7 +25,7 @@ import os
 import sys
 
 
-from validation_metrics import mesh_dimensions, field, completed_time, measure
+from validation_metrics import mesh_dimensions, field, completed_time, measure, section_average, section_rows
 
 
 def main():
@@ -36,8 +36,9 @@ def main():
         raise ValueError("equal-layer benchmark requires an even ny")
     D = field(os.path.join(case_dir, t_last, "D"), "vector", 3, nx*ny)
 
-    # Average the last cell-centre column across all thickness layers.
-    dy = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
+    # Sample one fixed physical section at every mesh level.
+    xSample = 29.5
+    dy = section_average(D, nx, ny, xSample)[1]
 
     # Timoshenko bimetal, equal layers: kappa = 3 (eps_top - eps_bottom)
     # / (2 h); L = 30, h = 1
@@ -45,7 +46,7 @@ def main():
     h = 1.0
     dEps = 1e-3
     kappa = 3*dEps/(2*h)
-    expected = kappa*L*L/2
+    expected = kappa*xSample*xSample/2
 
     print("  bimetal curvature = {:.6e} 1/m".format(kappa))
     print("  free-end neutral-axis deflection = {:.6e} m "
@@ -61,7 +62,8 @@ def main():
 
     sigma = [row[0] for row in field(os.path.join(case_dir, t_last, "sigma"),
                                     "symmTensor", 6, nx*ny)]
-    column = [sigma[nx - 1 + nx*j] for j in range(ny)]
+    column = section_rows([[value] for value in sigma], nx, ny, xSample)
+    column = [row[0] for row in column]
     sBot = sum(column[:ny//2])/(ny//2)
     sTop = sum(column[ny//2:])/(ny//2)
     sInt = sum(column)/ny

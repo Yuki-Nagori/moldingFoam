@@ -86,12 +86,23 @@ def main():
         sys.exit(1)
 
     D = read_vector_field(os.path.join(case_dir, times[-1], "D"))
-    if D is None or len(D) != 48*16:
+    with open(os.path.join(case_dir, "system", "blockMeshDict")) as handle:
+        mesh = handle.read()
+    dims = re.findall(r"\)\s*\((\d+)\s+(\d+)\s+(\d+)\)", mesh)
+    nx, ny = (map(int, dims[0][:2]) if dims else (0, 0))
+    if D is None or nx < 2 or ny < 2:
         print("FAIL: cannot read the displacement field")
+        sys.exit(1)
+    if len(D) != nx*ny:
+        ratio = ny/float(nx)
+        nx = max(2, round((len(D)/ratio)**0.5))
+        ny = max(2, round(len(D)/float(nx)))
+    if nx*ny != len(D):
+        print("FAIL: displacement field size does not match mesh")
         sys.exit(1)
 
     # Free end: the i = 47 column, neutral axis = mean over 16 layers
-    dy = sum(D[47 + 48*j][1] for j in range(16))/16
+    dy = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
 
     # Timoshenko bimetal, equal layers: kappa = 3 (eps_top - eps_bottom)
     # / (2 h); L = 30, h = 1

@@ -213,12 +213,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Emit uncertainty matrix manifest
-        run: scripts/uncertainty-matrix.sh --emit | tee uncertainty-matrix.tsv
+      - name: Run uncertainty matrix
+        run: |
+          set -o pipefail
+          UNCERTAINTY_MATRIX_TIMEOUT=900 \
+            scripts/uncertainty-matrix.sh --run 2>&1 | tee uncertainty-matrix.txt
       - uses: actions/upload-artifact@v4
         with:
           name: nightly-uncertainty-matrix
-          path: uncertainty-matrix.tsv
+          path: |
+            uncertainty-matrix.txt
+            .uncertainty-matrix/**
           retention-days: 14
 
   report:

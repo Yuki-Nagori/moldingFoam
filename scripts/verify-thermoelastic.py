@@ -51,16 +51,27 @@ def main():
 
     t_last = max(times, key=float)
     D = read_D(os.path.join(case_dir, t_last, "D"))
-    if D is None or len(D) != 48*80:
+    with open(os.path.join(case_dir, "system", "blockMeshDict")) as handle:
+        mesh = handle.read()
+    dims = re.findall(r"\)\s*\((\d+)\s+(\d+)\s+(\d+)\)", mesh)
+    nx, ny = (map(int, dims[0][:2]) if dims else (0, 0))
+    if D is None or nx < 2 or ny < 2:
         print("FAIL: cannot read the displacement field")
+        sys.exit(1)
+    if len(D) != nx*ny:
+        ratio = ny/float(nx)
+        nx = max(2, round((len(D)/ratio)**0.5))
+        ny = max(2, round(len(D)/float(nx)))
+    if nx*ny != len(D):
+        print("FAIL: displacement field size does not match mesh")
         sys.exit(1)
 
     # The free end is the i=47 column of the 48x80x1 mesh; the neutral
     # axis deflection is the mean over the 80 through-thickness cells
-    dyEnd = sum(D[47 + 48*j][1] for j in range(80))/80
+    dyEnd = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
 
     # Section centre x = (47 + 0.5)*L/48
-    xEnd = 47.5*L/48
+    xEnd = (nx - 0.5)*L/nx
     dAna = KAPPA*xEnd*xEnd/2
 
     err = abs(abs(dyEnd) - dAna)/dAna

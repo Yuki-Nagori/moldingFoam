@@ -59,6 +59,6 @@ TSV 清单，避免本地误触发大规模运行；CI 编排器可消费同一�
 
 ### nightly 收口复核 2026-09-15
 
-nightly run `34946060723` 的 `uncertainty-manifest` job 已通过并上传九行清单；
-该 workflow 当前验证的是矩阵定义和可追溯 artifact，九行实际求解仍需资源预算
-允许后单独执行，故本任务保留 `in-progress`。
+nightly run `34946060723` 的 `uncertainty-manifest` job 已通过并上传九行清单。
+后续 workflow 已改为调用脚本 `--run`，在新鲜副本中实际执行九行组合并上传
+结果表与逐行日志；待下一次 nightly 绿后再标记本任务 done。

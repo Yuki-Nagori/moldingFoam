@@ -53,3 +53,7 @@ of14 最小载体已补测：新鲜 `startTime=1`、`nCycles=3`，由 `1/` 初�
 成功写出 `constant/moldingInitial/alpha1Initial`，运行正常结束。初次失败仅因
 载体缺少 OpenFOAM 要求的 `1/` 初态目录，补齐后通过；完整中断恢复和重分解仍待
 nightly 契约。
+
+补充验收：同一 of14 会话的连续路径与 1 步中断/`latestTime` 续跑在 `T`、`p`
+文件上逐字相同，并保留周期初态快照。np2 重分解载体因缺少与该 case 匹配的
+分解契约未纳入通过结论，重分解仍交 nightly。

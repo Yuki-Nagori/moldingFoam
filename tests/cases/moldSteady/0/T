@@ -30,7 +30,11 @@ boundaryField
     {
         type             moldingMoldTemperature;
         heatCapacity     0.5;
-        wallResistance   1e-3;   // [m^2K/W] deep-mould wall resistance (task 043: the non-zero branch was never exercised)      // [J/K] small so the cycles converge fast
+        wallResistance   1e-3;
+        // Deep-mould temperature behind that resistance (task 043 named this
+        // pair but only the resistance was wired; 300 K matches the water and
+        // initial temperatures of this case)
+        deepMoldTemperature 300;   // [m^2K/W] deep-mould wall resistance (task 043: the non-zero branch was never exercised)      // [J/K] small so the cycles converge fast
         waterHTC         1000;     // [W/m^2/K]
         wettedArea       1e-4;     // [m^2]
         waterTemperature 300;      // [K]

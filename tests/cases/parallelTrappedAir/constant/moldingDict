@@ -28,4 +28,10 @@ viscousDissipation  false;
 // Weld-line prediction: record the fill time of every cell and the
 // trapped-air field
 writeFillTime     true;
+
+// Melt-fraction threshold below which a cell seeds the trapped-air flood
+// fill (task 059: the only solver lookup key no case assigned; the value is
+// the default, this makes the assignment explicit - the absolute air-cell
+// count has no analytic expectation, so it is not asserted)
+trapAirAlpha      0.5;
 trapAirInterval   100;

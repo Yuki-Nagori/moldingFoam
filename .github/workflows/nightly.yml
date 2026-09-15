@@ -59,6 +59,7 @@ jobs:
           xmake run stefan 2>&1 | tee stefan.txt
           xmake run anisoConduction 2>&1 | tee anisoConduction.txt
           xmake run anisoViscosity 2>&1 | tee anisoViscosity.txt
+          xmake run restartContinuity 2>&1 | tee restartContinuity.txt
           xmake run thermoelastic 2>&1 | tee thermoelastic.txt
           xmake run coolantWater 2>&1 | tee coolantWater.txt
           xmake run coolantMold 2>&1 | tee coolantMold.txt
@@ -72,6 +73,7 @@ jobs:
             validation/stefan/log.foamRun
             validation/anisoConduction/log.foamRun
             validation/anisoViscosity/log.foamRun
+            validation/restartContinuity/log.foamRun
             validation/thermoelastic/log.foamRun
             validation/coolantWater/log.foamRun
             validation/coolantMold/log.foamRun

@@ -1,0 +1,2 @@
+moldingFoam: read .*moldingDict
+End

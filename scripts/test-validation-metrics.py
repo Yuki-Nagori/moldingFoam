@@ -15,6 +15,39 @@ SCRIPTS = Path(__file__).resolve().parent
 
 
 class ValidationTests(unittest.TestCase):
+    def test_runner_preserves_prepared_inputs_inside_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            foam = root/'foam/bin/tools'
+            foam.mkdir(parents=True)
+            (foam/'RunFunctions').write_text('')
+            commands = root/'bin'
+            commands.mkdir()
+            # Stop at mesh entry, after real runner cleanup, without a solver.
+            mesh = commands/'blockMesh'
+            mesh.write_text('#!/bin/sh\ntest -f 0/T || exit 42\nexit 23\n')
+            mesh.chmod(0o755)
+            env = dict(os.environ, WM_PROJECT_DIR=str(root/'foam'),
+                       PATH=str(commands)+os.pathsep+os.environ['PATH'])
+            for location in ('validation/tracked', '.uncertainty-matrix/copy'):
+                case = root/location
+                (case/'0').mkdir(parents=True)
+                (case/'system').mkdir()
+                (case/'system/verifier').write_text('verify-thermoelastic.py\n')
+                initial = case/'0/T'
+                initial.write_text('prepared profile\n')
+                tracked = location.startswith('validation/')
+                if tracked:
+                    subprocess.run(['git', '-C', str(root), 'add', location], check=True)
+                generated = case/'0/generated'
+                generated.write_text('generated field\n')
+                result = subprocess.run(['bash', str(SCRIPTS/'run-validation.sh'), str(case)],
+                                        env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 23, result.stderr)
+                self.assertEqual(initial.read_text(), 'prepared profile\n')
+                self.assertEqual(generated.exists(), not tracked)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

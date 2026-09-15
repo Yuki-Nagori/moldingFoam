@@ -44,13 +44,15 @@ verifier=$(sed -n 's/^[[:space:]]*\([^[:space:]]*\)[[:space:]]*$/\1/p' system/ve
 }
 
 rm -rf postProcessing constant/polyMesh log.* 0.[0-9]* [1-9]*
-# The solver writes registered phase fields into the time-0 directories at
-# startTime; restore them from git so a repeated run starts clean (task 055)
+# Remove generated fields only from tracked initial-state directories.
+# Matrix copies inside this repository are entirely untracked: cleaning them
+# would delete their prepared T/e/D inputs, including grid-scaled profiles.
 if git -C "$caseDir" rev-parse --is-inside-work-tree > /dev/null 2>&1
 then
     for d in 0 */0
     do
         [ -d "$d" ] || continue
+        [ -n "$(git -C "$caseDir" ls-files -- "$d/")" ] || continue
         git -C "$caseDir" clean -fdxq -- "$d" 2>/dev/null || true
     done
 fi

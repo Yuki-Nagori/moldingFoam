@@ -140,6 +140,9 @@ Description
 #include "IFstream.H"
 #include "IOstreams.H"
 
+#include <cmath>
+#include <ctime>
+
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -1097,6 +1100,232 @@ void runnerNetworkTests()
         (
             "runnerNetwork: wall-coupled melt temperature exponential",
             relDiff(network.gateTemperature(0, Q), expected) < 1e-12
+        );
+    }
+}
+
+
+const char* runnerTreeConstantDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+tree
+{
+    m1 { parent feed; length 0.05; diameter 0.005; }
+    g1 { parent m1;   length 0.02; diameter 0.004; }
+    g2 { parent m1;   length 0.02; diameter 0.003; }
+}
+)";
+
+// The same two gates as runnerConstantTwoGatesDictString, written as a
+// one-level tree: the tree path must agree with the flat path
+const char* runnerTreeFlatDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type constant; mu 100; }
+feed { length 0.1; diameter 0.006; }
+tree
+{
+    g1 { parent feed; length 0.02; diameter 0.004; }
+    g2 { parent feed; length 0.02; diameter 0.002; }
+}
+)";
+
+const char* runnerTreePowerLawDictString = R"(
+inletTemperature 480;
+cp 2400;
+rho 800;
+viscosity { type powerLaw; K 1e4; n 0.5; }
+feed { length 0.1; diameter 0.006; }
+tree
+{
+    m1 { parent feed; length 0.05; diameter 0.005; }
+    m2 { parent m1;   length 0.03; diameter 0.004; }
+    g1 { parent m2;   length 0.02; diameter 0.003; }
+    g2 { parent m2;   length 0.02; diameter 0.002; }
+    g3 { parent m1;   length 0.02; diameter 0.0025; }
+}
+)";
+
+
+void runnerTreeTests()
+{
+    const scalar Q = 3e-6;
+
+    // Two-level constant-viscosity tree against the exact series/parallel
+    // resistance network: R_gate = dp/Q, R_series additive, R_parallel
+    // = R1 R2/(R1 + R2)
+    {
+        IStringStream is(runnerTreeConstantDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        // The gates are the leaves, in dictionary order
+        checkBool
+        (
+            "runnerTree: gates are the leaves in dictionary order",
+            network.treeMode() && network.nGates() == 2
+         && network.gate(0).name == "g1" && network.gate(1).name == "g2"
+        );
+
+        // Segment flows expressed through the static Hagen-Poiseuille helper
+        // at the same total flow
+        const scalar dpg1 =
+            moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.004, Q);
+        const scalar dpg2 =
+            moldingRunnerNetwork::hagenPoiseuille(100, 0.02, 0.003, Q);
+
+        const scalar dpPar = dpg1*dpg2/(dpg1 + dpg2);
+
+        const scalar expected =
+            moldingRunnerNetwork::hagenPoiseuille(100, 0.1, 0.006, Q)
+          + moldingRunnerNetwork::hagenPoiseuille(100, 0.05, 0.005, Q)
+          + dpPar;
+
+        const scalar Q1 = network.gateFlow(0, Q);
+        const scalar Q2 = network.gateFlow(1, Q);
+
+        // The manifold carries the total flow, the leaves split by 1/R
+        const scalar Q1e = Q*dpg2/(dpg1 + dpg2);
+        const scalar Q2e = Q*dpg1/(dpg1 + dpg2);
+
+        Info<< "    tree (constant) dp = " << network.pressureDrop(Q)
+            << " Pa (expected " << expected << " Pa), Q1 = " << Q1
+            << " (expected " << Q1e << ") m^3/s" << endl;
+
+        checkBool
+        (
+            "runnerTree: two-level split reproduces the resistance network",
+            relDiff(network.pressureDrop(Q), expected) < 1e-12
+         && relDiff(Q1, Q1e) < 1e-10
+         && relDiff(Q2, Q2e) < 1e-10
+         && relDiff(Q1 + Q2, Q) < 1e-10
+        );
+    }
+
+    // A one-level tree is the legacy flat network: the two code paths must
+    // give the same answer for the same physical gates
+    {
+        IStringStream isTree(runnerTreeFlatDictString);
+        dictionary dictTree(isTree);
+        moldingRunnerNetwork tree(dictTree);
+
+        IStringStream isFlat(runnerConstantTwoGatesDictString);
+        dictionary dictFlat(isFlat);
+        moldingRunnerNetwork flat(dictFlat);
+
+        Info<< "    flat tree dp = " << tree.pressureDrop(Q)
+            << " Pa, gates dp = " << flat.pressureDrop(Q) << " Pa" << endl;
+
+        checkBool
+        (
+            "runnerTree: one-level tree equals the flat feed + gates network",
+            relDiff(tree.pressureDrop(Q), flat.pressureDrop(Q)) < 1e-10
+         && relDiff(tree.gateFlow(0, Q), flat.gateFlow(0, Q)) < 1e-10
+         && relDiff(tree.gateFlow(1, Q), flat.gateFlow(1, Q)) < 1e-10
+        );
+    }
+
+    // Three-level power-law tree against the analytic merged coefficient:
+    // a path of segments sharing a flow adds a = sum L/D^(3n+1), and
+    // parallel branches split as Qi/Qj = (a_j/a_i)^(1/n)
+    {
+        IStringStream is(runnerTreePowerLawDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const scalar K = 1e4;
+        const scalar np = 0.5;
+        const scalar invn = 1/np;
+
+        auto aOf = [np](const scalar L, const scalar D)
+        {
+            return L/std::pow(D, 3*np + 1);
+        };
+
+        const scalar af = aOf(0.10, 0.006);
+        const scalar am1 = aOf(0.05, 0.005);
+        const scalar am2 = aOf(0.03, 0.004);
+        const scalar ag1 = aOf(0.02, 0.003);
+        const scalar ag2 = aOf(0.02, 0.002);
+        const scalar ag3 = aOf(0.02, 0.0025);
+
+        // Equivalent coefficients bottom-up, then the total. A segment adds
+        // a = L/D^(3n+1), parallel branches combine as
+        // (sum a_i^(-1/n))^(-n), and with the pi of the Hagen-Poiseuille
+        // prefactor restored:
+        //   dp = 128 K (32/pi)^(n-1) L Q^n / (pi D^(3n+1))
+        const scalar aEqm2 =
+            am2 + std::pow(std::pow(ag1, -invn) + std::pow(ag2, -invn), -np);
+        const scalar aPar1 =
+            std::pow(std::pow(aEqm2, -invn) + std::pow(ag3, -invn), -np);
+
+        const scalar C =
+            128*K*std::pow(32/constant::mathematical::pi, np - 1)
+           /constant::mathematical::pi;
+
+        const scalar dpExp = C*(af + am1 + aPar1)*std::pow(Q, np);
+
+        const scalar Qg3e =
+            Q*std::pow(ag3, -invn)/(std::pow(aEqm2, -invn) + std::pow(ag3, -invn));
+        const scalar Qm2e = Q - Qg3e;
+        const scalar Qg1e =
+            Qm2e*std::pow(ag1, -invn)/(std::pow(ag1, -invn) + std::pow(ag2, -invn));
+        const scalar Qg2e = Qm2e - Qg1e;
+
+        const scalar Qg1 = network.gateFlow(0, Q);
+        const scalar Qg2 = network.gateFlow(1, Q);
+        const scalar Qg3 = network.gateFlow(2, Q);
+
+        Info<< "    tree (powerLaw) dp = " << network.pressureDrop(Q)
+            << " Pa (expected " << dpExp << " Pa)" << endl;
+        Info<< "    tree (powerLaw) gates = " << Qg1 << " " << Qg2 << " "
+            << Qg3 << " m^3/s (expected " << Qg1e << " " << Qg2e << " "
+            << Qg3e << ")" << endl;
+
+        checkBool
+        (
+            "runnerTree: three-level split follows the merged power-law "
+            "coefficient",
+            relDiff(network.pressureDrop(Q), dpExp) < 1e-6
+         && relDiff(Qg1, Qg1e) < 1e-6
+         && relDiff(Qg2, Qg2e) < 1e-6
+         && relDiff(Qg3, Qg3e) < 1e-6
+         && relDiff(Qg1 + Qg2 + Qg3, Q) < 1e-6
+        );
+    }
+
+    // Bounded cost: one level of fixed-point iteration over the tree. The
+    // first attempt nested a solve per level and timed the model tests out,
+    // so the budget is asserted rather than assumed (ai-docs/tasks/058).
+    {
+        IStringStream is(runnerTreePowerLawDictString);
+        dictionary dict(is);
+        moldingRunnerNetwork network(dict);
+
+        const label nReps = 2000;
+
+        const std::clock_t t0 = std::clock();
+
+        scalar sum = 0;
+
+        for (label i = 0; i < nReps; ++i)
+        {
+            sum += network.pressureDrop(Q);
+        }
+
+        const scalar cpu = scalar(std::clock() - t0)/CLOCKS_PER_SEC;
+
+        Info<< "    " << nReps << " three-level tree solves in " << cpu
+            << " s CPU (sum " << sum << " Pa)" << endl;
+
+        checkBool
+        (
+            "runnerTree: bounded solve cost (2000 solves < 5 s CPU)",
+            cpu < 5.0
         );
     }
 }
@@ -2133,6 +2362,7 @@ int main()
     fiberOrientationTests();
     pressureDependentViscosityTests();
     runnerNetworkTests();
+    runnerTreeTests();
     ventOrificeTests();
     crossWlfTests();
 

@@ -129,7 +129,7 @@
 | [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b | 3–5 周 |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 | 3–6 周 |
 | [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
-| [058](tasks/058-runner-tree-topology.md) | 一维流道拓扑扩展：任意树 + 逐浇口时序 | P2 | planned（stage 1 首版因嵌套求解超时已回退，设计要点见 §2a） | 016/026/030 | 1–2 周 |
+| [058](tasks/058-runner-tree-topology.md) | 一维流道拓扑扩展：任意树 + 逐浇口时序 | P2 | in-progress（**stage 1 树拓扑已落地**：`tree` 子字典 + 单层阻力加权不动点、上限 500、模型测试 4 项 + 新用例 `runnerTree`；逐浇口阀时序待做） | 016/026/030 | 1–2 周 |
 
 ### 验证与不确定度（8 项）
 

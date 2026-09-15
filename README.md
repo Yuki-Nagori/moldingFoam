@@ -384,6 +384,7 @@ $ xmake run test
 | `weldLine` | 双端充填熔接痕：位于中心面 ±4 cell（实测 2.5 cell），截面填充时间对称 2.5%（`verify-weld-line.py`） |
 | `processProfile` | 两段注射流量曲线 + 时间型 V/P 切换：入口质量流与 ρQ 一致（≤2.3%），切换 0.4005 s（`verify-process-profile.py`） |
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
+| `runnerTree` | 流道树拓扑（两级、各支路带自己的管段）：分流比 15.38 vs 解析 15.25（0.87%；扁平网络会是 32）（`verify-runner-tree.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
 | `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille，**注入压力梯度 vs 1D 润滑（Hele-Shaw）参考 −3.09%**（≤10%，残差=8 层网格半格壁面剪切的 −3.13%，`verify-fountain-flow.py`） |
 | `moldCHT-cycle` | 多周期多区域 CHT：6 周期模温 354→432 K，每周期增量 15.0→11.0 K 单调递减（末值/首值 0.74，CI x86_64）（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
@@ -747,23 +748,42 @@ K(T,p) = Kmax·exp(−4ln2·(T−Tmax(p))²/W²),  Tmax(p) = Tmax0 + dTdp·p
   `div(phi,chi)`、`fvSolution` 加 `(chi|chiFinal)`；
 - 缺省不写时行为与 001 完全一致；`η(χ)/ρ(χ)` 耦合为后续扩展。
 
-### 1D 流道网络（`runner`，任务 016）
+### 1D 流道网络（`runner`，任务 016/058）
 
-`Foam::moldingRunnerNetwork` 把流道系统表示为主流道（串联）+ 多浇口
-（并联）的圆管网络：每段按广义 Hagen–Poiseuille 压降
+`Foam::moldingRunnerNetwork` 把流道系统表示为圆管网络：每段按广义
+Hagen–Poiseuille 压降
 `dp = 128·η·L·Q/(π·D⁴)`（η 由常数/幂律/CrossWlf 在壁面剪切率
-`γ̇ = 32Q/(πD³)` 处求值），并联支路按等压降分流——定黏度退化为阻力比
+`γ̇ = 32Q/(πD³)` 处求值），支路按等压降分流——定黏度退化为阻力比
 解析解，同幂律指数时 `Qi/Qj = (Dj/Di)^(3+1/n)`；熔体温度沿段按一维
 稳态能量平衡演化（可选 `wallTemperature`/`htc`，即热流道控温）。
 
+拓扑有两种写法（**同时给出时以 `tree` 为准**，旧键行为不变）：
+
+- **扁平**（016）：`feed {length,diameter}` 串联 + `gates {<名字>{length,diameter}}`
+  并联；
+- **任意树**（058）：`tree { <节点>{parent <节点|feed>; length; diameter;
+  wallTemperature?; htc?} }`，`parent` 必填，叶子（无子节点的节点）即浇口，
+  按字典顺序编号，边界仍按**名字**寻址。多级分流在**每个节点**按"子树的
+  等效阻力"做等压降分配：节点自身管段与"其子树的并联组合"串联，自下而上
+  组装等效阻力、自上而下分配流量，欠松弛迭代（上限 500 次、单层迭代，
+  见 `ai-docs/tasks/058`）。注意**两浇口共用的管段会从分流比里约掉**，
+  要让 `tree` 与扁平网络产生不同的分流比，各支路必须各有自己的管段。
+
 - 模型级验证（`xmake run test`）：Hagen–Poiseuille 手算点、串联精确
-  复现、并联分流比（定黏度 16、幂律 32）、壁耦合指数温度；
+  复现、并联分流比（定黏度 16、幂律 32）、壁耦合指数温度；树拓扑对
+  解析串联/并联阻力网络（定黏度 rtol 1e-12）、扁平树与旧 `gates` 逐位
+  一致、三级树对幂律合并系数 `a = ΣL/D^(3n+1)`，以及求解耗时上界
+  （2000 次三级树求解 < 5 s CPU）；
 - 求解器耦合：`0/U` 的 `moldingInletVelocity` 可选
-  `runner`/`gate`/`totalFlowRate`，入口流量取网络分流（多浇口按阻力
-  分配）；`0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期
-  闸口压力 = 保压目标 − 当前流量下的流道压降；
-- 集成用例 `tests/cases/runnerNetwork`：单浇口网络入口质量流与
-  ρQ 一致（1.6%）；缺省不写 `runner` 时行为不变。
+  `runner`/`gate`/`totalFlowRate`，入口流量取网络分流（按阻力分配）；
+  `0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期闸口压力 =
+  保压目标 − 当前流量下的流道压降；
+- 集成用例：`tests/cases/runnerNetwork`（单浇口，入口质量流与 ρQ 一致
+  1.6%）、`tests/cases/multiGate`（扁平双浇口，分流比 32.30 vs 解析 32）、
+  `tests/cases/runnerTree`（两级树、各浇口带自己的管段，分流比 15.38 vs
+  解析 15.25，扁平网络会是 32）；缺省不写 `runner` 时行为不变。
+- 尚未支持（`ai-docs/tasks/058`）：逐浇口的流量/压力曲线与阀浇口开/关
+  时序；非圆截面仅能按等效水力直径近似。
 
 ### 黏性生热（`viscousDissipation`，任务 007）
 
@@ -1661,7 +1681,7 @@ x86_64 为准、arm64 差异记录在案（任务 045 的口径决策 B）。为
 | job | 内容 |
 |-----|------|
 | `model-tests` | `xmake run test` |
-| `solver-cases` | `xmake run test-solver`（22 用例） |
+| `solver-cases` | `xmake run test-solver`（29 用例） |
 | `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold/highPressure |
 | `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
 | `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |

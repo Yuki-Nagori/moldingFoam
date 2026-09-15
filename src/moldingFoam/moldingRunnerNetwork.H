@@ -30,9 +30,10 @@ Description
     to couple the machine nozzle to the cavity gates.
 
     The network is a series feed (nozzle to the runner node) followed by
-    parallel gate branches named in a \c gates sub-dictionary. Each
-    segment is a circular tube whose pressure drop follows the
-    generalised Hagen-Poiseuille relation
+    either a flat set of parallel gate branches named in a \c gates
+    sub-dictionary, or an arbitrary tree of runner nodes given in a \c tree
+    sub-dictionary (task 058). Each segment is a circular tube whose
+    pressure drop follows the generalised Hagen-Poiseuille relation
 
     \verbatim
         dp = 128 eta L Q/(pi D^4),  eta = eta(gammaDot, T)
@@ -53,6 +54,16 @@ Description
     Hagen-Poiseuille split and for a common power-law index to the
     analytic resistance ratio Qi/Qj = (Dj/Di)^(3 + 1/n).
 
+    In tree mode the same equal-pressure-drop condition is applied at every
+    node: the flow a node receives is redistributed over its children in
+    inverse proportion to their equivalent resistances (own segment in
+    series with the parallel combination of the subtree), refreshed
+    top-down while the equivalent resistances are rebuilt bottom-up. That
+    is a single level of iteration over the whole tree - deliberately not a
+    nested solve per level, which is what made the first attempt blow up
+    (see ai-docs/tasks/058). The gates are the tree leaves, numbered in
+    dictionary order and addressed by name in the boundaries.
+
 SourceFiles
     moldingRunnerNetwork.C
 
@@ -63,6 +74,7 @@ SourceFiles
 
 #include "CrossWlf.H"
 #include "dictionary.H"
+#include "labelList.H"
 #include "scalar.H"
 #include "scalarList.H"
 #include "word.H"
@@ -131,8 +143,35 @@ private:
         //- Series feed segment
         segment feed_;
 
-        //- Parallel gate branches
+        //- Parallel gate branches (flat network), or the tree leaves (tree
+        //  network) - either way the gates addressed by the boundaries
         List<segment> gates_;
+
+        //- The \c tree sub-dictionary was supplied
+        bool treeMode_;
+
+        //- Tree node segments (empty unless treeMode_)
+        List<segment> treeSeg_;
+
+        //- Tree node parent index (-1: attached to the feed)
+        labelList treeParent_;
+
+        //- Tree node children indices
+        List<labelList> treeChildren_;
+
+        //- Nodes attached to the feed (depth 0)
+        labelList treeRoots_;
+
+        //- Node indices ordered parents before children
+        labelList treeOrder_;
+
+        //- Leaf node indices: the gates, in dictionary order
+        labelList treeLeaves_;
+
+        //- Fixed-point budget of one tree solve: the work is
+        //  O(maxTreeIterations_ * nodes) with no nesting, so this bounds
+        //  the cost of every boundary update
+        static const label maxTreeIterations_;
 
 
     // Private Member Functions
@@ -148,6 +187,18 @@ private:
             const scalar Q
         ) const;
 
+        //- Hydraulic resistance of one segment at a flow and inlet
+        //  temperature, dp/Q [Pa s/m^3]
+        scalar segmentResistance
+        (
+            const segment& s,
+            const scalar Q,
+            const scalar T
+        ) const;
+
+        //- Pressure drop of the feed segment at the total flow rate [Pa]
+        scalar feedPressureDrop(const scalar Q) const;
+
         //- Equal-pressure-drop flow split of the parallel branches;
         //  returns the branch pressure drop and fills the branch flows
         scalar split
@@ -155,6 +206,25 @@ private:
             const scalar Q,
             const scalar Tnode,
             scalarList& gateQ
+        ) const;
+
+        //- Read the flat \c gates sub-dictionary (legacy topology)
+        void readGates(const dictionary& gatesDict);
+
+        //- Read the \c tree sub-dictionary: nodes with a parent, the leaves
+        //  becoming the gates
+        void readTree(const dictionary& treeDict);
+
+        //- Tree network solve: one bounded fixed point over the whole tree,
+        //  parents before children for the flow and temperatures, children
+        //  before parents for the equivalent resistances; returns the
+        //  pressure drop from the feed node to the leaves and fills the
+        //  leaf flows and leaf temperatures
+        scalar solveTree
+        (
+            const scalar Q,
+            scalarList& leafQ,
+            scalarList& leafT
         ) const;
 
 
@@ -196,6 +266,13 @@ public:
         label nGates() const
         {
             return gates_.size();
+        }
+
+        //- Is the network an arbitrary tree (a \c tree sub-dictionary was
+        //  supplied) rather than the flat feed + gates topology?
+        bool treeMode() const
+        {
+            return treeMode_;
         }
 
         //- Feed segment

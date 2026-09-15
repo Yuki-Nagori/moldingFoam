@@ -167,6 +167,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     trapAirInterval_(0),
     trapAirAlpha_(0.5),
     viscousDissipation_(false),
+    energyBudget_(false),
     dissipationCoeffs_(),
     crystallization_(),
     chi_(),
@@ -384,6 +385,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         trapAirInterval_ = trapAirInterval;
         trapAirAlpha_ = trapAirAlpha;
         viscousDissipation_ = viscousDissipation;
+        energyBudget_ = moldingDict.lookupOrDefault<Switch>("energyBudget", false);
         nCycles_ = nCycles;
 
         if (viscousDissipation_)
@@ -716,6 +718,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << "    ventSealAlpha           = " << ventSealAlpha << nl
             << "    trapAirInterval         = " << trapAirInterval << nl
             << "    viscousDissipation      = " << viscousDissipation
+            << nl << "    energyBudget           = " << energyBudget_
             << endl;
     }
 
@@ -1776,6 +1779,48 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     fvConstraints().constrain(TEqn);
 
     TEqn.solve();
+
+    // Optional integrated energy ledger.  The matrix flux is the same
+    // discretisation used by TEqn, while pressure work is integrated from
+    // the matching absolute convective flux.  Processor patches are skipped
+    // and one global reduction is used so decomposed meshes remain safe.
+    if
+    (
+        energyBudget_
+     && massBudgetInterval_ > 0
+     && runTime.timeIndex() % massBudgetInterval_ == 0
+    )
+    {
+        const scalar dt(runTime.deltaTValue());
+        tmp<volScalarField> tPressureWork
+        (
+            fvc::div(fvc::absolute(phi, U), mixture_.p())
+        );
+        scalar pressureWork = 0;
+        forAll(mesh.V(), i)
+        {
+            pressureWork += mesh.V()[i]*tPressureWork().primitiveField()[i];
+        }
+        reduce(pressureWork, sumOp<scalar>());
+        pressureWork *= dt;
+
+        tmp<surfaceScalarField> tMatrixFlux(TEqn.flux());
+        const surfaceScalarField& matrixFlux = tMatrixFlux();
+        scalar boundaryFlux = 0;
+        forAll(matrixFlux.boundaryField(), patchi)
+        {
+            if (!isA<processorFvPatch>(mesh.boundary()[patchi]))
+            {
+                boundaryFlux += sum(matrixFlux.boundaryField()[patchi]);
+            }
+        }
+        reduce(boundaryFlux, sumOp<scalar>());
+
+        Info<< "moldingFoam: energy budget: boundary matrix flux = "
+            << boundaryFlux << ", pressure work*dt = " << pressureWork
+            << ", latent/dissipation sources are logged separately; "
+            << "temperature clamp excluded" << endl;
+    }
 
     // Safety clamp of the solved temperature: correctThermo's Newton
     // inversion needs a finite, physical starting temperature. The

@@ -107,7 +107,7 @@
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
 | [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | in-progress（本地 transport/重启/两相最小闭环通过；高 We 与 CI 待验收） |
-| [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | in-progress（温度裁剪诊断已提交；完整能量账目待验收） |
+| [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | in-progress（边界通量/压力功账目已实现；闭合残差待 nightly） |
 
 #### 效率与验证基础设施
 

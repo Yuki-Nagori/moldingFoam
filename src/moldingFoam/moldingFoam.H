@@ -182,6 +182,10 @@ class moldingFoam
         //  default false
         bool viscousDissipation_;
 
+        //- Enable the integrated thermal/pressure-work budget diagnostics
+        //  (opt-in; expensive boundary reductions are interval gated)
+        bool energyBudget_;
+
         //- CrossWlf coefficients used by the dissipation source
         laminarModels::generalisedNewtonianViscosityModels::CrossWlf::coeffs
             dissipationCoeffs_;

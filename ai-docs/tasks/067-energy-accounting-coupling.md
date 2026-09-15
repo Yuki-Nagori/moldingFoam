@@ -79,3 +79,14 @@ Tait 表观潜热与结晶动力学潜热同时启用时，需要明确材料潜
 
 `verify-review-regression.py` 随后在同一 of14 会话的新鲜构建目录通过：重启、
 预算、并行质量诊断、汽蚀参考密度和两项生热倍率均通过；未运行全周期契约。
+
+### 边界热量/压力功账目实现 2026-09-15
+
+新增可选 `energyBudget true;` 诊断。每个 `massBudgetInterval` 步对温度方程
+使用的 `TEqn.flux()` 做一次非 processor 边界全局归约，同时对同一绝对通量
+离散的 `div(phi,U)·p` 做体积分压力功（乘实际 `deltaT`）。潜热和黏性耗散
+继续分别报告；温度 safety clamp 明确排除在物理源项之外。默认关闭，避免改变
+既有算例和常规步开销。
+
+of14 增量 `xmake` 与 `xmake run test` 全部通过；本地未开启大网格账目运行，
+因此边界通量与压力功的完整闭合残差仍交由 nightly case 验证。

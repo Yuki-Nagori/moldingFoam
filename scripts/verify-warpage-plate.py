@@ -21,85 +21,22 @@
 # Usage: verify-warpage-plate.py <caseDir>   (exits non-zero on failure)
 #******************************************************************************
 
-import math
 import os
-import re
 import sys
 
 
-def read_vector_field(path):
-    with open(path, errors="replace") as f:
-        txt = f.read()
-
-    section = txt.split("boundaryField", 1)[0]
-    m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*(\d+)\s*\((.*)", section, re.S)
-    if m:
-        n = int(m.group(1))
-        rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
-        return [[float(x) for x in g] for g in rows[:n]]
-    u = re.search(r"internalField\s+uniform\s*\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", section)
-    return [[float(x) for x in u.groups()]] if u else None
-
-
-def read_sigma_xx(path):
-    with open(path, errors="replace") as f:
-        txt = f.read()
-
-    m = re.search(
-        r"internalField\s+nonuniform\s+List<symmTensor>\s*\n\s*\d+\s*\n\((.*?)\)\s*;",
-        txt,
-        re.S,
-    )
-    if m is None:
-        return None
-
-    return [
-        float(g.split()[0]) for g in re.findall(r"\(([^()]*)\)", m.group(1))
-    ]
-
-
-def time_dirs(case_dir):
-    return sorted(
-        (d for d in os.listdir(case_dir)
-         if re.match(r"^[0-9]+(\.[0-9]+)?$", d) and float(d) > 0),
-        key=float,
-    )
+from validation_metrics import mesh_dimensions, field, completed_time, measure
 
 
 def main():
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    t_last = completed_time(case_dir)
+    nx, ny = mesh_dimensions(case_dir)
+    if ny % 2:
+        raise ValueError("equal-layer benchmark requires an even ny")
+    D = field(os.path.join(case_dir, t_last, "D"), "vector", 3, nx*ny)
 
-    with open(os.path.join(case_dir, "log.foamRun"), errors="replace") as f:
-        log = f.read()
-
-    if "\nEnd\n" not in log and not log.rstrip().endswith("End"):
-        print("FAIL: the solver did not reach the end time")
-        sys.exit(1)
-
-    times = time_dirs(case_dir)
-    if not times:
-        print("FAIL: no written time directories")
-        sys.exit(1)
-
-    D = read_vector_field(os.path.join(case_dir, times[-1], "D"))
-    with open(os.path.join(case_dir, "system", "blockMeshDict")) as handle:
-        mesh = handle.read()
-    dims = re.findall(r"\)\s*\((\d+)\s+(\d+)\s+(\d+)\)", mesh)
-    nx, ny = (map(int, dims[0][:2]) if dims else (0, 0))
-    if D is None or nx < 2 or ny < 2:
-        print("FAIL: cannot read the displacement field")
-        sys.exit(1)
-    if len(D) == 1:
-        D = D*(nx*ny)
-    if len(D) != nx*ny:
-        ratio = ny/float(nx)
-        nx = max(2, round((len(D)/ratio)**0.5))
-        ny = max(2, round(len(D)/float(nx)))
-    if nx*ny != len(D):
-        print("FAIL: displacement field size does not match mesh")
-        sys.exit(1)
-
-    # Free end: the i = 47 column, neutral axis = mean over 16 layers
+    # Average the last cell-centre column across all thickness layers.
     dy = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
 
     # Timoshenko bimetal, equal layers: kappa = 3 (eps_top - eps_bottom)
@@ -117,27 +54,17 @@ def main():
     # The mesh places the larger-shrinkage layers on the topSurface side,
     # which bends the cantilever towards -y (the same convention as the
     # thermoelastic case); only the magnitude is asserted
-    fail = False
-    if abs(abs(dy) - expected)/expected > 0.08:
-        print("FAIL: the free-end deflection deviates from kappa L^2/2 by "
-              "more than 10%")
-        fail = True
+    err = abs(abs(dy) - expected)/expected
+    fail = not measure("free-end-deflection-m", dy, expected, err, 0.08, t_last)
+    if fail:
+        print("FAIL: deflection error exceeds 8%")
 
-    # Residual stress self-equilibrium: the two layers carry opposite
-    # through-thickness stresses whose integral vanishes (no external
-    # axial load on the free plate)
-    sigma = read_sigma_xx(os.path.join(case_dir, times[-1], "sigma"))
-    if sigma is None:
-        print("FAIL: cannot read the residual stress field")
-        sys.exit(1)
-
-    # Mean over the free-end column for each layer
-    def layer_mean(j):
-        return sum(sigma[47 + 48*j] for _ in [0])/1.0
-
-    sBot = sum(sigma[47 + 48*j] for j in range(0, 8))/8
-    sTop = sum(sigma[47 + 48*j] for j in range(8, 16))/8
-    sInt = sum(sigma[47 + 48*j] for j in range(16))/16
+    sigma = [row[0] for row in field(os.path.join(case_dir, t_last, "sigma"),
+                                    "symmTensor", 6, nx*ny)]
+    column = [sigma[nx - 1 + nx*j] for j in range(ny)]
+    sBot = sum(column[:ny//2])/(ny//2)
+    sTop = sum(column[ny//2:])/(ny//2)
+    sInt = sum(column)/ny
 
     print("  residual stress: bottom layer = {:.6e} Pa, top layer = "
           "{:.6e} Pa, neutral-axis mean = {:.3e} Pa".format(
@@ -154,10 +81,15 @@ def main():
     if fail:
         sys.exit(1)
 
-    print("PASS: the mapped free shrinkage bends the plate by the "
-          "Timoshenko bimetal curvature with self-equilibrated residual "
-          "stress")
+    if os.environ.get("UNCERTAINTY_MATRIX_MODE") == "1":
+        print("VALID: residual stress opposes and is self-equilibrated")
+    else:
+        print("PASS: warpage deflection and residual stress")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, OSError) as exc:
+        print("FAIL:", exc)
+        sys.exit(1)

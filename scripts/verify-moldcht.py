@@ -18,6 +18,8 @@
 # Usage: verify-moldcht.py <caseDir>       (exits non-zero on failure)
 #******************************************************************************
 
+import math
+from validation_metrics import completed_time, measure
 import os
 import re
 import sys
@@ -46,6 +48,13 @@ TTOP = 353.0        # mould top temperature [K]
 DT = 0.005          # time step [s] (overridden from the case controlDict)
 
 
+def finite_scalar(value):
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError("non-finite scalar")
+    return result
+
+
 def boundary_value(path, patch):
     """Return the mean patch value of a written field."""
     with open(path) as handle:
@@ -54,17 +63,21 @@ def boundary_value(path, patch):
     match = re.search(
         r"\b" + patch + r"\b\s*\{(.*?)\n    \}", text, re.S)
     if not match:
-        raise RuntimeError("patch {} not found in {}".format(patch, path))
+        raise ValueError("patch {} not found in {}".format(patch, path))
     body = match.group(1)
 
-    m = re.search(r"value\s+uniform\s+([-+0-9.eE]+)", body)
+    m = re.search(r"value\s+uniform\s+([^;\s]+)\s*;", body)
     if m:
-        return float(m.group(1))
+        return finite_scalar(m.group(1))
 
     m = re.search(
         r"value\s+nonuniform\s+List<scalar>\s*\n?\s*(\d+)\s*\((.*?)\)",
         body, re.S)
-    vals = [float(x) for x in re.findall(r"[-+0-9.eE]+", m.group(2))]
+    if m is None:
+        raise ValueError("missing scalar field")
+    vals = [float(x) for x in m.group(2).split()]
+    if len(vals) != int(m.group(1)) or not vals or not all(map(math.isfinite, vals)):
+        raise ValueError("invalid scalar field length or non-finite value")
     return sum(vals)/len(vals)
 
 
@@ -78,10 +91,16 @@ def cell_average(path):
         text, re.S)
     if not m:
         m = re.search(
-            r"internalField\s+uniform\s+([-+0-9.eE]+)", text)
-        return float(m.group(1))
+            r"internalField\s+uniform\s+([^;\s]+)\s*;", text)
+        if m is None:
+            raise ValueError("missing scalar field")
+        return finite_scalar(m.group(1))
 
-    vals = [float(x) for x in re.findall(r"[-+0-9.eE]+", m.group(2))]
+    if m is None:
+        raise ValueError("missing scalar field")
+    vals = [float(x) for x in m.group(2).split()]
+    if len(vals) != int(m.group(1)) or not vals or not all(map(math.isfinite, vals)):
+        raise ValueError("invalid scalar field length or non-finite value")
     return sum(vals)/len(vals)
 
 
@@ -177,6 +196,8 @@ def main():
     global DT
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
+    completed_time(case_dir)
+
     # Read the time step from the case so the reference uses the same one
     with open(os.path.join(case_dir, "system", "controlDict")) as handle:
         m = re.search(r"\bdeltaT\s+([-+0-9.eE]+)\s*;", handle.read())
@@ -237,6 +258,7 @@ def main():
     # Converged thresholds: with the constant-density benchmark properties
     # the interface matches the reference to ~0.2% and the cavity average
     # to ~1.3%; the checks sit just above that
+    measure("cavity-temperature-K", ca, tc_ref, cerr, 0.03, t_end)
     if max_ierr < 0.01 and max_cerr < 0.03:
         print("PASS: CHT interface and cavity response match the two-layer "
               "reference (interface < 1%, cavity < 3%)")
@@ -247,4 +269,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, OSError) as exc:
+        print("FAIL:", exc)
+        sys.exit(1)

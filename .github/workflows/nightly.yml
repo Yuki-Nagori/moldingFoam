@@ -206,21 +206,25 @@ jobs:
           retention-days: 14
 
   uncertainty-manifest:
-    # Keep the task-069 matrix definition executable and reviewable nightly.
-    # The actual nine-row solve is intentionally resource-governed by the
-    # nightly orchestrator rather than by a developer workstation.
+    # Joint sensitivity samples; independent grid/time studies remain task 069.
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Verify uncertainty readers
+        run: python3 scripts/test-validation-metrics.py
       - name: Run uncertainty matrix
         run: |
           set -o pipefail
+          source /opt/openfoam14/etc/bashrc
           UNCERTAINTY_MATRIX_TIMEOUT=900 \
             scripts/uncertainty-matrix.sh --run 2>&1 | tee uncertainty-matrix.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: nightly-uncertainty-matrix
+          include-hidden-files: true
           path: |
             uncertainty-matrix.txt
             .uncertainty-matrix/**

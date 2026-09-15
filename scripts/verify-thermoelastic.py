@@ -18,7 +18,6 @@
 #******************************************************************************
 
 import os
-import re
 import sys
 
 ALPHA = 1.1e-5
@@ -28,57 +27,19 @@ L = 30.0
 KAPPA = ALPHA*DT/H
 
 
-def read_D(path):
-    with open(path) as handle:
-        text = handle.read()
-    section = text.split("boundaryField", 1)[0]
-    m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*(\d+)"
-                  r"\s*\((.*)", section, re.S)
-    if m:
-        n = int(m.group(1))
-        rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
-        return [[float(v) for v in row] for row in rows[:n]]
-    u = re.search(r"internalField\s+uniform\s*\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", section)
-    if u:
-        return [[float(v) for v in u.groups()]]
-    else:
-        return None
+from validation_metrics import mesh_dimensions, field, completed_time, measure
 
 
 def main():
     case_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    t_last = completed_time(case_dir)
+    nx, ny = mesh_dimensions(case_dir)
+    D = field(os.path.join(case_dir, t_last, "D"), "vector", 3, nx*ny)
 
-    times = [d for d in os.listdir(case_dir)
-             if re.match(r"^[0-9.]+$", d) and float(d) > 0
-             and os.path.isfile(os.path.join(case_dir, d, "D"))]
-    if not times:
-        print("FAIL: no written displacement field")
-        sys.exit(1)
-
-    t_last = max(times, key=float)
-    D = read_D(os.path.join(case_dir, t_last, "D"))
-    with open(os.path.join(case_dir, "system", "blockMeshDict")) as handle:
-        mesh = handle.read()
-    dims = re.findall(r"\)\s*\((\d+)\s+(\d+)\s+(\d+)\)", mesh)
-    nx, ny = (map(int, dims[0][:2]) if dims else (0, 0))
-    if D is None or nx < 2 or ny < 2:
-        print("FAIL: cannot read the displacement field")
-        sys.exit(1)
-    if len(D) == 1:
-        D = D*(nx*ny)
-    if len(D) != nx*ny:
-        ratio = ny/float(nx)
-        nx = max(2, round((len(D)/ratio)**0.5))
-        ny = max(2, round(len(D)/float(nx)))
-    if nx*ny != len(D):
-        print("FAIL: displacement field size does not match mesh")
-        sys.exit(1)
-
-    # The free end is the i=47 column of the 48x80x1 mesh; the neutral
-    # axis deflection is the mean over the 80 through-thickness cells
+    # Sample the last cell-centre column and average across the thickness.
     dyEnd = sum(D[nx - 1 + nx*j][1] for j in range(ny))/ny
 
-    # Section centre x = (47 + 0.5)*L/48
+    # Compare at the sampled section centre.
     xEnd = (nx - 0.5)*L/nx
     dAna = KAPPA*xEnd*xEnd/2
 
@@ -88,14 +49,16 @@ def main():
           "(expected {:.6e} m, error {:.3%})".format(
               dyEnd, dAna, err))
 
-    if err > 0.08:
-        print("FAIL: the thermoelastic cantilever does not bend with "
-              "kappa = alpha dT/h")
-        sys.exit(1)
-
-    print("PASS: the thermoelastic cantilever bends with kappa = "
-          "alpha dT/h")
+    accepted = measure("free-end-deflection-m", dyEnd, dAna, err, 0.08, t_last)
+    if not accepted:
+        raise ValueError("thermoelastic deflection error exceeds 8%")
+    if os.environ.get("UNCERTAINTY_MATRIX_MODE") != "1":
+        print("PASS: thermoelastic deflection error <= 8%")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (ValueError, OSError) as exc:
+        print("FAIL:", exc)
+        sys.exit(1)

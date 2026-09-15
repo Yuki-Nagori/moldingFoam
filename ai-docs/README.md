@@ -114,7 +114,7 @@
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
 | [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | in-progress（收敛告警与缓存失效键已验收；墙钟基准待 nightly） |
-| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（timeout/失败证据已提交；不确定度矩阵待执行） |
+| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（矩阵 nightly 入口已提交；九行组合待执行） |
 
 #### 未完成项跟进顺序
 

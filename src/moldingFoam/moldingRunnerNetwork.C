@@ -792,6 +792,7 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
     }
 
     scalar dpChild = 0;
+    bool converged = false;
 
     for (label iter = 0; iter < maxTreeIterations_; ++iter)
     {
@@ -907,8 +908,18 @@ Foam::scalar Foam::moldingRunnerNetwork::solveTree
 
         if (change < 1e-14*max(mag(Q), small))
         {
+            converged = true;
             break;
         }
+    }
+
+    if (!converged)
+    {
+        WarningInFunction
+            << "Runner network fixed-point iteration reached the limit of "
+            << maxTreeIterations_ << " without meeting the flow tolerance"
+            << nl << "    Q = " << Q << ", t = " << t << nl
+            << "    returning the bounded last iterate" << endl;
     }
 
     forAll(treeLeaves_, g)

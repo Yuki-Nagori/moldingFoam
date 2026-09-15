@@ -50,6 +50,12 @@ rc=0。** 判据是"库被映射几次"，与求解器算什么都不相关。
   所有 `libmoldingFoam*.so` 并按 `realpath` 判重（>1 实体即 FAIL，退出码 1），
   也可扫描运行日志的 `Duplicate entry`/glibc 损坏行。
 
+**kairos VM 收尾状态**（本轮把库布局改成单份，VM 现处于可复现"干净"的
+配置）：`$FOAM_USER_LIBBIN/libmoldingFoam.so`（手工构建的当前源码）+
+`libmoldingFoamSolver.so` 符号链接；bundle 自带的那份原地改名为
+`$FOAM_LIBBIN/libmoldingFoam.so.disabled-bundle`（文件保留，改回名字即恢复
+混装状态）。中途 VM 自行重启过一次（`/tmp` 被清空、早期日志丢失）。
+
 ## 4. 已排除的假设（勿重复）
 
 | 假设 | 结论 |

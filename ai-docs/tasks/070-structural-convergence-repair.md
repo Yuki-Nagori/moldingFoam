@@ -185,6 +185,17 @@ A0–A3 的原始日志和场文件保存在 of14 `/home/ubuntu/task070/`；A0 �
 `converged` 判据后才能比较误差。若 120 s 本地预算不足，转 nightly，保留
 `not_converged` 状态而不增加阈值。
 
+B1 根因证据已确认：96×160 原始行在最后一步的 D `Initial residual` 为
+3.4983e-05、`Final residual` 为 3.44575e-05，因 `relTol=0.99` 提前结束；
+该未充分求解的更新随后被 `accelerationFactor=1.9` 放大。两个结构验证 case
+现将 D 的 `relTol` 收紧为 0，只保留绝对容差 1e-10，优先保证精度。细网格
+修复前后必须用同一静态收敛检查和墙钟对拍，不能只比较最终误差。
+
+补测修正：前一轮 `relTol=0.1` 曾误改 T/e 条目，已废弃。只改 D 条目的
+`relTol=0.1` 在 48×80 上 120 s 内仍未到 `End`，因此它只证明成本显著上升，
+不能作为可接受修复。工作树恢复原验证配置 `relTol=0.99`，等待后续 B2/B3
+在固定静态收敛判据下比较；当前没有提交未经验证的参数改变。
+
 新增 `scripts/check-structural-convergence.py`，按最后三个输出窗口同时检查
 自由端 Q 和全场 D RMS 的相对变化；它输出 JSON 历程并在任一变化超过 1e-3
 时硬失败。该检查只表达 steadyState 的静态迭代充分性，不把 `deltaT` 当作

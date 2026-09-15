@@ -196,18 +196,24 @@ inline void Foam::Tait<Specie>::blendedDerivs
     // fm the Tait logarithmic compression factor
     const scalar v0m = b1m_ + b2m_*TtX;
     const scalar Bm = b3m_*exp(-b4m_*T);
-    const scalar fm = 1.0 - C_*log(max(scalar(1) + p/Bm, scalar(small)));
+    const scalar argM = scalar(1) + p/Bm;
+    const scalar fm = 1.0 - C_*log(max(argM, scalar(small)));
     const scalar vm = v0m*fm;
-    const scalar vmP = -b2m_*b6_*fm - C_*v0m/(Bm + p);
-    const scalar vmT = b2m_*fm - C_*p*b4m_*v0m/(Bm + p);
+    const scalar dLogMdP = argM > small ? 1/(Bm + p) : 0;
+    const scalar dLogMdT = argM > small ? p*b4m_/(Bm + p) : 0;
+    const scalar vmP = -b2m_*b6_*fm - C_*v0m*dLogMdP;
+    const scalar vmT = b2m_*fm - C_*v0m*dLogMdT;
 
     // Solid branch
     const scalar v0s = b1s_ + b2s_*TtX;
     const scalar Bs = b3s_*exp(-b4s_*T);
-    const scalar fs = 1.0 - C_*log(max(scalar(1) + p/Bs, scalar(small)));
+    const scalar argS = scalar(1) + p/Bs;
+    const scalar fs = 1.0 - C_*log(max(argS, scalar(small)));
     const scalar vs = v0s*fs;
-    const scalar vsP = -b2s_*b6_*fs - C_*v0s/(Bs + p);
-    const scalar vsT = b2s_*fs - C_*p*b4s_*v0s/(Bs + p);
+    const scalar dLogSdP = argS > small ? 1/(Bs + p) : 0;
+    const scalar dLogSdT = argS > small ? p*b4s_/(Bs + p) : 0;
+    const scalar vsP = -b2s_*b6_*fs - C_*v0s*dLogSdP;
+    const scalar vsT = b2s_*fs - C_*v0s*dLogSdT;
 
     // Blend weight and its partial derivatives; with smoothBand = 0 the
     // weight is a step function and its derivatives vanish
@@ -400,15 +406,21 @@ inline Foam::scalar Foam::Tait<Specie>::CpMCv(scalar p, scalar T) const
 
     const scalar v0m = b1m_ + b2m_*TtX;
     const scalar Bm = b3m_*exp(-b4m_*T);
-    const scalar fm = 1.0 - C_*log(max(scalar(1) + p/Bm, scalar(small)));
-    const scalar vmT = b2m_*fm - C_*p*b4m_*v0m/(Bm + p);
-    const scalar vmP = -b2m_*b6_*fm - C_*v0m/(Bm + p);
+    const scalar argM = scalar(1) + p/Bm;
+    const scalar fm = 1.0 - C_*log(max(argM, scalar(small)));
+    const scalar dLogMdP = argM > small ? 1/(Bm + p) : 0;
+    const scalar dLogMdT = argM > small ? p*b4m_/(Bm + p) : 0;
+    const scalar vmT = b2m_*fm - C_*v0m*dLogMdT;
+    const scalar vmP = -b2m_*b6_*fm - C_*v0m*dLogMdP;
 
     const scalar v0s = b1s_ + b2s_*TtX;
     const scalar Bs = b3s_*exp(-b4s_*T);
-    const scalar fs = 1.0 - C_*log(max(scalar(1) + p/Bs, scalar(small)));
-    const scalar vsT = b2s_*fs - C_*p*b4s_*v0s/(Bs + p);
-    const scalar vsP = -b2s_*b6_*fs - C_*v0s/(Bs + p);
+    const scalar argS = scalar(1) + p/Bs;
+    const scalar fs = 1.0 - C_*log(max(argS, scalar(small)));
+    const scalar dLogSdP = argS > small ? 1/(Bs + p) : 0;
+    const scalar dLogSdT = argS > small ? p*b4s_/(Bs + p) : 0;
+    const scalar vsT = b2s_*fs - C_*v0s*dLogSdT;
+    const scalar vsP = -b2s_*b6_*fs - C_*v0s*dLogSdP;
 
     // Band weights WITHOUT the front sweep: the w'(x) contributions to
     // the state derivatives are deliberately omitted here (see comment)

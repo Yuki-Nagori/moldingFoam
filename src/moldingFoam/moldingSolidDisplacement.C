@@ -19,7 +19,8 @@ addToRunTimeSelectionTable(solver, moldingSolidDisplacement, fvMesh);
 
 moldingSolidDisplacement::moldingSolidDisplacement(fvMesh& mesh)
 :
-    solidDisplacement(mesh)
+    solidDisplacement(mesh),
+    previousInitialResidual_(GREAT)
 {}
 
 
@@ -30,7 +31,6 @@ void moldingSolidDisplacement::pressureCorrector()
 
     int iCorr = 0;
     scalar residual = GREAT;
-    scalar previousResidual = GREAT;
 
     do
     {
@@ -61,12 +61,12 @@ void moldingSolidDisplacement::pressureCorrector()
         // increment.  Do not extrapolate after a residual increase: on fine
         // meshes that amplifies an under-resolved corrector and can produce
         // the terminal displacement jump seen in the convergence matrix.
-        const bool residualDecreased = initialResidual <= previousResidual;
+        const bool residualDecreased = initialResidual <= previousInitialResidual_;
         if (mesh.schemes().steady() && accFac > 1 && residualDecreased)
         {
             D += (accFac - 1)*(D - D.oldTime());
         }
-        previousResidual = initialResidual;
+        previousInitialResidual_ = initialResidual;
 
         if (!compactNormalStress)
         {

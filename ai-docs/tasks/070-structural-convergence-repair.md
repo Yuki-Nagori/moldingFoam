@@ -326,3 +326,9 @@ moldCHT 三行均通过。原始证据在 nightly artifact `nightly-uncertainty-
 未充分收敛的增量。修改后：残差增长分支不再外推；这只是稳定性保护，不能单独
 证明细网格达到静态解。当前尚未在 of14 编译或运行，精度、迭代数、墙钟和内存
 均为未测；必须用同一会话的最小结构 case，再进入 nightly 矩阵验收。
+
+复核补记：初版保护中的上一残差是 `pressureCorrector()` 局部变量，而默认
+`nCorrectors=1` 会使其每个时间步重置为 `GREAT`，实际没有跨步保护。现改为
+`moldingSolidDisplacement` 成员状态 `previousInitialResidual_`，在连续时间步间
+保留上一求解的初始残差；重启时从 `GREAT` 安全启动。该修改仍待 of14 编译和
+最小结构运行验证，不能把代码审查当作数值证据。

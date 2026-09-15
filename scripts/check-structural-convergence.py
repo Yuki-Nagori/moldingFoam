@@ -6,7 +6,7 @@ import os
 import sys
 from pathlib import Path
 
-from validation_metrics import field, mesh_dimensions
+from validation_metrics import field, mesh_dimensions, section_average
 
 
 def history(case, window=3):
@@ -20,7 +20,9 @@ def history(case, window=3):
     samples = []
     for t, directory in times:
         rows = field(directory/'D', 'vector', 3, nx*ny)
-        q = sum(rows[nx - 1 + nx*j][1] for j in range(ny))/ny
+        # Keep the static-history metric on the same fixed physical section
+        # used by both structural verifiers (task 070 S1).
+        q = section_average(rows, nx, ny, 29.5)[1]
         norm = math.sqrt(sum(sum(v*v for v in row) for row in rows)/(nx*ny))
         samples.append((t, q, norm))
     changes = []

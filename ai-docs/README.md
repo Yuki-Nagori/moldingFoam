@@ -114,7 +114,7 @@
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
 | [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | **done**（model-tests/solver-cases nightly 通过） |
-| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（矩阵 nightly 入口已提交；九行组合待执行） |
+| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（九行本地测量完成；细网格结构误差超限，独立收敛研究及新 nightly 待验收） |
 
 #### 未完成项跟进顺序
 

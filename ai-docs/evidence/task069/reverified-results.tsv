@@ -1,0 +1,10 @@
+case	gridScale	dtScale	quantity	rc	wall_seconds	value	reference	relative_error	threshold	within_threshold	time	original_rc
+validation/thermoelastic	0.5	0.5	free-end-deflection-m	0	22	-0.08527985	0.09491796875	0.10154156138112673	0.08	False	10000.0	0
+validation/thermoelastic	1	1	free-end-deflection-m	0	52	-0.09165987375	0.09694824218749999	0.054548368471417745	0.08	True	10000.0	0
+validation/thermoelastic	2	2	free-end-deflection-m	0	81	-0.04148876875	0.09797143554687499	0.576521783942326	0.08	False	10000.0	0
+validation/moldCHT	0.5	0.5	cavity-temperature-K	0	12	425.22557900000004	422.4318990958963	0.02199747955987186	0.03	True	5.0	1
+validation/moldCHT	1	1	cavity-temperature-K	0	3	424.12685650000003	422.43504692926234	0.01332133520265897	0.03	True	5.0	1
+validation/moldCHT	2	2	cavity-temperature-K	0	2	423.86885121875	422.44091937561365	0.011243557819971477	0.03	True	5.0	1
+validation/warpagePlate	0.5	0.5	free-end-deflection-m	0	12	-0.631695375	0.6749999999999999	0.06415499999999999	0.08	True	10000.0	0
+validation/warpagePlate	1	1	free-end-deflection-m	0	12	-0.6469023125	0.6749999999999999	0.04162620370370366	0.08	True	10000.0	0
+validation/warpagePlate	2	2	free-end-deflection-m	0	15	-0.59391296875	0.6749999999999999	0.12012893518518511	0.08	False	10000.0	0

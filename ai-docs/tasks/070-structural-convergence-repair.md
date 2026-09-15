@@ -210,6 +210,12 @@ B3 复测：96×160 只增加 `nCorrectors=3`、保持 `relTol=0.99` 和
 这些扫描均未修改仓库默认字典；短窗结果只用于排除候选，完整 8% 验收仍以
 静态收敛检查和终态场为准。
 
+源码边界补记：of14 `solidDisplacement::pressureCorrector()` 的校正循环复用
+首轮 `initialResidual`，无法用字典 `D` 阈值实现真实的逐校正早停；B3 的高成本
+因此是上游 solver 控制缺口，而非可安全靠配置消除的数值结论。该问题拆到
+[task 071](071-solid-displacement-corrector-convergence.md)，070 在其完成前
+保持 `in-progress`，不复制或修改 `/opt/openfoam14`。
+
 补充 GAMG/线性求解器排除：96×160、2000 步加入
 `nCellsInCoarsestLevel=20` 与 `mergeLevels=1` 后 24 s 完成，但末步 D 残差
 仍为 `5.03e-05 → 3.97e-05`，最终位移误差 97.830%；不是单一 GAMG 聚合数

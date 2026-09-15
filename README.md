@@ -10,6 +10,8 @@
 - **`CrossWlf`** — Cross-WLF 广义牛顿黏度模型；
 - **`Tait`** — 双域 Tait 聚合物 PVT 状态方程；
 - **`case-contract/`** — 契约 case，定义外部 case 生成器对接的字典规范。
+- **[`spec.md`](spec.md)** — 面向下游 CAE 的权威方程、字段、单位、边界条件、
+  验收口径与已知限制。
 
 物理模型参考开源项目
 [openInjMoldSim](https://github.com/krebeljk/openInjMoldSim)（OpenFOAM-7）的

@@ -1,6 +1,6 @@
 # 073：Dual Domain 输入字典、拓扑校验与独立生成器
 
-- 状态：planned
+- 状态：in-progress
 - 优先级：P1
 - 依赖：072 约束；向 074–078 提供冻结 schema
 - 来源：2026-09-15 用户 Dual Domain / Kairos 扩展需求
@@ -44,6 +44,90 @@
 
 ## 验证与状态纪律
 
+## 补充：Kairos T102 联调入口（2026-09-15）
+
+下游仓库 `~/eit/kairos`；契约来源
+`ai-docs/reviews/t102-dualdomain-contract.md`。本次只读核对工作区
+`src-crates/kairos-core/src/models/mesh.rs` 与
+`services/dualdomain.rs::solver_input()`，当时 HEAD 为 `316ffe1`；
+未运行导出或 solver，不视为 smoke 通过。
+
+### 受控 JSON 入口
+
+| 键 | T102 固定语义 | 适配检查 |
+|---|---|---|
+| schemaVersion | dual-domain/v1 | 不支持版本显式拒绝 |
+| lengthUnit / thicknessUnit | mm / mm | 必须明确且匹配；不能默认为 m |
+| nodes | [x,y,z] | 三个有限坐标 |
+| triangles | 三节点索引，零起始 | 整数、范围、重复与面积 |
+| thickness | 每三角形一个厚度 | 长度完全匹配、有限且严格正 |
+| beams | nodes、diameter、kind | 两端索引、正直径、合法类型 |
+| couplings | beam、endpoint、node、distance | 梁索引、endpoint 为 0/1、节点索引、有限非负距离 |
+
+本入口不接受节点厚度替代 triangle 数组；073 的通用 schema 可扩展设计
+不能改变 T102 v1 的语义。原始 JSON 保持 mm 不改写；生成 OF 字典时执行
+显式、可审计的 mm→m 换算（乘 1e-3），记录 sourceUnits 与最终 dimensions，
+用 golden 验证体积的 1e-9 比例，不能只改单位标签。
+beam diameter 与 coupling distance 的单位、kind 枚举、重复耦合、
+悬空端点和距离容差须与 Kairos 确认后冻结，不能凭字段名默认。
+
+### 几何语义与求解门禁
+
+当前 Kairos DTO 把 DualDomainMesh 描述为“表面 + 杆系”，另有独立 MidplaneMesh；
+solver_input 直接复制表面 nodes/triangles，不执行中面构建。
+因此不能把导出成功当成“已获得中面”的证据；先确认两面是否重复覆盖、
+厚度配对和实体体积定义，避免 sum(A*h) 双计体积。
+
+T102 JSON 目前不含 facePairs、内外法向、gate/vent/wall 区域、积分规则、
+网格摘要。摘要可按输入计算，但双面匹配不能从“厚度为正”推定。
+读取/网格摘要 smoke 可以独立通过；生成可求解 case 必须由显式配套字典
+或双方确认的版本化扩展提供缺失语义，并通过完整校验。
+缺失时报告契约不完整，不能默认匹配率 100%、默认厚度或隐式修补后求解。
+
+### T102 验收顺序（先于材料/工艺接线）
+
+1. JSON schema、单位、索引、厚度长度与 beam/coupling 负例。
+2. Kairos sample-box 合成 fixture 回读单测，不依赖 Mug 数据；
+   合成 fixture 的求解适用性单独判断。
+3. 本地 Mug JSON 网格摘要与读取 smoke，保留真实退出码、时间戳及原始日志。
+4. solver 的只读/校验入口确认节点、拓扑、厚度、梁/耦合关系；
+   几何语义完整性门禁通过后才接材料与工艺字典。
+5. 最后做 078/079 的 fill-pack-cool；读取成功不等于物理求解成功。
+
+## 验证记录规则
+
+### T102 experiment manifest 范围
+
+纳入用户提供的 `tests/fixtures/dual-domain-v1-experiment-manifest.json`，
+schema 为 dual-domain-experiment/v1，引用网格 fixture、PP-REF-01、
+fill-pack-cool 和冻结工艺数值。相对路径以 manifest 目录为基准；
+只读校验不修改 C/MPa/mm，不解析材料数值，不宣称可求解。
+待实现的生成层必须明确将温度转 K、压力转 Pa、长度转 m，
+并记录原始单位和转换；不可改标签而保留原数值。
+
+### 首批实现记录（2026-09-15）
+
+新增 `scripts/dual_domain_input.py`、`scripts/test-dual-domain-input.py`
+及用户指定的 `tests/fixtures/dual-domain-v1.sample.json`。
+只读 JSON 适配校验保持 mm、逐三角形厚度，不生成 case 或求解。
+10 个测试通过（宿主 Python，0.196 s 为测试总时间，非 solver 性能）：
+正例、缺键/版本/单位、索引、厚度、坐标有限性、退化/重复/绕序、
+非流形、beam/coupling 和 CLI 退出码/日志。PR CI 双架构已接线，尚未运行。
+
+修改前：无 moldingFoam T102 读取入口或 fixture 单测。
+修改后：8 节点/12 面、厚度 min=max=10 mm 正确回读；
+非法输入非零退出，成功仍标 solverReady=false。
+精度与性能：仅输入契约通过；物理解精度、质量残差、墙钟和内存未测。
+未完成：OF14 字典生成/读取与 FOAM IO 错误、配对/法向/中面语义、
+边界/积分、MPI、Mug 本地读取和共享 DoD。不得将本批标 done。
+
+补记：加入 manifest 后共 16 个测试通过（同次宿主测试总时间 0.198 s，
+仅记录执行成本，不能与 solver 或先前测试数量不同的运行比较性能）。
+新增覆盖工艺冻结值、曲线时刻重复/倒序/NaN、非法温度与时长、
+材料/单位/阶段不匹配、网格引用与嵌套错误。
+原始命令：`python3 scripts/test-dual-domain-input.py`；
+fixture 与 manifest CLI 均 rc=0，solverReady=false、materialResolved=false。
+
 遵循 [diagnostics.md](../diagnostics.md)：of14 环境、全新 case 副本、先秒级最小复现、
 一次一个变量、失败与阴性结论均留证。本地只跑受影响的小测试；完整矩阵交 nightly，
 不得以“已加入 CI”代替通过。遵守索引共享 DoD，精度优先于性能。
@@ -55,4 +139,3 @@
 
 新功能无旧实现时写“修改前不支持”，用解析解/共享材料基线作精度对照，不虚构加速比。
 达到本任务验收标准与共享 DoD 后才能标 done；仅剩 nightly 时也保持 in-progress。
-

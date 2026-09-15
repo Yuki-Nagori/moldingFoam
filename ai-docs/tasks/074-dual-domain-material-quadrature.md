@@ -49,6 +49,15 @@ CrossWlf/Tait 目录执行 git diff 无差异。CD 的 Set the release version
 
 ## 验证与状态纪律
 
+### 补充：T102 材料引用（2026-09-15）
+
+experiment manifest 引用 id=PP-REF-01、source=kairos-builtin。
+Kairos `assets/builtin-materials.json` 将其命名为“Generic PP 拟合模板”，
+这是联调材料引用，不等于参考报告“通用 PP”的材料认证。
+适配需核对 rheology 的 d1/d2/d3/a1/a2 与 OF D1/D2/D3/A1/A2，
+以及 pvt 的 b4m 与 OF b4 等键映射；记录完整系数、缺省值、来源与摘要，
+不能只凭同 ID 视为材料已解析。此批未复制或启用材料公式/数据。
+
 遵循 [diagnostics.md](../diagnostics.md)：of14 环境、全新 case 副本、先秒级最小复现、
 一次一个变量、失败与阴性结论均留证。本地只跑受影响的小测试；完整矩阵交 nightly，
 不得以“已加入 CI”代替通过。遵守索引共享 DoD，精度优先于性能。

@@ -63,6 +63,33 @@
 
 ## 验证与状态纪律
 
+### 补充：T102 本地资产与生成命令（2026-09-15）
+
+在 Kairos 仓库运行用户指定入口（本次仅记录，未执行）：
+
+```bash
+cd ~/eit/kairos
+cargo run -p kairos-cli -- dual-domain export \
+  --stl report/mug-moldflow/mug.stl \
+  --out /private/tmp/mug-dual-domain-v1.json \
+  --json
+```
+
+原始 Mug STL、导出的 JSON、包含其完整几何的生成字典与专有材料文件
+仅保留本地，不提交任一仓库，也不作为普通 CI artifact 上传。
+仓库交付为生成脚本、工艺模板、schema 和合成 sample-box fixture；
+本地私有运行目录保存输入 JSON、原始日志、网格摘要与时间戳。
+本次确认 moldingFoam 的 report/ 已被 gitignore 排除且无已跟踪文件。
+提交前检查 staged 文件；不使用 git add -f 收录上述资产。
+T102 导出不表示已提供完整求解几何，必须先过 073 中面语义和缺失字段门禁。
+
+完整实验 fixture 已提供于
+`tests/fixtures/dual-domain-v1-experiment-manifest.json`。
+后续先以该非专有 manifest 完成 case 组装/启动测试，再切换到本地 Mug JSON。
+manifest 尚不提供 gate/vent/wall、双面对应、积分与顶出条件；
+这些前置项需显式配置，不能为通过 smoke 自动猜测。
+单个 moldTemperatureC=50 的双面绑定按本任务两侧各 50 °C 明确写入生成字典。
+
 遵循 [diagnostics.md](../diagnostics.md)：of14 环境、全新 case 副本、先秒级最小复现、
 一次一个变量、失败与阴性结论均留证。本地只跑受影响的小测试；完整矩阵交 nightly，
 不得以“已加入 CI”代替通过。遵守索引共享 DoD，精度优先于性能。
@@ -74,4 +101,3 @@
 
 新功能无旧实现时写“修改前不支持”，用解析解/共享材料基线作精度对照，不虚构加速比。
 达到本任务验收标准与共享 DoD 后才能标 done；仅剩 nightly 时也保持 in-progress。
-

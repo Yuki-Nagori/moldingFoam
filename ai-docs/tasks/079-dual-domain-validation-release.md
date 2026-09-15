@@ -70,6 +70,15 @@ CI 失败不得用 continue-on-error 隐藏；artifact 使用 always 上传原�
 
 ## 验证与状态纪律
 
+### 补充：T102 数据边界与 CI（2026-09-15）
+
+078 的“仅本地保留”规则优先：CI 使用可提交的合成 sample-box 做公开回归，
+Mug 实验在持有本地资产的 of14 环境执行并保存私有证据；普通 nightly
+不得上传 STL、导出 JSON 或含完整几何的 case 字典。
+Mug 行须明确标注本地验收，不可因 CI 无资产而跳过并计 PASS，
+也不可用 sample-box 顶替。完整验收仍需实际 Mug 日志。
+公开报告仅记录获准的摘要/聚合结果与本地证据标识，发布前检查 artifact 内容。
+
 遵循 [diagnostics.md](../diagnostics.md)：of14 环境、全新 case 副本、先秒级最小复现、
 一次一个变量、失败与阴性结论均留证。本地只跑受影响的小测试；完整矩阵交 nightly，
 不得以“已加入 CI”代替通过。遵守索引共享 DoD，精度优先于性能。
@@ -81,4 +90,3 @@ CI 失败不得用 continue-on-error 隐藏；artifact 使用 always 上传原�
 
 新功能无旧实现时写“修改前不支持”，用解析解/共享材料基线作精度对照，不虚构加速比。
 达到本任务验收标准与共享 DoD 后才能标 done；仅剩 nightly 时也保持 in-progress。
-

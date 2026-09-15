@@ -29,6 +29,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Dual Domain input contract (synthetic fixture)
+        run: python3 scripts/test-dual-domain-input.py
       - uses: ./.github/actions/setup
       - name: Model tests
         run: xmake run test

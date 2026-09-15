@@ -128,3 +128,27 @@ bash scripts/smoke-exit.sh case-contract      # 期望 PASS
 - **与本报告的 054 项区分**：`reportTrappedAir` 的按 rank 提前返回是
   **另一条**独立缺陷（已修复，见 `tasks/054`），它会造成确定性的并行
   死锁，与退出阶段的堆破坏不是同一问题；两条线不要互相推断。
+
+## 补充 2026-09-15（根因确认：库被映射两次，详见 `tasks/056`）
+
+上一节的"与源码无关"撤回后，056 用 19 步（`endTime 0.002`，约 20–30 s）
+的快速复现器把边界收窄到**库加载次数**：
+
+- `$FOAM_LIBBIN`（bundle 自带）与 `$FOAM_USER_LIBBIN`（手工构建）各有一份
+  **实体** `libmoldingFoam.so` → case 的 `libs (...)` 与 `solver <name>` 的
+  `<name>Solver.so` 查找到**两个不同文件** → np4 下库被映射两次 → 每个
+  runtime selection table 收到 `Duplicate entry`（实测 152 行：
+  `moldingFoam` + 10 个 `fvPatchField` + 2 个 `fvModel`）→ 两套静态对象在
+  退出阶段互相踩 → `malloc_consolidate(): unaligned fastbin chunk detected`；
+- **只留一份实体 + `<name>Solver.so` 符号链接即 rc=0**；bundle 自带的那一对
+  单独存在时同样 rc=0，说明 037 的符号链接修复本身有效，出问题的是
+  "两处各有一份实体"的混装；
+- **串行不复现**（两份实体时串行 rc=0、零重复注册），解释了为何开发期一直
+  未暴露，也与本报告"仅 np4"的边界一致；
+- 已排除：我们代码/各模块的小块越界（金丝雀零命中）、`massBudget` 路径、
+  分配器与传输旋钮（`MALLOC_ARENA_MAX`/`MALLOC_PERTURB_`/`btl self,tcp`）、
+  bundle/OpenMPI 的退出通病（原版教程 case np4 干净）、长跑累积（19 步即崩）；
+  valgrind 在 ARM64 上不可用（SIGILL）；
+- 防线与诊断：`scripts/diag/check-lib-duplication.sh`（`realpath` 判重 +
+  日志 `Duplicate entry` 扫描）、`scripts/diag/repro-037.sh`、
+  `scripts/diag/malloc-canary.c`。

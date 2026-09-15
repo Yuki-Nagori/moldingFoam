@@ -1096,7 +1096,7 @@ MULES 修正遍数）由 2 改为 1（v1.29）：同批 4 子域对照墙钟 **6
 模板（现为 (6,2)）可直接套用同一张表。自适应 `nSubCycles` 表实测仅
 −2%（填充期占 95–99% 步数），已否决。
 
-### 并行规则（防线，任务 046/054）
+### 并行规则（防线，任务 046/054/056）
 
 分解后的网格**每个 rank 的边界 patch 数与填充分布都不同**，因此：
 
@@ -1109,10 +1109,20 @@ MULES 修正遍数）由 2 改为 1（v1.29）：同批 4 子域对照墙钟 **6
    （如"本 rank 没有气相单元"）不能直接做 `return` 条件，必须先
    `reduce`/`returnReduce` 成全局值（054，`reportTrappedAir` 的
    `nAir == 0` 就是反例）。
+3. **运行期求解器库只能有一份映射**：case 的 `libs ("libmoldingFoam.so")`
+   与 `solver moldingFoam` 的名字查找（`libmoldingFoamSolver.so`）是两条
+   加载路径，若 `$FOAM_LIBBIN` 与 `$FOAM_USER_LIBBIN` 各有一份**实体**
+   `.so`，np4 下同一个库被 `dlopen` 两次：每个 runtime selection table 收到
+   `Duplicate entry`，两套静态对象在退出阶段互相踩 →
+   `malloc_consolidate(): unaligned fastbin chunk detected`、rc=134
+   （**串行不复现**，所以开发期容易漏；056）。修法：只留一份实体 +
+   `<名字>Solver.so` 符号链接；自检
+   `scripts/diag/check-lib-duplication.sh`（>1 实体即报错）。
 
 防线用例：`parallelMassBudget`（046）经 `system/nProcs` 在 nightly 的
 `test-solver` 里跑串行+并行两遍；`parallelTrappedAir` 待 harness 用例
-复用语义修复后落地（`ai-docs/tasks/054` §5/§8）。
+复用语义修复后落地（`ai-docs/tasks/054` §5/§8）。库重载无法在 CI 里构造
+（CI 环境只有一份），以文档 + 自检脚本替代。
 另见 054 §8：**一次运行会把已注册相场写进 `0/`**，用例目录复跑前需清理，
 否则初态与首次不同。
 
@@ -1517,6 +1527,9 @@ moldingFoam/
 ├── validation/moldCHT-fill/ 双区域共轭传热充填基准（同上目标）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）
 ├── scripts/docs/            check-docs.py（ai-docs 索引/引用体检，手动运行）
+├── scripts/diag/            037/056 诊断：repro-037.sh（19 步复现矩阵）、
+│                            malloc-canary.c（有界金丝雀探针）、
+│                            check-lib-duplication.sh（库重载自检）
 └── scripts/                 vm-sync.sh、run-case.sh、verify-case.py
                              run-validation.sh、run-solver-tests.sh
                              run-moldcht.sh、verify-couette.py

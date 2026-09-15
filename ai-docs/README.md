@@ -67,10 +67,13 @@
   **15,212 步**（完整口径与历史见文末「背景速览」与 README 第 8 节）；
 - 数值定标：守恒误差 **∝ dt**（同网格）且固定 dt 下随加密一阶变差；
   余量↔成本换算见 `uncertainty.md`；
-- 并行规则（两条血泪）：① 循环内的集合通信不能随 rank 变化的 patch/
+- 并行规则（三条血泪）：① 循环内的集合通信不能随 rank 变化的 patch/
   分支数变化（046）；② 函数体内的集合通信要求**所有**提前返回与分支
-  全局一致（054）。防线用例：`parallelMassBudget`；`parallelTrappedAir`
-  待 harness 用例复用语义修复后落地（054 §5/§8）；
+  全局一致（054）；③ 运行期求解器库只能有一份映射（两处各一份实体
+  `libmoldingFoam.so` → np4 双载 → 退出堆破坏，串行不复现；056）。防线
+  用例：`parallelMassBudget`；`parallelTrappedAir`
+  待 harness 用例复用语义修复后落地（054 §5/§8）；库重载用
+  `scripts/diag/check-lib-duplication.sh` 自检；
 - 性能：墙钟热点是界面机制（050 剖面）；已落地杠杆见 README 第 7 节，
   阴性清单见 `tasks/041` §4y 与 052/053。
 
@@ -160,7 +163,7 @@
 | [038](tasks/038-sample-case-fill-stability.md) | 样例 case 填充/稳定性诊断与参考配置（Kairos 10 mm 立方体） | P1 | **done**（诊断 + boxFill 19/19 + P1 防线：浇口速度预警/非有限快速失败 + P2 契约：冷却通道/D·sigma·sigmaEq 场） | 003/006 | 1 天 |
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
 | [055](tasks/055-case-reuse-semantics.md) | 测试流程的用例复用语义（`0/` 污染）与 054 防线落地 | P1 | **done**（每 pass 新鲜副本 + `parallelTrappedAir` 两端口验证：pre-054 FAIL / 修复后 PASS） | 054/046 | 0.5–1 天 |
-| [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | in-progress（kairos 二分运行中） | 046/054/038 | 1–2 天 |
+| [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | **done**（根因＝库被映射两次：两处各有一份实体 `libmoldingFoam.so`；单份即 rc=0、串行不复现；19 步复现器 + 库重载自检入库） | 046/054/038 | 1–2 天 |
 （001–054 已完成；055–058 为 2026-09-14 的跟进项（测试流程复用语义、037 写入点定位、I/O 与诊断开销、流道拓扑扩展），状态见上表。）
 
 审计与报告（按时间）：

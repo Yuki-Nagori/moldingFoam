@@ -94,6 +94,7 @@ inline Foam::scalar Foam::Tait<Specie>::pMeltIso(scalar rho, scalar T) const
     // so the fixed-point iteration below contracts quickly (b6 is
     // tiny) and is iterated to round-off
     scalar p = 0;
+    bool converged = false;
 
     for (label i = 0; i < 20; ++i)
     {
@@ -105,8 +106,22 @@ inline Foam::scalar Foam::Tait<Specie>::pMeltIso(scalar rho, scalar T) const
 
         if (mag(p - pPrev) < 1e-14*max(mag(p), scalar(1)))
         {
+            converged = true;
             break;
         }
+    }
+
+    const scalar residual =
+        mag(vhatm(p, T) - 1/max(rho, scalar(small)))
+       /max(mag(1/max(rho, scalar(small))), scalar(small));
+
+    if (!converged || residual > 1e-10)
+    {
+        WarningInFunction
+            << "Tait melt isochoric inverse reached its iteration limit or "
+            << "failed the relative volume residual: rho = " << rho
+            << ", T = " << T << ", p = " << p
+            << ", residual = " << residual << endl;
     }
 
     return p;

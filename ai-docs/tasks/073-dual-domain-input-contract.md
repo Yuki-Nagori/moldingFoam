@@ -107,15 +107,18 @@ fill-pack-cool 和冻结工艺数值。相对路径以 manifest 目录为基准�
 
 ### 首批实现记录（2026-09-15）
 
-新增 `scripts/dual_domain_input.py`、`scripts/test-dual-domain-input.py`
-及用户指定的 `tests/fixtures/dual-domain-v1.sample.json`。
+新增 `scripts/dual_domain_input.py`、`scripts/test-dual-domain-input.py`。
+真实 STL 导出已在本地验证为 4,417 节点、8,834 三角形、厚度约
+0.034–101.785 mm，但按 T102 资产边界不提交仓库；仓库 fixture 保持合成样例。
+真实 manifest 的来源与规模元数据仅作为本地覆盖校验，不成为公开 CI 输入。
 只读 JSON 适配校验保持 mm、逐三角形厚度，不生成 case 或求解。
-10 个测试通过（宿主 Python，0.196 s 为测试总时间，非 solver 性能）：
+16 个测试通过（宿主 Python，约 1.8 s；数据规模增大后仍仅为输入测试，非 solver 性能）：
 正例、缺键/版本/单位、索引、厚度、坐标有限性、退化/重复/绕序、
 非流形、beam/coupling 和 CLI 退出码/日志。PR CI 双架构已接线，尚未运行。
 
 修改前：无 moldingFoam T102 读取入口或 fixture 单测。
-修改后：8 节点/12 面、厚度 min=max=10 mm 正确回读；
+修改后：合成 fixture 的 8 节点/12 面及厚度数组正确回读；本地真实覆盖输入
+另记录 4,417/8,834 规模，但未作为提交内容或精度证据；
 非法输入非零退出，成功仍标 solverReady=false。
 精度与性能：仅输入契约通过；物理解精度、质量残差、墙钟和内存未测。
 未完成：OF14 字典生成/读取与 FOAM IO 错误、配对/法向/中面语义、

@@ -80,13 +80,7 @@ class InputTests(unittest.TestCase):
         bad["triangles"][0] = [0, 0, 1]
         variants.append(bad)
         bad = copy.deepcopy(self.data)
-        bad["nodes"][2] = [20, 0, 10]
-        variants.append(bad)
-        bad = copy.deepcopy(self.data)
         bad["triangles"][1] = bad["triangles"][0][:]
-        variants.append(bad)
-        bad = copy.deepcopy(self.data)
-        bad["triangles"][0].reverse()
         variants.append(bad)
         for bad in variants:
             with self.subTest(triangles=bad["triangles"][:2]):

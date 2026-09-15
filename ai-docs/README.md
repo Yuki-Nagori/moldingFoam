@@ -114,7 +114,7 @@ v1.1.0 tag 对应提交及其与 Kairos 的公式契约（CD 打包会注入发�
 
 T102 联调补充已纳入 073/075/078/079：消费 Kairos 的
 `dual-domain/v1` JSON（显式 mm、逐三角形厚度、beams/couplings），
-先 sample-box，再本地 Mug 读取，最后材料/工艺与 fill-pack-cool。
+先合成负例与真实 STL 导出读取，再材料/工艺与 fill-pack-cool。
 原始 STL/导出 JSON 只留本地；当前导出为表面网格，是否符合中面求解语义
 及缺少的双面匹配等数据，必须在 073 明确校验，不能静默视为已满足。
 

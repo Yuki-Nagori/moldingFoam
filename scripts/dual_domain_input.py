@@ -134,7 +134,12 @@ def read_experiment(path):
     require(data["schemaVersion"] == "dual-domain-experiment/v1",
             "schemaVersion", "expected dual-domain-experiment/v1")
     mesh = data["mesh"]
-    fields(mesh, ("schemaVersion", "fixture", "lengthUnit", "thicknessUnit"), "mesh")
+    require(isinstance(mesh, dict), "mesh", "expected object")
+    required_mesh = ("schemaVersion", "fixture", "lengthUnit", "thicknessUnit")
+    require(all(key in mesh for key in required_mesh), "mesh",
+            "missing required mesh key")
+    require(set(mesh).issubset(set(required_mesh) | {"source", "nodeCount", "triangleCount"}),
+            "mesh", "unknown key")
     for key, expected in (("schemaVersion", "dual-domain/v1"),
                           ("lengthUnit", "mm"), ("thicknessUnit", "mm")):
         require(mesh[key] == expected, "mesh." + key, f"expected {expected}")
@@ -147,6 +152,15 @@ def read_experiment(path):
     require(target.is_relative_to(path.parent.resolve()), "mesh.fixture",
             "fixture must remain inside manifest directory")
     mesh_data = read(target)
+    if "source" in mesh:
+        require(mesh["source"] == "mug-stl-generated", "mesh.source",
+                "expected mug-stl-generated provenance")
+    if "nodeCount" in mesh:
+        require(mesh["nodeCount"] == len(mesh_data["nodes"]), "mesh.nodeCount",
+                "does not match referenced fixture")
+    if "triangleCount" in mesh:
+        require(mesh["triangleCount"] == len(mesh_data["triangles"]), "mesh.triangleCount",
+                "does not match referenced fixture")
     material = data["material"]
     fields(material, ("id", "source"), "material")
     require(material["id"] == "PP-REF-01" and material["source"] == "kairos-builtin",

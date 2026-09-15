@@ -267,6 +267,22 @@ case。该 solver 修复了 of14 首轮残差复用，使 `nCorrectors>1` 的每
 静态收敛检查和 8% 门槛保持不变；完整九行矩阵需在该 solver 下重新执行，才可
 将本任务标记为 done。
 
+### 新 solver 基线复测（2026-09-15）
+
+在 of14 干净同步副本上，两个载体均使用
+`solver moldingSolidDisplacement`、`libs ("libmoldingFoam.so")`，保持原网格、
+初态、10000 步和固定截面 verifier：
+
+| 载体 | 结果 | 静态窗口变化（末三段） | 结论 |
+|---|---|---|---|
+| thermoelastic 48×80 | 10000 步，解析误差通过 | 0.000830 / 0.000712 / 0.000584 | `converged=true` |
+| warpagePlate 48×16 | 10000 步，误差与应力检查通过 | 0.008602 / 0.005888 / 0.004077 | `converged=false` |
+
+这组对比证明 071 的模块覆写可正常替代官方 solver，且 thermoelastic 的中等
+网格已同时满足精度与静态判据；warpagePlate 仍需增加迭代充分性或单独的模型
+收敛修复，不能用“解析误差通过”替代静态收敛。完整三网格矩阵和 warpage 修复
+仍保留在 nightly 收口，070 状态继续为 `in-progress`。
+
 补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
 明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
 均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。

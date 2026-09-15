@@ -14,7 +14,8 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-solver          solidDisplacement;
+solver          moldingSolidDisplacement;
+libs            ("libmoldingFoam.so");
 
 startFrom       startTime;
 

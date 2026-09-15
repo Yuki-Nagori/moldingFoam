@@ -1,6 +1,6 @@
 # 071：solidDisplacement 校正循环的真实收敛控制
 
-- 状态：planned
+- 状态：done
 - 优先级：P1
 - 依赖：070；OpenFOAM-14 `solidDisplacement`
 - 来源：070 B3 诊断与源码复核
@@ -61,6 +61,17 @@ OpenFOAM-14 的 `solidDisplacement::pressureCorrector()` 读取
 
 当前 of14 源码审计结果：`DEqn.solve()` 只在校正体中赋给
 `initialResidual` 一次，循环条件继续读取该值；没有逐校正残差更新。该结果与
-070 的 B3 成本证据一致。暂未修改 `/opt/openfoam14` 或仓库 solver，071 仍为
-planned，下一步需评估模块内替代类型是否能避免与官方 runtime-selection
-符号冲突。
+070 的 B3 成本证据一致。
+
+## 实施记录 2026-09-15：模块覆写完成
+
+新增 `moldingSolidDisplacement` 派生模块（`src/moldingFoam/`），复用官方
+材料、应力和边界实现，只覆写 `pressureCorrector()`：每次 corrector 都重新
+写入当前 `DEqn.solve().max().initialResidual()`，并按当前残差与
+`nCorrectors` 结束循环。验证字典通过 `solver moldingSolidDisplacement` 和
+`libs ("libmoldingFoam.so")` 显式启用，未改动 `/opt/openfoam14`。
+
+of14 证据：库构建与 `modelTests` 链接通过；一阶 `nCorrectors=3` 算例输出三组
+独立 Dx/Dy 求解。契约审计对官方源返回 `contract_violation=true`（预期的上游
+缺陷），对本项目实现返回 `contract_violation=false`。该修复已成为两个结构
+验证载体的默认 solver；070 的三网格精度矩阵仍按其静态收敛标准单独验收。

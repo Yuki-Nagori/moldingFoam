@@ -16,17 +16,27 @@ def main():
         return 2
     text = source.read_text(errors='replace')
     solve_count = len(re.findall(r'DEqn\.solve\(\)', text))
-    initial_assignments = len(re.findall(r'initialResidual\s*=\s*DEqn\.solve', text))
-    loop = bool(re.search(r'while\s*\(\s*initialResidual\s*>\s*convergenceTolerance', text))
-    solve_pos = text.find('initialResidual = DEqn.solve')
-    nonSolveUpdates = (
-        len(re.findall(r'initialResidual\s*=\s*', text[solve_pos + 1:]))
-        if solve_pos >= 0 else 0
+    residual_assignments = re.findall(
+        r'(?m)^\s*(initialResidual|residual)\s*=\s*DEqn\.solve\s*\(\)',
+        text
     )
+    initial_assignments = residual_assignments.count('initialResidual')
+    loop = bool(re.search(
+        r'while\s*\(\s*(initialResidual|residual)\s*>\s*convergenceTolerance',
+        text
+    ))
+    solve_match = re.search(
+        r'(?m)^\s*initialResidual\s*=\s*DEqn\.solve\s*\(\)', text
+    )
+    tail = text[solve_match.end():] if solve_match else ''
+    # Count assignments after the first solve only.  Matching line starts
+    # avoids counting the solve assignment itself or the scalar declaration.
+    nonSolveUpdates = len(re.findall(r'(?m)^\s*initialResidual\s*=', tail))
     result = {
         'status': 'ok', 'source': str(source), 'solve_count': solve_count,
         'initial_residual_assignments': initial_assignments,
         'initial_residual_updates': initial_assignments + nonSolveUpdates,
+        'residual_assignment_variables': residual_assignments,
         'loop_uses_initial_residual': loop,
         'non_solve_residual_updates': nonSolveUpdates,
         'contract_violation': bool(loop and nonSolveUpdates == 0),

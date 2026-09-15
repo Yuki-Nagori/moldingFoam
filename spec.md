@@ -182,12 +182,13 @@ with the plane-stress or three-dimensional coefficients selected by
 the corresponding model is active. `tractionDisplacement` uses outward normal
 traction and pressure; `fixedValue` fixes displacement.
 
-The current structural validation has a known limitation: the OpenFOAM-14
-upstream corrector loop reuses its first displacement residual for the loop
-condition. Refined 96x160 validation meshes can therefore show insufficient
-linear correction and a late displacement jump. The structural 8% acceptance
-threshold is not waived; until task 071 is resolved, fine-grid structural output
-must be reported as `not_converged` when the static-history check fails.
+The validation cases use the project-registered `moldingSolidDisplacement`
+solver. It derives from the OpenFOAM-14 module and replaces only
+`pressureCorrector()`, refreshing the displacement residual on every corrector;
+the upstream `/opt/openfoam14` source is unchanged. Set
+`solver moldingSolidDisplacement;` and load `libs ("libmoldingFoam.so");` to
+enable this contract. A failed static-history check still reports
+`not_converged`; the 8% accuracy threshold is unchanged.
 
 ## 7. Input and output contract
 

@@ -259,6 +259,14 @@ baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创
 CI 步骤显式加载 `/opt/openfoam14/etc/bashrc`；脚本在环境缺失时以配置错误
 退出，避免把环境问题误记为结构数值失败。
 
+### 071 联动修复记录（2026-09-15）
+
+task 071 已交付 `moldingSolidDisplacement` 模块覆写，并接入两个结构验证
+case。该 solver 修复了 of14 首轮残差复用，使 `nCorrectors>1` 的每一轮都使用
+当前线性残差；构建、模型测试和一阶三校正运行均通过。070 的固定截面口径、
+静态收敛检查和 8% 门槛保持不变；完整九行矩阵需在该 solver 下重新执行，才可
+将本任务标记为 done。
+
 补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
 明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
 均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。

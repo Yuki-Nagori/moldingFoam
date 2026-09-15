@@ -31,12 +31,13 @@ KAPPA = ALPHA*DT/H
 def read_D(path):
     with open(path) as handle:
         text = handle.read()
-    m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*\n?\s*(\d+)"
+    m = re.search(r"internalField\s+nonuniform\s+List<vector>\s*(\d+)"
                   r"\s*\((.*?)\)\s*;", text, re.S)
     if not m:
         return None
-    return [[float(v) for v in row] for row in re.findall(
-        r"\(([-+0-9.eE]+) ([-+0-9.eE]+) ([-+0-9.eE]+)\)", m.group(2))]
+    n = int(m.group(1))
+    rows = re.findall(r"\(([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\)", m.group(2))
+    return [[float(v) for v in row] for row in rows[:n]]
 
 
 def main():

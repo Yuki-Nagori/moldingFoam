@@ -71,6 +71,34 @@ namespace solvers
 namespace
 {
 
+// Fixed cycle inputs live in constant, separately from restart fields.
+// Missing legacy snapshots fail explicitly instead of adopting a filled cavity.
+template<class FieldType>
+Foam::autoPtr<FieldType> cycleInitial
+(
+    const FieldType& field, const Foam::word& name, const bool restart
+)
+{
+    const Foam::fvMesh& mesh = field.mesh();
+    Foam::IOobject io
+    (
+        name, mesh.time().constant(), "moldingInitial", mesh,
+        restart ? Foam::IOobject::MUST_READ : Foam::IOobject::NO_READ,
+        Foam::IOobject::NO_WRITE, false
+    );
+    if (restart)
+    {
+        return Foam::autoPtr<FieldType>(new FieldType(io, mesh));
+    }
+    Foam::autoPtr<FieldType> result(new FieldType(io, field));
+    if (!result->write())
+    {
+        FatalErrorInFunction << "Cannot write cycle initial state " << name
+            << Foam::exit(Foam::FatalError);
+    }
+    return result;
+}
+
 //- Path of a constant dictionary that is region aware: in a multi-region
 //  case the mesh registry's dbDir carries the region name, so the
 //  dictionary is read from constant/<region>/<name>. A decomposed mesh
@@ -131,6 +159,8 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     massFixRelaxation_(1),
     massFixGlobal_(false),
     massBudgetInit_(false),
+    massBudgetState_(),
+    tauInitial_(),
     massBudgetAlpha1Prev_(),
     massBudgetRho1Prev_(),
     massBudgetPrghPrev_(),
@@ -392,7 +422,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                 )
             );
 
-            chiInitial_.reset(new volScalarField(*chi_));
+            // Cycle snapshots are created below only when nCycles > 1.
         }
 
         // Optional fibre orientation: the Folgar-Tucker equation evolves
@@ -405,6 +435,13 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                     "conductivityAnisotropy",
                     0
                 );
+            if (!(condAniso_ > -1.5 && condAniso_ < 3))
+            {
+                FatalIOErrorInFunction(moldingDict)
+                    << "conductivityAnisotropy must lie in (-1.5, 3) "
+                    << "to keep the conductivity positive definite"
+                    << exit(FatalIOError);
+            }
             fiberOrientation_.reset
             (
                 new moldingFiberOrientation
@@ -431,7 +468,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                 )
             );
 
-            aInitial_.reset(new volSymmTensorField(*a_));
+            // Cycle snapshots are created below only when nCycles > 1.
         }
 
         // Optional shrinkage and residual-stress indicators from the
@@ -460,7 +497,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                 )
             );
 
-            shrinkageInitial_.reset(new volScalarField(*shrinkageField_));
+            // Cycle snapshots are created below only when nCycles > 1.
 
             // Optional void-fraction indicator of the sealed melt (task
             // 018a, stage 2): the volume fraction that would open up if
@@ -578,7 +615,7 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
                 )
             );
 
-            fillTimeInitial_.reset(new volScalarField(*fillTime_));
+            // Cycle snapshots are created below only when nCycles > 1.
         }
 
         // Optional trapped-air field, written with the trapped-air
@@ -649,103 +686,61 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
             << endl;
     }
 
-    // Snapshots of the initial fields for the multi-cycle reset
-    alpha1Initial_.reset
-    (
-        new volScalarField
-        (
-            IOobject
+    if (mesh.foundObject<moldingStage>(moldingStage::typeName))
+    {
+        const moldingStage& stage = mesh.lookupObject<moldingStage>(moldingStage::typeName);
+        cycle_ = stage.cycle();
+        deltaTInitial_ = stage.initialDeltaT();
+    }
+    if (nCycles_ > 1)
+    {
+        const bool restart = runTime.value() > small;
+        fvModels();
+        if (mesh.foundObject<volSymmTensorField>("tau"))
+        {
+            tauInitial_ = cycleInitial
             (
-                "alpha1Initial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            alpha1
-        )
-    );
-    alpha2Initial_.reset
-    (
-        new volScalarField
+                mesh.lookupObject<volSymmTensorField>("tau"), "tauInitial", restart
+            );
+        }
+        alpha1Initial_ = cycleInitial(alpha1, "alpha1Initial", restart);
+        alpha2Initial_ = cycleInitial(alpha2, "alpha2Initial", restart);
+        UInitial_ = cycleInitial(U, "UInitial", restart);
+        TInitial_ = cycleInitial(mixture_.T(), "TInitial", restart);
+        pInitial_ = cycleInitial(p, "pInitial", restart);
+        p_rghInitial_ = cycleInitial(p_rgh, "p_rghInitial", restart);
+        if (chi_.valid()) chiInitial_ = cycleInitial(*chi_, "chiInitial", restart);
+        if (a_.valid()) aInitial_ = cycleInitial(*a_, "aInitial", restart);
+        if (shrinkageField_.valid())
+            shrinkageInitial_ = cycleInitial(*shrinkageField_, "shrinkageInitial", restart);
+        if (fillTime_.valid())
+            fillTimeInitial_ = cycleInitial(*fillTime_, "fillTimeInitial", restart);
+    }
+
+    if (massBudget_ || massFix_ || massFixGlobal_)
+    {
+        massBudgetState_.reset
         (
-            IOobject
+            new IOdictionary
             (
-                "alpha2Initial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            alpha2
-        )
-    );
-    UInitial_.reset
-    (
-        new volVectorField
-        (
-            IOobject
-            (
-                "UInitial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            U
-        )
-    );
-    TInitial_.reset
-    (
-        new volScalarField
-        (
-            IOobject
-            (
-                "TInitial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            mixture_.T()
-        )
-    );
-    pInitial_.reset
-    (
-        new volScalarField
-        (
-            IOobject
-            (
-                "pInitial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            p
-        )
-    );
-    p_rghInitial_.reset
-    (
-        new volScalarField
-        (
-            IOobject
-            (
-                "p_rghInitial",
-                Time::timeName(runTime.value()),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            p_rgh
-        )
-    );
+                IOobject
+                (
+                    "moldingMassBudget", runTime.name(), mesh,
+                    IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE
+                )
+            )
+        );
+        massBudgetInit_ = massBudgetState_->lookupOrDefault<Switch>("initialised", false);
+        massBudgetInitial_ = massBudgetState_->lookupOrDefault<scalar>("initialMass", 0);
+        massBudgetIn_ = massBudgetState_->lookupOrDefault<scalar>("boundaryMass", 0);
+        massBudgetPrevTime_ = runTime.value();
+        if (massBudget_)
+        {
+            massBudgetAlpha1Prev_ = alpha1.primitiveField();
+            massBudgetRho1Prev_ = mixture_.rho1().primitiveField();
+            massBudgetPrghPrev_ = p_rgh_.primitiveField();
+        }
+    }
 
     // Baseline for the runtime reload: the constructor has just applied
     // the current dictionary contents
@@ -1117,6 +1112,9 @@ Foam::solvers::moldingFoam::viscousDissipationSource() const
         }
     }
 
+    laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+        applyEnhancements(dissipationCoeffs_, U, eta);
+
     // tau : grad(U) = 2*eta*dev(S) : grad(U); dev(S) and grad(U) share
     // the same double-dot form as the turbulence production term
     return teta*(2.0*(dev(S) && gradU));
@@ -1126,6 +1124,20 @@ Foam::solvers::moldingFoam::viscousDissipationSource() const
 void Foam::solvers::moldingFoam::resetCycle()
 {
     ++cycle_;
+    massBudgetInit_ = false;
+    massBudgetInitial_ = 0;
+    massBudgetIn_ = 0;
+    massBudgetPrevTime_ = runTime.value();
+    if (tauInitial_.valid())
+    {
+        auto& tau = mesh.lookupObjectRef<volSymmTensorField>("tau");
+        tau == *tauInitial_;
+    }
+    if (mesh.foundObject<volScalarField>("moldingVoidRhoRef"))
+    {
+        auto& ref = mesh.lookupObjectRef<volScalarField>("moldingVoidRhoRef");
+        ref == dimensionedScalar("zero", ref.dimensions(), 0);
+    }
 
     // Restore the flow fields to their initial state. The mould thermal
     // state (moldingMoldTemperature) is intentionally not touched, so the
@@ -1218,7 +1230,7 @@ void Foam::solvers::moldingFoam::resetCycle()
     // Clear the seals and return to the filling stage
     if (mesh.foundObject<moldingStage>(moldingStage::typeName))
     {
-        mesh.lookupObjectRef<moldingStage>(moldingStage::typeName).resetCycle();
+        mesh.lookupObjectRef<moldingStage>(moldingStage::typeName).resetCycle(runTime.value());
     }
 
     mixture_.correctThermo();
@@ -1310,14 +1322,13 @@ void Foam::solvers::moldingFoam::reportTrappedAir()
 
     // Seed from the open vent faces. A sealed vent cannot vent anything,
     // so every air cell counts as trapped then
-    const bool ventSealed =
+    const moldingStage* ventStage =
         mesh.foundObject<moldingStage>(moldingStage::typeName)
-     && mesh.lookupObject<moldingStage>(moldingStage::typeName).ventSealed();
+      ? &mesh.lookupObject<moldingStage>(moldingStage::typeName) : nullptr;
 
     boolList connected(nCells, false);
     DynamicList<label> stack;
 
-    if (!ventSealed)
     {
         const volVectorField::Boundary& UBf = U_.boundaryField();
 
@@ -1327,6 +1338,7 @@ void Foam::solvers::moldingFoam::reportTrappedAir()
             (
                 UBf[patchi].type()
              == moldingVentVelocityFvPatchVectorField::typeName
+             && (!ventStage || !ventStage->ventSealed(mesh.boundary()[patchi].name()))
             )
             {
                 const labelUList& faceCells =
@@ -2015,7 +2027,7 @@ void Foam::solvers::moldingFoam::postSolve()
             }
         }
 
-        reduce(fluxAlpha, sumOp<scalar>());
+        // Each patchAlphaFlux has already been globally reduced.
     }
 
     // The actual step length from the solved times: runTime.deltaTValue()
@@ -2026,7 +2038,7 @@ void Foam::solvers::moldingFoam::postSolve()
       : runTime.value() - massBudgetPrevTime_;
     massBudgetPrevTime_ = runTime.value();
 
-    if (runTime.timeIndex() == 1 || !massBudgetInit_)
+    if (!massBudgetInit_)
     {
         // Back out the first step to express the initial mass at t = 0
         // (m_after = m_before - flux*dt for an outward-positive flux)
@@ -2097,6 +2109,10 @@ void Foam::solvers::moldingFoam::postSolve()
             << " kg, residual = " << (m - massBudgetInitial_ + massBudgetIn_)
             << " kg" << endl;
     }
+
+    massBudgetState_->set("initialised", true);
+    massBudgetState_->set("initialMass", massBudgetInitial_);
+    massBudgetState_->set("boundaryMass", massBudgetIn_);
 
     // Optional conservative mass correction (task 018 experiment): fold
     // the discrete mass residual back into the phase-1 density so that
@@ -2266,7 +2282,6 @@ void Foam::solvers::moldingFoam::preSolve()
 
     // Seal the vent once the melt front reaches it: the vent passes air
     // but not polymer (moldingVentPressure / moldingVentVelocity)
-    if (!stage.ventSealed())
     {
         forAll(U.boundaryField(), pi)
         {
@@ -2274,13 +2289,14 @@ void Foam::solvers::moldingFoam::preSolve()
             (
                 U.boundaryField()[pi].type()
              == moldingVentVelocityFvPatchVectorField::typeName
+             && !stage.ventSealed(mesh.boundary()[pi].name())
             )
             {
                 const scalarField& a1p = alpha1.boundaryField()[pi];
 
                 if (gMax(a1p) >= ventSealAlpha_)
                 {
-                    stage.sealVent();
+                    stage.sealVent(mesh.boundary()[pi].name());
 
                     Info<< "moldingFoam: vent sealed by the melt front:"
                         << " max(alpha.melt) = " << gMax(a1p)

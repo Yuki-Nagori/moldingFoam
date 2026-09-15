@@ -50,6 +50,7 @@ SourceFiles
 #include "Function1.H"
 #include "fvMesh.H"
 #include "regIOobject.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -104,8 +105,11 @@ private:
         //- Time at which the gate seal was triggered [s]
         scalar gateSealTime_;
 
-        //- Has the vent been sealed by the arriving melt front?
+        //- Legacy summary: has any vent been sealed?
         bool ventSealed_;
+
+        //- Per-vent and cycle checkpoint, written with the stage.
+        IOdictionary history_;
 
 
 public:
@@ -200,22 +204,25 @@ public:
             return ventSealed_;
         }
 
-        //- Seal the vent: no further flow through the vent
+        bool ventSealed(const word& patchName) const;
+        void sealVent(const word& patchName);
+        label cycle() const { return history_.lookupOrDefault<label>("cycle", 1); }
+        scalar cycleStartTime() const
+        {
+            return history_.lookupOrDefault<scalar>("cycleStartTime", 0);
+        }
+        scalar initialDeltaT() const { return history_.lookup<scalar>("initialDeltaT"); }
+
+        //- Legacy global seal request; discard per-patch overrides.
         void sealVent()
         {
+            history_.remove("sealedVents");
             ventSealed_ = true;
         }
 
         //- Reset for the next moulding cycle: back to the filling stage
         //  with the seal flags cleared; the packing parameters are kept
-        void resetCycle()
-        {
-            stage_ = stage::filling;
-            switchTime_ = -1;
-            gateSealed_ = false;
-            gateSealTime_ = -1;
-            ventSealed_ = false;
-        }
+        void resetCycle(const scalar t);
 
         //- Return the packing pressure target at time t [Pa]; zero before
         //  the switch

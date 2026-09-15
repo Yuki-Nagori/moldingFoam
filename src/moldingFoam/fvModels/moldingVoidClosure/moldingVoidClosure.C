@@ -69,7 +69,15 @@ Foam::fv::moldingVoidClosure::moldingVoidClosure
 
     cavitation_(Foam::compressible::cavitationModel::New(dict, mixture_)),
 
-    rhoRef_(mesh.nCells(), 0),
+    rhoRef_
+    (
+        IOobject
+        (
+            "moldingVoidRhoRef", mesh.time().name(), mesh,
+            IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE
+        ),
+        mesh, dimensionedScalar("zero", dimDensity, 0)
+    ),
 
     band_(dict.lookupOrDefault<scalar>("band", 0.2)),
 
@@ -354,9 +362,7 @@ bool Foam::fv::moldingVoidClosure::movePoints()
 
 void Foam::fv::moldingVoidClosure::topoChange(const polyTopoChangeMap& map)
 {
-    // Re-arm the closure reference on a changed mesh (the sealed-state
-    // reference is only meaningful for the cells it was captured on)
-    rhoRef_.setSize(mesh().nCells(), 0);
+    // The registered volume field follows the mesh mapping.
 }
 
 
@@ -366,7 +372,7 @@ void Foam::fv::moldingVoidClosure::mapMesh(const polyMeshMap&)
 
 void Foam::fv::moldingVoidClosure::distribute(const polyDistributionMap& map)
 {
-    rhoRef_.setSize(mesh().nCells(), 0);
+    // The registered volume field follows the mesh mapping.
 }
 
 

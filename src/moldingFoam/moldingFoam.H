@@ -56,6 +56,7 @@ SourceFiles
 #include "compressibleVoF.H"
 #include "CrossWlf.H"
 #include "Tait.H"
+#include "IOdictionary.H"
 #include <ctime>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -163,6 +164,8 @@ class moldingFoam
 
         //- Previous-step mass-budget state for the term decomposition
         bool massBudgetInit_;
+        autoPtr<IOdictionary> massBudgetState_;
+        autoPtr<volSymmTensorField> tauInitial_;
         scalarField massBudgetAlpha1Prev_;
         scalarField massBudgetRho1Prev_;
         scalarField massBudgetPrghPrev_;

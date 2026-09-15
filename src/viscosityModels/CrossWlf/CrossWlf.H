@@ -232,6 +232,14 @@ public:
 
         //- Crystallinity viscosity factor
         //  (1 - chi/chiInfinity)^(-exponent), clipped to a finite maximum
+        //- Apply the same material enhancement to momentum and heat.
+        static void applyEnhancements
+        (
+            const coeffs& c,
+            const volVectorField& U,
+            volScalarField& viscosity
+        );
+
         static scalar crystallinityFactor
         (
             const scalar chi,

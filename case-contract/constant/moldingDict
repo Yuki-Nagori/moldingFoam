@@ -19,6 +19,11 @@ Description
     cooling.ejectionTemperature (the mould wall temperature is the
     fixedValue of the T boundary condition on the walls patch).
 \*---------------------------------------------------------------------------*/
+// Contract v1.30 checkpoint semantics (task 063): preserve the complete time
+// directory, including moldingCycleState and moldingMassBudget when present.
+// Multi-cycle restarts also require constant/moldingInitial from the first run.
+// Vent seals are independent per patch. Optional conductivityAnisotropy must
+// lie in (-1.5, 3). This case's numerical controls remain the v1.29 baseline.
 FoamFile
 {
     format      ascii;

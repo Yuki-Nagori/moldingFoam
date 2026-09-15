@@ -112,7 +112,7 @@ void Foam::moldingVentPressureFvPatchScalarField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.ventSealed())
+    if (stage.ventSealed(patch().name()))
     {
         // Melt front at the vent: no through-flow (the matching
         // moldingVentVelocity condition sets the velocity to zero)

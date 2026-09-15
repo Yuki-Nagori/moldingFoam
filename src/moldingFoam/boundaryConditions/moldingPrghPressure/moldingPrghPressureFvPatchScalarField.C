@@ -59,9 +59,9 @@ moldingPrghPressureFvPatchScalarField::moldingPrghPressureFvPatchScalarField
       : autoPtr<moldingRunnerNetwork>()
     ),
     relaxation_(dict.lookupOrDefault<scalar>("relaxation", 1)),
-    pSwitch_(0),
-    tSwitch_(-1),
-    rampArmed_(false)
+    pSwitch_(dict.lookupOrDefault<scalar>("pSwitch", 0)),
+    tSwitch_(dict.lookupOrDefault<scalar>("tSwitch", -1)),
+    rampArmed_(dict.lookupOrDefault<Switch>("rampArmed", false))
 {
     if (relaxation_ <= 0 || relaxation_ > 1)
     {
@@ -256,6 +256,17 @@ void moldingPrghPressureFvPatchScalarField::updateCoeffs()
     }
 
     mixedFvPatchScalarField::updateCoeffs();
+}
+
+
+void moldingPrghPressureFvPatchScalarField::write(Ostream& os) const
+{
+    mixedFvPatchScalarField::write(os);
+    if (runner_.valid()) writeEntry(os, "runner", *runner_);
+    writeEntry(os, "relaxation", relaxation_);
+    writeEntry(os, "pSwitch", pSwitch_);
+    writeEntry(os, "tSwitch", tSwitch_);
+    writeEntry(os, "rampArmed", rampArmed_);
 }
 
 

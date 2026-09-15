@@ -205,6 +205,7 @@ public:
 
         //- Update the coefficients associated with the boundary field
         virtual void updateCoeffs();
+        virtual void write(Ostream& os) const;
 };
 
 

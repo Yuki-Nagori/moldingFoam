@@ -257,6 +257,57 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::eta
 }
 
 
+void Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::
+applyEnhancements(const coeffs& c, const volVectorField& U, volScalarField& viscosity)
+{
+    const fvMesh& mesh = U.mesh();
+    if (c.useOrientation && mesh.foundObject<volSymmTensorField>(c.orientationField))
+    {
+        const volSymmTensorField& a =
+            mesh.lookupObject<volSymmTensorField>(c.orientationField);
+        const volSymmTensorField D(symm(fvc::grad(U)));
+        const auto factor = [&](const symmTensor& ai, const symmTensor& Di)
+        {
+            const scalar DD = Di && Di;
+            const scalar aD = ai && Di;
+            return DD > small
+              ? min(max(1 + (c.lipscombRatio - 1)*1.5*aD*aD/DD,
+                        scalar(1)), c.lipscombRatio)
+              : scalar(1);
+        };
+        forAll(viscosity, i)
+        {
+            viscosity[i] *= factor(a[i], D[i]);
+        }
+        forAll(viscosity.boundaryField(), patchi)
+        {
+            scalarField& vp = viscosity.boundaryFieldRef()[patchi];
+            forAll(vp, i)
+            {
+                vp[i] *= factor(a.boundaryField()[patchi][i], D.boundaryField()[patchi][i]);
+            }
+        }
+    }
+    if (c.useCrystallinity && mesh.foundObject<volScalarField>("chi"))
+    {
+        const volScalarField& chi = mesh.lookupObject<volScalarField>("chi");
+        forAll(viscosity, i)
+        {
+            viscosity[i] *= crystallinityFactor(chi[i], c.chiInfinity, c.chiExponent);
+        }
+        forAll(viscosity.boundaryField(), patchi)
+        {
+            scalarField& vp = viscosity.boundaryFieldRef()[patchi];
+            forAll(vp, i)
+            {
+                vp[i] *= crystallinityFactor
+                (chi.boundaryField()[patchi][i], c.chiInfinity, c.chiExponent);
+            }
+        }
+    }
+}
+
+
 Foam::tmp<Foam::volScalarField>
 Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
 (
@@ -304,68 +355,6 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
         {
             nuc[i] = etaValue(coeffs_, pc[i], Tc[i], gammadotc[i])/rhoc[i];
         }
-
-        // Optional Lipscomb orientation correction (task 034): the
-        // apparent viscosity follows the alignment of the strain rate
-        // with the fibre orientation (quadratic closure: (A:D):D = (a:D)^2)
-        if
-        (
-            coeffs_.useOrientation
-         && mesh.foundObject<volSymmTensorField>(coeffs_.orientationField)
-        )
-        {
-            const symmTensorField& ac =
-                mesh.lookupObject<volSymmTensorField>
-                (
-                    coeffs_.orientationField
-                ).primitiveField();
-
-            const volSymmTensorField D(symm(fvc::grad(U_)));
-            const symmTensorField& Dc = D.primitiveField();
-
-            forAll(nuc, i)
-            {
-                const scalar aD = ac[i] && Dc[i];
-                const scalar DD = Dc[i] && Dc[i];
-
-                if (DD > small)
-                {
-                    const scalar f
-                    (
-                        min
-                        (
-                            max
-                            (
-                                1 + (coeffs_.lipscombRatio - 1)
-                                   *1.5*aD*aD/DD,
-                                scalar(1)
-                            ),
-                            coeffs_.lipscombRatio
-                        )
-                    );
-
-                    nuc[i] *= f;
-                }
-            }
-        }
-
-        // Optional crystallinity correction: the viscosity rises sharply
-        // as the relative crystallinity grows
-        if (coeffs_.useCrystallinity && mesh.foundObject<volScalarField>("chi"))
-        {
-            const scalarField& chic =
-                mesh.lookupObject<volScalarField>("chi").primitiveField();
-
-            forAll(nuc, i)
-            {
-                nuc[i] *= crystallinityFactor
-                (
-                    chic[i],
-                    coeffs_.chiInfinity,
-                    coeffs_.chiExponent
-                );
-            }
-        }
     }
 
     // Boundary field
@@ -385,6 +374,7 @@ Foam::laminarModels::generalisedNewtonianViscosityModels::CrossWlf::nu
         }
     }
 
+    applyEnhancements(coeffs_, U_, tnu.ref());
     return tnu;
 }
 

@@ -678,6 +678,30 @@ target("restartContinuity")
     end)
 target_end()
 
+target("reviewRegression")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running bounded review regressions")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. "python3 " .. path.join(projectdir, "scripts", "verify-review-regression.py"))
+        if ok ~= 0 then
+            os.raise("bounded review regression failed; see the retained directory printed above")
+        end
+    end)
+target_end()
+
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
 -- dirs, compressed into build/moldingFoam-<version>-<arch>.tar.xz. The

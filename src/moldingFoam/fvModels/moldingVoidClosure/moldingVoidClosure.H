@@ -129,7 +129,7 @@ class moldingVoidClosure
 
         //- Per-cell sealed bulk density [kg/m^3]: captured when the cell
         //  first cavitates, re-armed when the void closes
-        mutable scalarField rhoRef_;
+        mutable volScalarField rhoRef_;
 
         //- Evaporation-ceiling ramp width as a fraction of the closure
         //  void [0, 1]

@@ -283,6 +283,20 @@ void moldingInletVelocityFvPatchVectorField::write(Ostream& os) const
     fixedValueFvPatchVectorField::write(os);
 
     writeEntry(os, "volumetricFlowRate", volumetricFlowRate_);
+    if (flowRateProfile_.valid())
+    {
+        writeEntry
+        (
+            os, time().userUnits(), dimensionSet(0, 3, -1, 0, 0, 0, 0),
+            *flowRateProfile_
+        );
+    }
+    if (runner_.valid())
+    {
+        writeEntry(os, "runner", *runner_);
+        writeEntry(os, "gate", gate_);
+        writeEntry(os, "totalFlowRate", totalFlowRate_);
+    }
 }
 
 

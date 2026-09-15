@@ -69,8 +69,21 @@ Foam::moldingStage::moldingStage
     gateSealed_(false),
     gateSealRamp_(gateSealRamp),
     gateSealTime_(-1),
-    ventSealed_(false)
+    ventSealed_(false),
+    history_
+    (
+        IOobject
+        (
+            "moldingCycleState", runTime.name(), mesh,
+            IOobject::READ_IF_PRESENT, IOobject::AUTO_WRITE
+        )
+    )
 {
+    if (!history_.found("initialDeltaT"))
+    {
+        history_.set("initialDeltaT", runTime.deltaTValue());
+    }
+
     // A negative value is the internal "auto" sentinel (the ramp adapts
     // to the switch time); an explicit negative entry is rejected when
     // the dictionary is read
@@ -137,6 +150,37 @@ Foam::moldingStage::moldingStage
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::moldingStage::ventSealed(const word& patchName) const
+{
+    if (!history_.found("sealedVents")) return ventSealed_;
+    const wordList vents(history_.lookup<wordList>("sealedVents"));
+    return findIndex(vents, patchName) >= 0;
+}
+
+void Foam::moldingStage::sealVent(const word& patchName)
+{
+    wordList vents(history_.lookupOrDefault<wordList>("sealedVents", wordList()));
+    if (findIndex(vents, patchName) < 0)
+    {
+        vents.append(patchName);
+        history_.set("sealedVents", vents);
+    }
+    ventSealed_ = true;
+}
+
+void Foam::moldingStage::resetCycle(const scalar t)
+{
+    history_.set("cycle", cycle() + 1);
+    history_.set("cycleStartTime", t);
+    history_.set("sealedVents", wordList());
+    stage_ = stage::filling;
+    switchTime_ = -1;
+    gateSealed_ = false;
+    gateSealTime_ = -1;
+    ventSealed_ = false;
+}
+
 
 Foam::scalar Foam::moldingStage::pressure(scalar t) const
 {
@@ -227,6 +271,11 @@ void Foam::moldingStage::read(const dictionary& moldingDict)
         packingDict.lookupOrDefault<scalar>("gateSealRamp", gateSealRamp_)
     );
 
+    if (newGateSealRamp < 0)
+    {
+        FatalIOErrorInFunction(packingDict)
+            << "gateSealRamp must be non-negative" << exit(FatalIOError);
+    }
     scalar newPressureRamp = pressureRamp_;
 
     if (packingDict.found("pressureRamp"))

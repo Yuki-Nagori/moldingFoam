@@ -80,7 +80,7 @@ void Foam::moldingVentVelocityFvPatchVectorField::updateCoeffs()
         moldingStage::typeName
     );
 
-    if (stage.ventSealed())
+    if (stage.ventSealed(patch().name()))
     {
         // Melt front at the vent: no-slip (zero velocity) on the patch
         valueFraction() = I;

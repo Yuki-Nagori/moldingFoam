@@ -86,9 +86,10 @@
 
 ## 任务索引
 
-### Dual Domain / 中面求解专项（新增规划，2026-09-15）
+### Dual Domain / 中面求解专项（已规划，暂缓实现）
 
-独立 `dualDomainFoam` 路径；073 已有 JSON 读取单测，尚无该 solver 的实现或验收证据。
+独立 `dualDomainFoam` 路径；当前仅保留输入校验、字典转换和测试 fixture，
+物理 solver 暂缓，不纳入当前版本能力或 CI 验收。
 总体约束、依赖和交付门禁见 072。执行顺序：
 **073/074 → 075 → 076 → 077/078 → 079 → 072 收口**。
 全部遵循 `diagnostics.md`，精度优先；本地最小验证，完整矩阵交 nightly。
@@ -96,14 +97,14 @@
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [072](tasks/072-dual-domain-program.md) | Dual Domain 总体设计与交付门禁 | P1 | planned |
-| [073](tasks/073-dual-domain-input-contract.md) | Dual Domain 输入字典、拓扑校验与独立生成器 | P1 | in-progress（T102 网格/experiment manifest 读取与 16 个单测通过；OF14 契约与生成待实现） |
-| [074](tasks/074-dual-domain-material-quadrature.md) | 共享材料公式与厚度积分契约 | P1 | planned |
-| [075](tasks/075-dual-domain-flow-front.md) | 独立降维求解器、面内流动与填充前沿 | P1 | planned |
-| [076](tasks/076-dual-domain-thermal-packing.md) | 厚度温度、保压冷却与质量能量闭合 | P1 | planned |
-| [077](tasks/077-dual-domain-mpi-determinism.md) | Dual Domain MPI 分区、确定性归约与一致性 | P1 | planned |
-| [078](tasks/078-dual-domain-kairos-mug.md) | Kairos 输出契约与可重复 Mug 样例 | P1 | planned |
-| [079](tasks/079-dual-domain-validation-release.md) | Dual Domain 验证矩阵、三维性能对照与发布文档 | P1 | planned |
+| [072](tasks/072-dual-domain-program.md) | Dual Domain 总体设计与交付门禁 | P1 | planned（暂缓，等待资源） |
+| [073](tasks/073-dual-domain-input-contract.md) | Dual Domain 输入字典、拓扑校验与独立生成器 | P1 | planned（输入工具已保留；OF14 契约暂缓） |
+| [074](tasks/074-dual-domain-material-quadrature.md) | 共享材料公式与厚度积分契约 | P1 | planned（材料/积分实现暂缓） |
+| [075](tasks/075-dual-domain-flow-front.md) | 独立降维求解器、面内流动与填充前沿 | P1 | planned（暂缓） |
+| [076](tasks/076-dual-domain-thermal-packing.md) | 厚度温度、保压冷却与质量能量闭合 | P1 | planned（暂缓） |
+| [077](tasks/077-dual-domain-mpi-determinism.md) | Dual Domain MPI 分区、确定性归约与一致性 | P1 | planned（暂缓） |
+| [078](tasks/078-dual-domain-kairos-mug.md) | Kairos 输出契约与可重复 Mug 样例 | P1 | planned（暂缓） |
+| [079](tasks/079-dual-domain-validation-release.md) | Dual Domain 验证矩阵、三维性能对照与发布文档 | P1 | planned（暂缓） |
 
 开工先核实两项基线输入：参考 DD 网格/厚度/双面匹配与授权材料数据；
 v1.1.0 tag 对应提交及其与 Kairos 的公式契约（CD 打包会注入发布 tag，
@@ -112,7 +113,7 @@ v1.1.0 tag 对应提交及其与 Kairos 的公式契约（CD 打包会注入发�
 每个任务均含验收标准、日志归属及修改前后精度/性能证据表；
 “已接入 nightly”不等于 done。
 
-T102 联调补充已纳入 073/075/078/079：消费 Kairos 的
+T102 联调补充已纳入 073/075/078/079，作为未来恢复开发时的输入约束；当前暂停消费 Kairos 的
 `dual-domain/v1` JSON（显式 mm、逐三角形厚度、beams/couplings），
 先合成负例与真实 STL 导出读取，再材料/工艺与 fill-pack-cool。
 原始 STL/导出 JSON 只留本地；当前导出为表面网格，是否符合中面求解语义

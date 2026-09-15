@@ -5,6 +5,13 @@
 - 依赖：无；统筹 073–079
 - 来源：2026-09-15 用户 Dual Domain / Kairos 扩展需求
 
+## 当前决策（2026-09-15）
+
+用户决定暂缓 Dual Domain 物理 solver 开发，以控制周期和资源投入。
+072–079 保持 `planned`；已完成的 JSON 校验、合成薄壁 fixture、材料契约
+校验和固定积分工具仅作为研究资产保留。恢复时从 073 输入契约重新验收，
+不得把这些工具宣称为 `dualDomainFoam` 求解能力。
+
 ## 背景与边界
 
 Kairos 已有 DualDomainMesh 前处理；当前 moldingFoam 读取三维 polyMesh。

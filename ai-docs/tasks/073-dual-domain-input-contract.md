@@ -1,6 +1,6 @@
 # 073：Dual Domain 输入字典、拓扑校验与独立生成器
 
-- 状态：in-progress
+- 状态：planned
 - 优先级：P1
 - 依赖：072 约束；向 074–078 提供冻结 schema
 - 来源：2026-09-15 用户 Dual Domain / Kairos 扩展需求
@@ -106,6 +106,10 @@ fill-pack-cool 和冻结工艺数值。相对路径以 manifest 目录为基准�
 并记录原始单位和转换；不可改标签而保留原数值。
 
 ### 首批实现记录（2026-09-15）
+
+补记（2026-09-15）：用户决定暂缓 Dual Domain 物理 solver 开发；本任务及
+072–079 回到 planned，既有输入工具仅作为研究材料保留，不继续扩展 OF14
+求解入口，也不将当前 fixture/测试视为 solver 验收。
 
 新增 `scripts/dual_domain_input.py`、`scripts/test-dual-domain-input.py`。
 真实 STL 导出已在本地验证为 4,417 节点、8,834 三角形、厚度约

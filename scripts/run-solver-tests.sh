@@ -39,6 +39,7 @@ export OMPI_MCA_rmaps_base_oversubscribe=1
 
 nFailed=0
 nCases=0
+timeoutS="${MOLDINGFOAM_SOLVER_TIMEOUT:-300}"
 
 # The assertions applied to a run log: non-zero exit, glibc heap
 # corruption, duplicated runtime selections and the expected patterns
@@ -123,7 +124,7 @@ do
     then
         caseFailed=0
         expected=$(sed -n '1p' system/expectFailure)
-        if foamRun > log.foamRun 2>&1
+        if timeout "$timeoutS" foamRun > log.foamRun 2>&1
         then
             echo "FAIL: $name: foamRun succeeded but a fatal error was ""expected"
             caseFailed=1
@@ -138,7 +139,11 @@ do
         if [ "$caseFailed" -ne 0 ]
         then
             nFailed=$((nFailed + 1))
+            echo "     (run directory kept for inspection: $work)"
             tail -20 log.foamRun || true
+        else
+            cd /
+            rm -rf "$work"
         fi
         continue
     fi
@@ -146,8 +151,8 @@ do
 
     caseFailed=0
 
-    if ! foamRun > log.foamRun 2>&1; then
-        echo "FAIL: $name: foamRun exited non-zero (see log.foamRun)"
+    if ! timeout "$timeoutS" foamRun > log.foamRun 2>&1; then
+        echo "FAIL: $name: foamRun exited non-zero or timed out after ${timeoutS}s (see log.foamRun)"
         caseFailed=1
     fi
 

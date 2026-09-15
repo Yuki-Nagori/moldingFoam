@@ -47,6 +47,11 @@
 12. **测试口径**：本地只跑受影响的最小用例（秒级/分钟级），完整套件
     （`test-solver` 全量、契约验收、并行矩阵）交给 nightly CI；墙钟类
     结论必须同会话对照。
+13. **排查口径（最小复现优先）**：定位问题先把现场压成秒级复现
+    （砍 `endTime`/步数/网格，试串行与并行），再做**单变量对照矩阵**
+    并落一行证据表；准备一个已知干净的对照运行以区分"通病"与"特定"；
+    探针先在有界与自证上过关（先在干净运行上跑）；阴性结论同样落文档。
+    完整手法见 [`diagnostics.md`](diagnostics.md)。
 
 ## 文档地图
 
@@ -58,6 +63,7 @@
 | `coverage-audit-2026-09-13.md` | 四层测试通路与缺口 G1–G11 | 查测试覆盖 |
 | `ablation-audit-2026-09-13.md` | 特性消融与断言灵敏度 | 查断言强度 |
 | `uncertainty.md` | 收敛性/定标/换算（活文档） | 做精度与门槛决策 |
+| `diagnostics.md` | 排查手册：最小复现、对照矩阵、探针纪律（活文档） | 定位崩溃/挂起/环境类问题 |
 | `report-037-heap-crash.md` | bundle 退出崩溃取证 | 动 bundle/验收判据 |
 | `report-038-kairos-v023-retest.md` | Kairos 侧复测记录 | 对接 Kairos |
 
@@ -175,7 +181,9 @@
 - [`report-038-kairos-v023-retest.md`](report-038-kairos-v023-retest.md)
   ——Kairos 侧 v0.2.3 复测记录；
 - [`uncertainty.md`](uncertainty.md)——收敛性、定标与余量↔成本换算
-  （活文档）。
+  （活文档）；
+- [`diagnostics.md`](diagnostics.md)——排查手册：最小复现优先、单变量对照
+  矩阵、探针纪律、环境/打包变量、机时纪律（活文档，配 §7 的 037/056 复盘）。
 测试覆盖审计：[`coverage-audit-2026-09-13.md`](coverage-audit-2026-09-13.md)
 （四层测试通路核对；缺口 G1–G11 已落为任务 042–045，见上表）。
 消融与代码检查：[`ablation-audit-2026-09-13.md`](ablation-audit-2026-09-13.md)

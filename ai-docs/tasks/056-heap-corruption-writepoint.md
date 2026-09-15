@@ -44,7 +44,8 @@ rc=0。** 判据是"库被映射几次"，与求解器算什么都不相关。
 
 - `scripts/diag/repro-037.sh`：**19 步**（`endTime 0.002`）即复现，单次约
   20–30 s（原先要跑满 5,069 步约 38 min）。内置 10 个变体（基线/布局旋钮/
-  各模块金丝雀），每个变体在 `mktemp` 风格的新鲜副本里跑；
+  各模块金丝雀），每个变体在 `mktemp` 风格的新鲜副本里跑；这套"最小复现 +
+  单变量对照"的手法已提炼为常备手册 `ai-docs/diagnostics.md`；
 - `scripts/diag/malloc-canary.c`：有界 LD_PRELOAD 金丝雀探针（见 §4）；
 - `scripts/diag/check-lib-duplication.sh`：**本任务的防线**——列出加载路径上
   所有 `libmoldingFoam*.so` 并按 `realpath` 判重（>1 实体即 FAIL，退出码 1），

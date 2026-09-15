@@ -1735,10 +1735,41 @@ void Foam::solvers::moldingFoam::thermophysicalPredictor()
     // band (hMeltThermo::Cv is the base Cp plus the latent peak minus
     // the Cp - Cv coupling), so this only catches numerical overshoot
     // from the Picard linearisation of the steep latent-heat plateau
+    const scalar Tmin = 250;
+    const scalar Tmax = 3000;
+    label nClamped = 0;
+    scalar maxClamp = 0;
+    scalarField& TcSolved = T.primitiveFieldRef();
+
+    forAll(TcSolved, i)
+    {
+        const scalar oldT = TcSolved[i];
+        const scalar newT = min(max(oldT, Tmin), Tmax);
+
+        if (newT != oldT)
+        {
+            ++nClamped;
+            maxClamp = max(maxClamp, mag(newT - oldT));
+            TcSolved[i] = newT;
+        }
+    }
+
+    reduce(nClamped, sumOp<label>());
+    reduce(maxClamp, maxOp<scalar>());
+
+    if (nClamped && runTime.timeIndex() % 50 == 0)
+    {
+        Info<< "moldingFoam: temperature safety clamp: cells = "
+            << nClamped << ", max correction = " << maxClamp << " K"
+            << " (numerical correction, excluded from physical heat sources)"
+            << endl;
+    }
+
+    // Apply the same bounds to patch values as the original field operation.
     T = max
     (
-        min(T, dimensionedScalar("TMax", dimTemperature, 3000)),
-        dimensionedScalar("TMin", dimTemperature, 250)
+        min(T, dimensionedScalar("TMax", dimTemperature, Tmax)),
+        dimensionedScalar("TMin", dimTemperature, Tmin)
     );
 
     fvConstraints().constrain(T);

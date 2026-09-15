@@ -314,3 +314,15 @@ moldCHT 三行均通过。原始证据在 nightly artifact `nightly-uncertainty-
 其中每行保留 `runner.log` 与 `structural-convergence.json`。当前需要修复
 结构静态迭代/细网格离散稳定性；不能调高 8% 门槛或关闭
 `UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE` 来宣告通过。
+
+### 自适应外推修复（2026-09-15，待 of14 验证）
+
+基于上述末步跳变证据，`moldingSolidDisplacement::pressureCorrector()` 增加
+单变量保护：仅当当前校正的初始残差不高于上一校正时才应用
+`accelerationFactor` 外推；残差上升时跳过该次外推并继续有限的校正循环。
+默认加速值、线性求解器、解析误差门槛和最大校正次数均未改变。
+
+修改前：所有校正无条件执行 `D += (accFac - 1)*(D - D.oldTime())`，可能放大
+未充分收敛的增量。修改后：残差增长分支不再外推；这只是稳定性保护，不能单独
+证明细网格达到静态解。当前尚未在 of14 编译或运行，精度、迭代数、墙钟和内存
+均为未测；必须用同一会话的最小结构 case，再进入 nightly 矩阵验收。

@@ -54,6 +54,47 @@
   之前 dump 堆（`heap`/`malloc_info`）并记录损坏块的邻居，交给 Kairos 侧
   对齐他们的现场。
 
+## 3a. 本轮进展（2026-09-14/15，kairos VM + 当前源码）
+
+**复现（基线）**：cli10 @4 子域（含 046+054 的当前源码、手工 wmake 库）稳定
+复现：`rc=134`、跑到 `End`、4 次 `malloc_consolidate` 报告 ✓。
+
+**模块二分（已跑两组）**：
+
+| 组合 | 结果 |
+|------|------|
+| baseline（`massBudget true`） | rc=134，5,069 步，End ✓，**4** 次堆报告 |
+| `massBudget false` | rc=134，5,069 步，End ✓，**3** 次堆报告（仍崩） |
+| `massBudget false` + `freezeOffTemperature 1e15` | 无效组合（run 在第 243 步提前结束：禁用 freeze-off 改变了物理路径），不作为二分点 |
+
+→ **质量预算路径不是（唯一）元凶**；cli10 上没有其它可关的模块开关
+（`trapAirInterval 0`、`viscousDissipation false`、无 FMs ✓ 见其日志回显），
+二分空间用尽 → 转入内存诊断。
+
+**内存诊断（本轮已建成的工具链）**：
+
+1. `LD_PRELOAD` 分配器探针（`/tmp/malloclog.c`，约 130 行）：记录 ≤160 B
+   （fastbin 级别）的 alloc/free 的用户指针、可用尺寸、调用返回地址，并在
+   进程启动时把 `/proc/self/maps` 写入同一日志（用于把运行地址换算成
+   模块偏移 → `addr2line`）。每 rank 一个日志（PID 命名）。
+   第一版过滤 1 KB 时日志达 6–8 GB/rank；收到 160 B 后约 28 MB/rank ✓。
+2. gdb + 探针同跑（`mpirun -np 4 gdb -batch -ex run -ex "p/x
+   main_arena.fastbinsY" -ex "bt 10" --args foamRun -parallel`）：崩溃时
+   直接读 glibc 的 fastbin 头数组 ✓（4 rank 各一份）。
+
+**当前卡点**：崩溃点的 fastbin **头部**全部 16 字节对齐（4 rank 的
+`fastbinsY` 打印均如此），损坏发生在**链表更深处**；`malloc_consolidate`
+的报错不给地址 → 需要一个能指认具体块的手段。
+
+**下一步（下轮直接做）**：给探针加**金丝雀**——每个小分配多要 16 B，
+尾部写魔数，在每次 malloc/free 时校验：
+
+- 命中即说明"某处写过了这个块"→ 报出该块的**分配调用地址**
+  （大概率就是越界写者的邻块，即写者本身）；
+- 同时记录命中发生在哪一步/哪一相位（日志里的最后一条 op 即可定位窗口）；
+- 若金丝雀版仍不命中，再上 `MALLOC_PERTURB_` + 对 `main_arena` 做
+  `malloc_info` 快照对比。
+
 ## 4. 验收标准（DoD）
 
 - 一条可复现命令（在 kairos VM 上）与二分结果表；

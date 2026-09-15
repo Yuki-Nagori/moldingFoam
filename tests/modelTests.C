@@ -2076,6 +2076,24 @@ void viscoelasticTests()
         );
     }
 
+    // A stiff material step is internally subdivided, while the analytic
+    // start-up target remains the same (task 066).
+    {
+        const scalar dt = 2*lambda;
+        const symmTensor tau(ucm.advance(symmTensor::zero, L, dt));
+        const scalar expected =
+            eta0*gammaDot*(1 - std::exp(-dt/lambda));
+
+        Info<< "    UCM stiff-step tau_xy = " << tau.xy()
+            << " Pa (expected " << expected << " Pa)" << endl;
+
+        checkBool
+        (
+            "viscoelastic: stiff material step follows the analytic start-up",
+            relDiff(tau.xy(), expected) < 2e-3
+        );
+    }
+
     // UCM relaxation from a steady state
     {
         symmTensor tau(symmTensor::zero);

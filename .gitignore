@@ -9,6 +9,7 @@ build/
 *.d
 *.so
 lnInclude/
+src/Make/*/
 
 # logs & editor scratch
 *.log

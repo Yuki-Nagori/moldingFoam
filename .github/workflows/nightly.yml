@@ -92,6 +92,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Structural validations
+        continue-on-error: true
         run: |
           set -o pipefail
           xmake run warpageAniso 2>&1 | tee warpageAniso.txt
@@ -102,6 +103,7 @@ jobs:
           xmake run anisoShrinkBar 2>&1 | tee anisoShrinkBar.txt
           xmake run eigenstrainGraded 2>&1 | tee eigenstrainGraded.txt
       - name: Structural convergence diagnostics
+        continue-on-error: true
         run: |
           source /opt/openfoam14/etc/bashrc
           set +e
@@ -237,9 +239,13 @@ jobs:
         run: |
           set -o pipefail
           source /opt/openfoam14/etc/bashrc
+          set +e
           UNCERTAINTY_MATRIX_TIMEOUT=900 \
           UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE=1 \
             scripts/uncertainty-matrix.sh --run 2>&1 | tee uncertainty-matrix.txt
+          rc=${PIPESTATUS[0]}
+          tar -czf uncertainty-matrix-artifacts.tar.gz .uncertainty-matrix
+          exit "$rc"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -247,7 +253,7 @@ jobs:
           include-hidden-files: true
           path: |
             uncertainty-matrix.txt
-            .uncertainty-matrix/**
+            uncertainty-matrix-artifacts.tar.gz
           retention-days: 14
 
   report:

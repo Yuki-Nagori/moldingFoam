@@ -99,7 +99,7 @@
 
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
-| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | in-progress（非零 startTime 判定已修复；完整契约待验收） |
+| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | in-progress（非零 startTime 与串行续跑已验收；np2 重分解待验收） |
 | [065](tasks/065-tait-domain-derivative-consistency.md) | Tait 有效域、截断导数与逆求解稳健性 | P1 | in-progress（导数/逆解/极端负压有限性已验收；正式越界策略待 nightly） |
 
 #### 多物理耦合稳定性

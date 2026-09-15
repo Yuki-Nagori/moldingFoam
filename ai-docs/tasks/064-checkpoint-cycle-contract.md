@@ -57,3 +57,7 @@ nightly 契约。
 补充验收：同一 of14 会话的连续路径与 1 步中断/`latestTime` 续跑在 `T`、`p`
 文件上逐字相同，并保留周期初态快照。np2 重分解载体因缺少与该 case 匹配的
 分解契约未纳入通过结论，重分解仍交 nightly。
+
+为使该验收可重放，`tests/cases/moldCycles/system/decomposeParDict` 已补入，
+采用沿长边方向的 2-way hierarchical 分解；本次仅完成配置补齐，未将未执行的
+并行恢复运行标记为通过。

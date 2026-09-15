@@ -1,0 +1,17 @@
+FoamFile
+{
+    version 2.0;
+    format ascii;
+    class "dictionary";
+    object decomposeParDict;
+}
+
+// Two-way split along the long (y) direction for the small cycle case.
+numberOfSubdomains 2;
+method          hierarchical;
+hierarchicalCoeffs
+{
+    n       (1 2 1);
+    delta   1e-6;
+    order   xyz;
+}

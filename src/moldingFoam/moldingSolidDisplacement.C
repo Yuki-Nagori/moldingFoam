@@ -20,7 +20,8 @@ addToRunTimeSelectionTable(solver, moldingSolidDisplacement, fvMesh);
 moldingSolidDisplacement::moldingSolidDisplacement(fvMesh& mesh)
 :
     solidDisplacement(mesh),
-    previousInitialResidual_(GREAT)
+    previousInitialResidual_(GREAT),
+    previousIncrement_(0)
 {}
 
 
@@ -56,17 +57,23 @@ void moldingSolidDisplacement::pressureCorrector()
         const auto performance = DEqn.solve().max();
         const scalar initialResidual = performance.initialResidual();
         residual = performance.finalResidual();
+        const tmp<volScalarField> tIncrement = mag(D - D.oldTime());
+        const scalar increment = gMax(tIncrement().internalField());
 
         // The steady acceleration is an extrapolation of the displacement
         // increment.  Do not extrapolate after a residual increase: on fine
         // meshes that amplifies an under-resolved corrector and can produce
         // the terminal displacement jump seen in the convergence matrix.
         const bool residualDecreased = initialResidual <= previousInitialResidual_;
-        if (mesh.schemes().steady() && accFac > 1 && residualDecreased)
+        const bool incrementBounded =
+            previousIncrement_ <= SMALL
+         || increment <= 1.5*previousIncrement_;
+        if (mesh.schemes().steady() && accFac > 1 && residualDecreased && incrementBounded)
         {
             D += (accFac - 1)*(D - D.oldTime());
         }
         previousInitialResidual_ = initialResidual;
+        previousIncrement_ = increment;
 
         if (!compactNormalStress)
         {

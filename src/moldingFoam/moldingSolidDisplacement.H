@@ -30,6 +30,11 @@ private:
     // across pressureCorrector calls makes acceleration protection effective
     // when the normal configuration uses one corrector per time step.
     scalar previousInitialResidual_;
+
+    // Raw displacement increment from the previous time step.  Used to
+    // reject an extrapolation that suddenly amplifies an otherwise finite
+    // linear solve on a refined mesh.
+    scalar previousIncrement_;
 };
 
 } // End namespace solvers

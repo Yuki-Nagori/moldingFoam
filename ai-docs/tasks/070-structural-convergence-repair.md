@@ -333,6 +333,14 @@ moldCHT 三行均通过。原始证据在 nightly artifact `nightly-uncertainty-
 保留上一求解的初始残差；重启时从 `GREAT` 安全启动。该修改仍待 of14 编译和
 最小结构运行验证，不能把代码审查当作数值证据。
 
+### 位移增量保护复测（2026-09-15）
+
+在 of14 VM 原生临时工作树中，加入 `previousIncrement_` 后重新编译通过
+（`xmake`，构建约 9.1 s）。thermoelastic 20 步 smoke 返回 `rc=0` 并输出
+`End`；最后一步 Dx/Dy 求解保持有限（初始残差约 `2.65e-3/4.29e-4`）。
+该结果只证明新增保护不破坏启动和短程推进，未测 10000 步静态窗口、解析误差、
+峰值内存或矩阵墙钟，完整验收仍待 nightly。
+
 of14 最小 smoke 复测（当前提交）已通过 thermoelastic 与 warpagePlate 各 20 步，
 确认本次模块修改可编译、可启动并正常结束；未测 10000 步精度、静态窗口、内存
 和矩阵成本，不能替代 nightly 失败证据。

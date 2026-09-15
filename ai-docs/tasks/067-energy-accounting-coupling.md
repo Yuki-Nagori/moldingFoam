@@ -94,3 +94,7 @@ of14 增量 `xmake` 与 `xmake run test` 全部通过；本地未开启大网格
 nightly 覆盖已接入 `tests/cases/crystallization`：启用 `energyBudget true`，
 并在 `expectedPatterns` 断言账目日志出现。该 case 同时保留结晶潜热路径，
 因此能验证边界通量、压力功和潜热诊断在同一求解器运行中共存。
+
+nightly 首次运行暴露 case 契约缺少 `fluxRequired { T; }`，`fvMatrix::flux()`
+按 OpenFOAM 约定对此主动终止。已在 crystallization 的 `fvSchemes` 补齐声明；
+of14 单 case 复现现通过，日志同时命中 crystallinity、energy budget 和 End。

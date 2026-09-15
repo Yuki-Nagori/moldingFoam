@@ -72,6 +72,19 @@ def fieldValues(path):
     return None
 
 
+def stageState(case_dir, time_name):
+    """The serialised moldingStage state line: packing, switchTime,
+    gateSealed, ventSealed, gateSealTime (moldingStage::writeData)"""
+    path = os.path.join(case_dir, time_name, "moldingStage")
+    if not os.path.exists(path):
+        return None
+    for line in reversed(read(path).splitlines()):
+        line = line.strip()
+        if line and not line.startswith("//"):
+            return line
+    return None
+
+
 def timeDirs(case_dir):
     out = []
     for name in os.listdir(case_dir):
@@ -159,6 +172,28 @@ def main():
     t0 = timeDirs(case_dir)[0][1]
     fail = False
     moved = 0
+
+    # The stage state (packing flag, V/P switch time, gate/vent sealed flags)
+    # is written with the fields and read back on restart: it must come back
+    # identically, and it must be non-trivial for the comparison to mean
+    # anything
+    stateRef = stageState(case_dir, tRef)
+    stateNew = stageState(work, tNew)
+
+    if stateRef is None or stateNew is None:
+        print("FAIL: no moldingStage state found at the final time")
+        fail = True
+    else:
+        print("  moldingStage state: continuous = {!r}, restarted = {!r}"
+              .format(stateRef, stateNew))
+        if stateRef != stateNew:
+            print("FAIL: the stage state (seals, switch time) was not "
+                  "restored by the restart")
+            fail = True
+        if not any(part == "1" for part in stateRef.split()):
+            print("FAIL: no stage flag is set at the end time, so the state "
+                  "comparison is vacuous")
+            fail = True
 
     for name in FIELDS:
         a = fieldValues(os.path.join(case_dir, tRef, name))

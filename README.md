@@ -477,6 +477,10 @@ T^{n+1} = (C/dt·T^n + Σ h_f T_cell + h_A T_water + Q)/(C/dt + Σ h_f + h_A)
 - 无条件稳定（`C/dt` 与 `h_A` 都在分母），`dt → ∞` 也不会越过平衡点；
 - 每个外迭代重新求值、始终从 `T^n` 推进一步，既精化耦合又不会重复
   推进状态；离散能量守恒 `C(T^{n+1}−T^n) = dt·Q_net` 严格成立；
+- 重启的连续性已实测（`validation/restartContinuity`：连续跑与"跑到一半
+  `startFrom latestTime` 续跑"的末态逐场一致到写入精度）；注意**自适应时间
+  步**下 dt 历史不持久化（重启从字典的 `deltaT` 重新起算，上游同行为），
+  这类 case 的重启只能到容差级一致，不是重放式逐位复现；
 - 温度状态随场持久化、重启续读：`T_` 是 `UniformDimensionedField`（进程内
   状态，`NO_READ/NO_WRITE`），**写出时由边界把状态写进 patch 字典的 `T`
   条目**（`writeEntry`）、重启时从该条目读回（构造期 `lookup("T")`）——因此续跑轨迹连续，`validation/restartContinuity` 实测与连续跑一致到写入
@@ -999,7 +1003,10 @@ p_vent = p0 + sign(ṁ)·ṁ²/(2·ρ·CdA²)
 ### 注塑周期状态（moldingStage）与排气/闸口密封
 
 `moldingStage`（regIOobject，注册于网格）除 V/P 阶段外，还承载两个
-密封状态并随场持久化（重启续读）：
+密封状态并随场持久化（重启续读；**已由 `validation/restartContinuity` 精确
+验证**——重启后状态行 `packing/switchTime/gateSealed/ventSealed/gateSealTime`
+与连续跑逐字段一致，该判据在修复"重启丢 `gateSealTime_`"这个 bug 前是
+FAIL 的，见 `ai-docs/tasks/061`）：
 
 - `ventSealed`：排气口熔体前沿到达（`max(alpha.melt) ≥ ventSealAlpha`）
   后置位。`moldingVentVelocity` 置零速度、`moldingVentPressure` 转

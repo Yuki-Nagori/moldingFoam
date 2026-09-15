@@ -102,6 +102,15 @@ Foam::moldingStage::moldingStage
             // Optional seal flags (absent in pre-v1.3 restart data)
             is >> gateFlag >> ventFlag;
         }
+        if (is.good())
+        {
+            // Optional gate seal time (task 061): without it a restarted run
+            // kept gateSealTime_ at its unset sentinel while gateSealed_ was
+            // restored as true, so the seal ramp was treated as long finished
+            // (the gate re-seals only on the transition, which no longer
+            // happens). A missing field leaves the sentinel in place.
+            is >> gateSealTime_;
+        }
 
         // Snapshot the stream state and release the stream before it is
         // used: close() destroys the stream held by readStream

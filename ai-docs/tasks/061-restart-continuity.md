@@ -1,6 +1,7 @@
 # 061 — 重启续跑（`startFrom latestTime`）的连续性与状态持久化
 
-- 状态：**done**（连续性已实测固化；闸口/排气密封状态的持久化留待带流动的载体）
+- 状态：**done**（连续性 + 密封状态持久化已实测固化，并**据此修掉一个真 bug**：
+  重启时 `gateSealTime_` 丢失；仅剩 `ventSealed=1` 路径未覆盖）
 - 优先级：P2
 - 依赖：012（多周期）、026（闸口密封）、008/019（模温状态）
 - 预估规模：1 天
@@ -52,6 +53,30 @@
 "逐字节比对时间目录"跨重启会失败。验证器把字段按值解析（`uniform` 与
 `nonuniform` 都吃），并把这条写进了脚本注释。
 
+## 3a. 本轮发现的真 bug 并已修复：`gateSealTime_` 重启丢失
+
+把"密封状态持久化"纳入判据后立刻抓到问题：同一个 case，连续跑末状态是
+`1 0 1 0 0.02`，重启跑是 `1 0 1 0 -1`（字段顺序：`stage==packing`,
+`switchTime_`, `gateSealed_`, `ventSealed_`, `gateSealTime_`）。
+
+**根因**（`moldingStage` 构造函数）：`regIOobject` 基类构造期会读文件并调用
+`readData()`（它**确实**读了 `gateSealTime_`），但构造函数体里又**手写了一段
+恢复逻辑**（`headerOk()` 分支），那段只读了前四个字段、**漏了
+`gateSealTime_`** ——于是重启后 `gateSealTime_` 停在未置位的 `-1`，而
+`gateSealed_` 被恢复成 true，闸口只在"未封→封"的转变时才调用
+`sealGate(t)`（不再发生），封闸时刻因此永久丢失。
+
+**影响**：`packing.gateSealRamp > 0` 的工况里，重启后 `gateSealFactor` 会按
+`1-(t+1)/ramp` 直接钳到 0（视为早已封完），而连续跑此刻还在 ramp 中——重启
+点附近闸口密封过程不一致（`gateSealed_` 标志本身是对的，所以此前没人注意到）。
+
+**修复**（`src/moldingFoam/moldingStage.C`）：在构造函数体的恢复块里补读
+`gateSealTime_`（可选字段，缺失时保持哨兵值，兼容旧的重启数据）。修复后
+重启状态行与连续跑逐字段一致 ✓。
+
+**敏感性证据**：该判据在修复**前** FAIL（`-1` vs `0.02`）、修复**后** PASS
+——即"实现失效时判据会失败"这条要求由这次真实 bug 直接证明了。
+
 ## 4. 敏感性（如实记录：本轮未做实现侧实验）
 
 按 061 的口径，判据应在**实现失效**时 FAIL。本 case 的状态丢失**不会静默**：
@@ -59,13 +84,14 @@
 ——所以这条判据的价值主要在"确认精确连续"而不是"捕捉静默错误"。要做实现侧
 演示（把 `writeEntry` 注释掉再重建）留待 §5 的下一轮一起做。
 
-## 5. 剩余（本任务只做了一半的覆盖）
+## 5. 剩余覆盖与已知边界
 
-1. **`moldingStage` 的密封状态持久化**（`ventSealed`/`gateSealed`）：
-   `moldingStage` 是 `READ_IF_PRESENT` + `AUTO_WRITE` 的 regIOobject，
-   运行目录里确实有 `moldingStage` 文件（实测），但本 case 静默、不触发
-   密封 → 需要一个**带排气封堵/保压闸口密封的流动载体**（如把
-   `runnerNetwork` 的物理接过来）才能验证"重启后密封状态不丢"；
+1. ~~`moldingStage` 的密封状态持久化~~：**已覆盖**（见 §3a）——载体虽然静止，
+   但 α≡1 使 `max(alpha) ≥ ventSealAlpha` 与 V/P 切换都触发，实测末状态
+   `1 0 1 0 0.02` 里 `packing` 与 `gateSealed` 均为 1，状态比对是精确的；
+   仍**未覆盖**的是 `ventSealed = 1` 的路径（本 case 没有排气 patch）——
+   要覆盖它需要把 case 的一个 patch 改成 `moldingVentVelocity`（留在 062
+   候选里，属"锦上添花"）；
 2. **自适应时间步下的重启不可逐位复现**：`adjustTimeStep on` 时 dt 的历史
    不持久化（重启从字典的 `deltaT` 重新起算，上游同行为），所以这类 case 的
    重启只能到容差级一致——值得写进 README 的"重启"说明，避免被误读为

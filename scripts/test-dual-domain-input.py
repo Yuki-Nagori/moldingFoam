@@ -14,6 +14,7 @@ from dual_domain_input import InputError, read, read_experiment, validate
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = ROOT / "tests/fixtures/dual-domain-v1.sample.json"
 READER = ROOT / "scripts/dual_domain_input.py"
+EMITTER = ROOT / "scripts/dual_domain_case.py"
 
 
 class InputTests(unittest.TestCase):
@@ -137,6 +138,28 @@ class InputTests(unittest.TestCase):
                 self.assertNotEqual(run.returncode, 0)
                 self.assertIn(str(path), log.read_text())
                 self.assertNotIn("Traceback", log.read_text())
+
+    def test_openfoam_dictionary_emits_explicit_si_units(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "constant" / "dualDomainMesh"
+            run = subprocess.run([sys.executable, str(EMITTER), str(FIXTURE), str(output)],
+                                 capture_output=True, text=True, timeout=5)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            text = output.read_text()
+            self.assertIn("schemaVersion dual-domain/v1;", text)
+            self.assertIn("sourceUnits mm;", text)
+            self.assertIn("targetUnits m;", text)
+            self.assertIn("(0 0 0)", text)
+            self.assertIn("0.001", text)
+            self.assertIn("triangles\n(\n    (0 1 2)", text)
+
+    def test_openfoam_emitter_rejects_ambiguous_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "constant" / "polyMesh"
+            run = subprocess.run([sys.executable, str(EMITTER), str(FIXTURE), str(output)],
+                                 capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(run.returncode, 0)
+            self.assertIn("dualDomainMesh", run.stderr)
 
 
 class ExperimentTests(unittest.TestCase):

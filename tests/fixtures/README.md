@@ -10,6 +10,7 @@
 ```bash
 python3 scripts/test-dual-domain-input.py
 python3 scripts/dual_domain_input.py tests/fixtures/dual-domain-v1.sample.json
+python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
 ```
 
 读取器保留原始 mm 数值，只验证受控 JSON，不生成 OpenFOAM 字典、转换体网格

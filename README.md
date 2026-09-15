@@ -10,6 +10,9 @@
 - **`CrossWlf`** — Cross-WLF 广义牛顿黏度模型；
 - **`Tait`** — 双域 Tait 聚合物 PVT 状态方程；
 - **`case-contract/`** — 契约 case，定义外部 case 生成器对接的字典规范。
+- **Dual Domain 输入适配（开发中）** — `dual-domain/v1` 薄壁中面 JSON
+  可校验并转换为显式 `constant/dualDomainMesh` 字典；当前尚未提供
+  `dualDomainFoam` 物理求解器，不能替代三维 `moldingFoam`。
 - **[`spec.md`](spec.md)** — 面向下游 CAE 的权威方程、字段、单位、边界条件、
   验收口径与已知限制。
 
@@ -22,6 +25,23 @@
 ---
 
 ## 1. 环境要求
+
+### Dual Domain 当前入口
+
+公开 fixture 是 10 mm × 10 mm、1 mm 厚的合成薄壁中面。运行输入校验与
+OpenFOAM 字典转换：
+
+```console
+$ python3 scripts/test-dual-domain-input.py
+$ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json
+$ python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
+```
+
+转换结果只包含明确的 Dual Domain 节点、三角形、厚度、梁和耦合列表，执行
+mm→m 换算，不创建 `constant/polyMesh`。真实 Mug 导出 JSON 可作为命令的
+输入路径在本地读取，但不提交仓库；缺少双面匹配、法向、边界或积分规则时
+仍不能进入物理求解。开发路线与验收状态见
+[`ai-docs/tasks/072-dual-domain-program.md`](ai-docs/tasks/072-dual-domain-program.md)。
 
 OpenFOAM-14 官方只支持 **Linux**，因此编译与验证必须发生在大小写敏感的
 Linux 文件系统上。三端指的是三种可用的构建环境（任选其一）：

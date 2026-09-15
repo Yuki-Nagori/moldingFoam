@@ -196,6 +196,12 @@ B1 根因证据已确认：96×160 原始行在最后一步的 D `Initial residu
 不能作为可接受修复。工作树恢复原验证配置 `relTol=0.99`，等待后续 B2/B3
 在固定静态收敛判据下比较；当前没有提交未经验证的参数改变。
 
+B3 复测：96×160 只增加 `nCorrectors=3`、保持 `relTol=0.99` 和
+`accelerationFactor=1.9`。D 的 GAMG 在单步中达到 1000 次迭代，68 s 仅推进到
+伪时间 35 s；进程按有界预算终止，未产生终态精度证据。该分支说明多校正能
+降低残差但代价不可接受，不能作为默认修复，也不能拿未完成墙钟与基线比较。
+日志保存在 of14 `/home/ubuntu/task070/fine-ncorr3-a19/run.log`。
+
 新增 `scripts/check-structural-convergence.py`，按最后三个输出窗口同时检查
 自由端 Q 和全场 D RMS 的相对变化；它输出 JSON 历程并在任一变化超过 1e-3
 时硬失败。该检查只表达 steadyState 的静态迭代充分性，不把 `deltaT` 当作

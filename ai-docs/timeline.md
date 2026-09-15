@@ -1,0 +1,409 @@
+# moldingFoam 开发时间线
+
+本文件按 Git 提交记录整理。每个日期使用二级标题；每条记录统一为 `- `、提交短哈希、单个空格和提交摘要。
+
+## 2026-09-15
+
+- `6a61552` fix: bound structural displacement extrapolation
+- `6342ff7` docs: record local OF14 structural smoke validation
+- `6d289d6` fix: persist displacement residual across time steps
+- `458e856` fix: stop displacement correctors on final residual
+- `15c645a` fix: guard structural acceleration on residual growth
+- `c7da440` docs: record latest nightly structural failures
+- `9e91fb9` docs: move Dual Domain note after environment requirements
+- `50a7982` docs: defer Dual Domain solver implementation
+- `5ad14df` feat: add fixed Dual Domain thickness quadrature
+- `ec1ff02` feat: validate shared Dual Domain material contract
+- `577707f` feat: emit Dual Domain process dictionary
+- `18bee0e` feat: add Dual Domain dictionary input adapter
+- `7d31568` test: use thin-wall midsurface fixture
+- `8f9d689` docs: separate synthetic and local Dual Domain fixtures
+- `0f21b9b` test: keep Dual Domain CI fixture synthetic and document local Mug export
+- `a40080e` feat: validate T102 Dual Domain mesh and experiment fixtures
+- `a884307` docs: plan Dual Domain solver delivery and validation tasks
+- `6f79886` fix: preserve untracked matrix initial fields during cleanup
+- `a06a9f3` revert: remove setup-only solver alias workaround
+- `b1ed1e1` ci: create structural solver alias in shared setup
+- `bb57c2f` ci: add automatic alias for structural solver library
+- `dfa3a9e` ci: preserve structural diagnostics and sanitize matrix artifact
+- `a83fb77` test: cover structural convergence matrix column
+- `00f49c7` ci: run bounded structural diagnostics for both cases
+- `87eb05c` docs: name corrected structural solver in validation docs
+- `5c2892c` docs: track nightly structural convergence enforcement
+- `8a5bcde` ci: enforce structural convergence in uncertainty matrix
+- `8cada04` fix: align structural history with fixed sampling section
+- `4bbec5f` docs: record unstable warpage acceleration trial
+- `57a477b` docs: record corrected structural baseline evidence
+- `5c7369d` fix: add corrected solid displacement corrector module
+- `f3e9e35` add downstream CAE specification and solver contract audit
+- `805e48a` record GAMG and smooth solver exclusion tests
+- `8abfae7` record fixed-section structural accuracy evidence
+- `823be4c` use fixed physical sections for structural verification
+- `1e9a591` record solver tolerance and compact stress diagnostics
+- `a500498` record structural corrector cost limit
+- `2e134e9` record bounded linear solver convergence diagnosis
+- `2ebf5cc` record structural diagnostic environment check
+- `a0d7099` fix OpenFOAM environment for structural diagnostics
+- `72ad7b1` add bounded structural convergence diagnostics
+- `a7f7fee` enforce structural static convergence checks
+- `b5b5f8b` plan structural convergence repair and uncertainty closeout
+- `07816c7` record task069 local matrix accuracy and runtime evidence
+- `521e372` fix uncertainty measurements and preserve validation failures
+- `0a60208` harden variable mesh displacement parsing
+- `df99852` fix variable grid uncertainty verification
+- `5230566` execute uncertainty matrix in nightly CI
+- `490a96a` record nightly green task closure
+- `8cfbeaf` record nightly energy budget failure and fix
+- `1998d64` fix energy budget case flux declaration
+- `15b8e15` cover energy budget in nightly crystallization case
+- `b413551` align energy budget acceptance notes
+- `e719294` add optional thermal energy budget diagnostics
+- `589743d` run cycle and uncertainty checks nightly
+- `1839fa1` add nightly uncertainty matrix manifest
+- `05a90a8` add mold cycles parallel decomposition contract
+- `974a29c` test Tait extreme pressure regularization
+- `569cc3e` test runner solve cache invalidation contract
+- `848b3db` diag(energy): report integrated physical heat sources
+- `360d584` docs(checkpoint): record restart continuity comparison
+- `c0e2f3f` docs(checkpoint): record nonzero start acceptance
+- `01309fe` feat(runner): add opt-in flow solve cache
+- `df54d07` docs(validation): define uncertainty coverage matrix
+- `d4e5eba` docs(tasks): update viscoelastic acceptance status
+- `c010bc9` feat(viscoelastic): add transport and restart acceptance case
+- `582e2ab` feat(viscoelastic): add optional stress transport
+- `4892384` test(energy): cover duplicate latent heat configuration
+- `c924b74` fix(energy): reject duplicate latent heat sources
+- `976340c` docs(tasks): record accuracy and cost comparisons
+- `918dceb` fix(runner): expose fixed-point convergence tolerance
+- `21a23b4` diag(eos): report Tait inverse residual failures
+- `26009f7` docs(validation): record of14 regression follow-up
+- `8e7e285` fix(viscoelastic): favour accuracy in material substeps
+- `646c218` docs(tasks): record of14 minimum acceptance
+- `0fd9c52` diag(energy): report temperature clamp corrections
+- `faa8ee3` fix(viscoelastic): compile material substep limiter on of14
+- `23bb415` fix(eos): keep Tait derivatives consistent with log clamp
+- `69d6e19` docs(tasks): mark viscoelastic stability in progress
+- `32ae9be` fix(viscoelastic): substep stiff material relaxation
+- `524647f` docs(tasks): classify and sequence remaining work
+- `200d1f5` docs(checkpoint): record nonzero start semantics
+- `102fec1` fix(runner): report bounded non-converged iterations
+- `a469724` test(harness): bound serial runs and preserve failure evidence
+- `93686c0` fix(checkpoint): distinguish fresh nonzero starts from restarts
+- `1ac2a84` docs(review): record solver audit and follow-up tasks
+- `e26142c` fix(structure): retain temporary density during eigenstrain assembly
+- `4fba318` fix(solver): preserve process history and align viscous heating
+- `71a1e38` test(viscoelastic): verify stress-gradient momentum feedback
+- `2338193` fix(material): correct hybrid fiber closure endpoints
+- `d2847a9` docs(062): 记录一轮实现尝试——模型层语义已验证、用例层被 PtrList 拷贝构造阻塞（已回退）
+- `4458bc9` docs(062): 纠正"逐浇口目标已可表达"的错误论据 + 流量受控浇口设计定稿
+- `d409207` test(061): 排气封堵路径纳入重启判据（状态行 1 0 1 1 0.02 两边逐字段一致）
+- `80e74b1` fix(061): 重启丢 gateSealTime_（moldingStage 状态恢复漏读）+ 判据固化
+- `00e563a` test(061): 重启续跑连续性验证（连续 vs 中途重启）+ README 状态载体表述纠正
+- `d37f131` test(060): Lipscomb 黏度判据落地（validation/anisoViscosity，敏感性已证）→ 060 收尾
+- `54bd090` test(060): 各向异性热导率判据落地（validation/anisoConduction，敏感性已证）
+- `c53ac95` docs(060): 各向异性耦合断言缺口——核实+取证，纠正一处误判
+- `5d0d4a4` test(059): 字典键覆盖扫描——补两处赋值，其余附取舍理由
+- `bd5f158` test(058): 覆盖 moldingPrghPressure+runner（保压期闸口压力），并补记两处过期表述
+- `2896ee2` docs(058): 任务收尾为 done（stage 1–3 落地；逐浇口 Function1 按设计不做，理由见 §2d）
+- `32dff4e` feat(058): 工艺曲线驱动流道网络 + 非圆截面等效直径口径
+- `2bd6d04` feat(058): 逐浇口阀时序（gateOpenTime/gateCloseTime）+ 端到端用例 runnerValve
+- `28e4226` feat(058): 流道树拓扑 stage 1（tree 子字典 + 单层阻力加权不动点 + 新用例）
+- `1c10f4a` docs(README): 库只能存在一份实体（构建/打包/契约三处写清）+ 056 结论小节
+- `60c61d3` docs: 新增排查手册 diagnostics.md（最小复现优先）+ 约定 13
+- `2010e1e` docs(056): 记录 kairos VM 的库布局收尾状态（单份配置 + bundle 副本改名保留）
+- `6d006fd` fix(056): 037 退出崩溃根因＝求解器库被映射两次（不是越界写）
+- `599d305` docs(056): 二分排除 massBudget + 分配器探针工具链建成（金丝雀为下一步）
+
+## 2026-09-14
+
+- `44e2ce7` docs(056-058): 057 收口（I/O 花磁盘不花时间、诊断不可测）+ 058 stage1 回退补记 + 056 二分启动
+- `dc11a5f` feat(055): 测试流程用例复用语义——每 pass 新鲜副本 + 054 防线两端口验证通过
+- `50180b0` docs(055-058): 跟进任务立项——用例复用语义/037写入点定位/I-O与诊断开销/流道拓扑扩展
+- `b81a156` chore(docs): 文档体检工具移入 scripts/docs/，并入索引复查修正
+- `75c066b` docs: ai-docs 整理与优化——索引分主题、约定补全、审计/报告加时效补记、引用去行号、文档体检入 CI
+- `18db784` fix(054): 并行死锁 #2——reportTrappedAir 的按 rank 提前返回（fountainFlow @4 确定性死锁）
+- `237b3f4` docs(053): Kairos 实件 bench 与落地建议（(6,1) 实件 -14%，代价是预算残差 3.8e-05->1.4e-04）
+- `e402343` docs(053): 自适应子循环表阴性（-2%，填充期占 95-99% 步数）+ (nSubCycles,nCorrectors) 与熔接痕对称性的取舍表
+- `1ee3f68` feat(052/contract): v1.29——alpha nCorrectors 2->1（同批 -30% 墙钟，守恒 5.010e-04 不劣）
+- `783e767` docs(047): 网格轴三点收口——误差 ∝ dt×h^-1；自适应 dt 使加密更稳但墙钟 20-30×
+- `c2bd1a9` docs(050/051): 通信拆分结案 + 051 全部收口（细网格 L2 反升=验证器测站假象）
+- `0e830c0` perf(050): 墙钟拆分——通信 7-10%（远低于判定线），热点在界面/场算术；修网格缩放正则会误缩 simpleGrading
+- `6f555aa` docs(contract): v1.28 补串行验收数据（5.169e-04，与并行 5.164e-04 一致）
+- `db9e635` feat(contract): v1.28——契约缺省改用变体 E（nSubCycles 8 / 能量 tol 1e-5 / maxAlphaCo 0.015）
+- `c65dff3` feat(049)+docs(048): fountainFlow 增加 1D 润滑压力参照（实测 −3.09%）+ 变体 E 支配基线（−19.6% 墙钟、余量 ×8）
+- `7d50878` docs(047/048): 时间轴三点定标（误差 ∝ dt^1.0）+ 组合杠杆 −43.6% 入 README/041；048 收口
+- `93a52af` docs+perf(047/048): 成本杠杆组合实测（−43.6%，守恒 9.936e-04 待加余量）+ 契约 case 时间收敛定标（误差 ∝ dt^1.0）
+- `cc54749` perf(048): massBudget 诊断按 interval 门控——逐 patch 求和/打印与步分解归约只在打印步执行
+- `4a8df2e` docs(047-051): 评估缺口立项——契约 case 网格/时间收敛、成本杠杆组合、外部精度标定、百万单元产能、精度解释缺口
+- `9198af5` fix(046): 并行死锁根因=边界 patch 循环内的归约（issue #7）
+
+## 2026-09-13
+
+- `cede7b3` fix(042): smoke-exit 的 CI 失败根因=未进入 OpenFOAM 环境（接线错误，脚本本身正常）
+- `37c9496` fix(042/nightly): smoke-exit 拆为独立 job（CI 首跑失败、VM 通过，调查待原始日志）
+- `ef2f6a7` docs(audit): 记录本会话 29 笔改动的本地范围回归（26/26 solver 用例 + 模型测试全绿；重型验证与契约留待 nightly）
+- `0e04f2d` opt+audit: 索引同步（040 并入/041 行补回）+ 验证器配置守卫 + 消融审计 §7
+- `b096b80` feat(040): 域内本征应变源交付——符号修正 + 永久基准 eigenstrainGraded
+- `157bd2d` test(040): 非均匀 ε* 探针抓到符号缺陷——模型源以相反符号施加（−0.150 vs +0.150）
+- `2698dc5` perf(041): 计时矩阵结项——能量容差 10× 墙钟 −24%、完整验收通过（未改缺省）
+- `2cc5dbe` fix(runner): run-case.sh 的 scriptDir 在 cd 之后计算导致相对调用失效
+- `f53d056` perf(041): 能量求解器计时矩阵——放宽容差 10× 实测墙钟 −24%
+- `7621d61` docs(040): 输入来源锁定（复用 traction BC 的 threeK 构造；符号/量纲/rho 补偿明确）
+- `a0e8316` docs(040): v14 源码核实——d2dt2 即普通源钩子，方案 A 实现路径明确（addSup + rho 补偿）
+- `6fd454f` fix(ai-docs): 修复主索引表结构（表头归位、行统一为 6 列）
+- `1992268` docs(ai-docs): 已完成任务同步进主索引；跟进表收拢为 040/041 + 缺口闭环说明
+- `acf897c` docs(044): Nu 分支交付后结项；更正审计内联赋值假阳性（powerLaw 非缺口）
+- `211f9f1` feat(044): Nu 相关式分支交付（自洽断言，消融可验）
+- `f561a2e` feat(043): χ-η 耦合交付（随流算例 + η 十数量级断言）→ 043 四项全部完成
+- `6f276b7` docs(045): 平台/并行口径决策 B 落地（数值回归基线 x86_64）
+- `43dd01a` docs(044): 补记负值 pressureRamp 与 runner expectFailure 交付（补 cb490e2 缺失的文档同步）
+- `cb490e2` feat(044): runner 期望失败支持 + 负值 pressureRamp 永久用例
+- `b617dcb` docs(043): χ-η 耦合标定尝试记录——静止算例无法体现，改用随流算例
+- `f637255` feat(043): 深层热阻分支落地（wallResistance 条件断言）
+- `3d94c6e` fix(044): pressureRamp 显式值断言 + 修复回显的 word(scalar) 缺陷
+- `e6e4f4d` feat(044): gateFreeze 数值验证器（G8 清零：两个模式-only 用例均补数值验证）
+- `26f9bc6` feat(044): cycleReset 数值验证器（G8 首个模式-only 用例补齐）
+- `a2cd5fd` feat(043): massFixGlobal 开启路径落地（永久用例 + 残差验证器）
+- `06b5404` feat(043): gateSealRamp 分支落地（此前非零斜坡从未被执行）
+- `829173c` feat(044): 潜热断言落地（crystallization，消融可验）
+- `1df3077` docs(ai-docs): 已完成任务并入主索引；044 潜热标定第二次尝试记录
+- `5786bd5` docs(044): 潜热断言标定尝试记录（模具温度分离不足、体积平均待调通）
+- `0ae67d0` feat(042): 防线回归接入 nightly（smoke-exit）+ boxFill 预警断言
+- `b712524` audit: 仓库级消融（7 项断言灵敏度）+ 代码检查（-Wreorder 清零、死代码扫描）
+- `53b2a45` perf(039): 消融测试驱动的代码优化（closure 开关 / band 告警 / 死代码清理）
+- `4d75282` docs(ai-docs): 覆盖审计缺口落为任务 042–045 并建索引
+- `2807a3b` wip(040/041): 040 钩子探针结论 + 041 量化入口（perf-breakdown.py）
+- `9e80d94` feat(039): 汽蚀闭锁约束 fvModel `moldingVoidClosure`（空洞-PVT 一致 + 密封质量守恒）
+- `1a4e0fd` docs(ai-docs): 新增测试覆盖完整度审计（2026-09-13）并挂入索引
+- `c79e16a` docs(ai-docs): 索引同步本次修复（019 多周期回归修复、009 case 入 nightly）与回归面
+- `dd97313` chore(nightly): 纳入 highPressure 验证（009 的 40 MPa 标定 case，018 已收口）
+- `64a850e` docs(019): moldCHT-cycle 实测值改用 nightly x86_64 参考运行
+- `4e038a2` fix(019): moldCHT-cycle 恢复 6 周期并同步验证器（末周期计入增量、≥3 增量硬要求）
+- `4aeef20` docs: Kairos v0.2.3 复测回执（C 机制判读更正、自适应 ramp、守卫回显、建议实验矩阵 E1–E7）
+- `19cee9f` feat(038/033): pressureRamp 缺省自适应（切换时刻 5%，夹 [0.05,0.5]s）；启动回显补守卫配置与闸口封冻标注；voidCavitation 用例改物理导热材料并稳健标定（Cv 0.05）
+- `d17ef54` fix(CD): release job 显式 contents: write；仓库默认工作流权限已改为 write（403 根因）
+- `cf03e0c` fix(CI): xmake 缓存补齐运行时目录（~/.local/share/xmake，key v2）并加 --version 校验；修复命中后静默 exit 255
+- `43e9358` fix(nightly): 各 job 在调用本地复合 action 前补 actions/checkout（0s 报错的根因）
+- `2e7ec90` chore(CI/CD): nightly 拆分为 7 个独立 job（日志/artifact 分板块）；setup 复合 action 统一 CI/CD/nightly 并缓存 OpenFOAM(按架构)与 xmake
+- `dcf4101` docs(tasks): 抽出 039（汽蚀闭锁约束）/040（非均匀张量源）/041（内存流量长期项）并更新索引
+- `6e5fd0d` docs(033): 汽蚀标定窗口说明（Cv≥0.3 失稳，Cv=0.1/Cc=10 当前唯一稳定组合）
+- `b43c557` chore(CD): 版本定义移至 xmake.lua 顶部单行（MOLDINGFOAM_VERSION），CD 构建前 sed 重写为发布 tag；移除 VERSION 文件
+- `47add0f` chore(CD): bundle 命名改为版本+架构（moldingFoam-<version>-<arch>.tar.xz，VERSION 文件/CD tag 优先），弃用日期
+- `dc15cc3` feat(033): 场耦合空洞突破——上游 VoFCavitation 标定（pSat 1e3/Cv 0.1/Cc 10）使压力钉在 pSat 并开洞 ~2.95%；永久用例 voidCavitation；22/22 全绿
+- `337bf3a` feat(034): 固体张量本征应变边界 moldingTractionDisplacement（自由面含 -threeK*eigenstrain）+ anisoShrinkBar 机器精度验证；21/21 全绿
+- `a6ce657` feat(038): 冻结短射防线——充填期可动熔体分数检测，短射即封闸+切保压（freezeOffTemperature/Fraction）；永久用例 freezeOffGuard；21/21 全绿
+- `f47c382` feat(038): 保压压力 ramp（packing.pressureRamp 0.05s，首拍自捕获）+ 过早切换警告 + fillVelocityWarn SI 重标定 20 m/s；记录填充期 T 失稳复现
+- `543d654` fix(moldingFoam): 周期重置同步恢复 alpha2——修复 x86 CI 的 SIGFPE（nu 除零）
+- `73e3b32` docs(README): D 场文件格式样例（Kairos 矢量场解析对接）
+- `cd15201` docs(README): v1.21 契约（fillVelocityWarn、非有限快速失败、D/sigma/sigmaEq 输出场）+ Kairos 冷却通道/D 场对接说明
+- `2a51b35` feat(038/P1): 浇口速度预警(fillVelocityWarn=5 m/s)+非有限快速失败(T/|p| 检测，NaN 行 23k→17)；T-NaN 机理=速度 runaway 后果；P2 契约=冷却通道 coolant 子字典+D/sigma/sigmaEq 场
+
+## 2026-09-12
+
+- `d3c72d8` docs: 最终认证回归记录（19/19、boxFill、shrinkBar、moldCHT 6/6、并行契约 9.383e-4 全绿）
+- `e4f5a29` feat(038): 样例 case 诊断收口——入口 BC/度量正确、vent 开放逃料 92%、出口通量失配致 dt 坍缩；参考用例 boxFill（SI+vent 模型）19/19；README 索引刷新
+- `203728c` feat(033): 张力/空洞会计式交付——tensionLimit 账目开关、Tait 熔体支逆 pMeltIso、用例预算验收（4.1e-4 无修正器）；标记 done（场耦合钉不可表达已有九次实证）
+- `051db23` feat(032): perf-scaling.sh 增加内存采样与每步分解；文档收口（推荐生产配置/长期项）并标记 done
+- `08ee55a` docs(034): 收口——自由收缩条替代哑铃基准的判据与全链交付清单；标记 done
+- `4ff30d5` feat(034): 自由收缩条四分之一双滚轴模型达成（机器精度）——验证器/shrinkBar case/xmake+nightly 接线
+- `1a29242` fix(build): lnInclude 符号链接 mtime 守卫（头文件回退漏重编致混合对象）；bundle stat -L 断言修正 + E2E 复测记录
+- `363d7d4` revert(034): 移除未通过的自由收缩条 case（slip 亦超时：切向刚体模态奇异）；尝试谱系留档
+- `4908bd5` fix(bundle): 打包清除陈旧 libmoldingFoam*.so 并统一为符号链接（inode 断言）；runner/冒烟加 Duplicate-entry 金丝雀；037 记录 bundle 根因
+- `cf2732d` docs(033): 第九项——setValues 硬锚发散（通量重构破裂）；九次实验穷尽，需自带互补约束的两场模块
+- `962f6aa` docs(033): 第八项——ψ=0+软锚仍不足（压力+0.44 MPa、voidFraction 归零）；需硬 Dirichlet 行替换/互补表述
+- `3c2ec46` docs+test(037): ASan/UBSan 验证与收口——本源码内存干净
+- `7e0aab6` fix(037): 退出码/堆破坏防线 + 取证报告
+- `5ad43b3` docs(037): 新任务——求解完成后退出阶段堆破坏崩溃（零步/并行/FATAL 均复现；libmoldingFoam 初始化路径）
+- `6d796a0` feat(036): 路线 A 完成——moldingCoolantFluid 多区域 CHT 集成
+- `a4ba2a3` feat(036): 路线 A 首里程碑——moldingCoolantFluid 三维水模块 + 能量守恒验证
+- `22c2f1e` docs(034): 自由收缩条受阻（symmetryPlane 段错误/directionMixed 超时）——结构模块部分约束为留档增强
+- `e3ad3e1` docs(034): 各向异性导热二维用例验证（45°取向+非均匀壁温，max|dT|=0.042 K）；实现-验证闭环
+- `96938ac` docs(034): 各向异性导热矩阵级验证（diag diff 19282）；案例不可观测系 x 周期+1D 稳态的物理（需专用 2D 用例）
+- `f49ee5a` docs(034): 各向异性导热诊断确认（λ 张量偏离 9.4% 已激活；用例 y 向主导故 T 不敏感属物理）
+- `542aca4` style: 修正 momentumTransport 中 lipscombRatio 的缩进（8 空格对齐 CrossWlf 项）
+- `33e7778` feat(034): Lipscomb 取向黏度接入 CrossWlf（可选 lipscombRatio，逐单元 (a:D)^2 因子）；用例启用 ΔUx 0.84%；18 用例绿
+- `f01cf9f` docs(033): 第七项——闭锁驱动钳制复现质量汇；确认热力学密度由 p 字段驱动、单密度存储的结构矛盾闭环
+- `753ecca` feat(033): 0D 空洞闭锁工具（Tait 等容反演+互补条件；selftest 与 018a 场对拍 1.6e-6）——最终方案第一步
+- `d100d77` docs(review): 最终认证回归全绿（模型/18 用例/5 验证/moldCHT5/并行契约 9.383e-4）
+- `85fe329` docs(review): 剩余任务最终方案（033 两场表述设计/032 内存流量/036 路线 A 模块/034 集成）与完成度声明
+- `5d515c7` docs(033): 第五实验——pressureCorrector 罚项钉（稳定但质量+3.7%）、加冻结−40%；单密度框架不可兼得，两场表述为定论
+- `85e9b1e` docs(033): 第四项——fvModel 压力钉受阻（框架不以 p_rgh 派发；实测查询名仅 U/e.*/rho.*）；需覆写 pressureCorrector 注入罚项
+- `4de0e96` docs(032): 容差调优阴性（770.7 s 无加速）；调优杠杆穷尽——仅 nSubCycles8 有效（1.35x）
+- `194e61a` docs(033): 第三阴性——ψ 置零致压力方程奇异（27687 NaN）；两场/压力约束为唯一路径；代码回退干净
+- `1803627` feat(034): 各向异性热导率——conductivityTensor 模型+测试与能量方程张量导热接线（可选 conductivityAnisotropy）；18 用例绿
+- `1462945` feat(034): Lipscomb 型各向异性黏度因子（轴向 ratio/横剪 1/各向同性 1）+ 模型测试；阶段 3c
+- `4fa8804` feat(034): 各向异性收缩结构基准（取向度差→翘曲 2.7%）+ xmake/夜间 CI；阶段 3b 完成
+- `88e4886` docs: 夜间级完整回归全绿（模型/18 用例/4 验证/moldCHT5/thermoelastic/warpagePlate/coolantMold/并行契约 9.383e-4）+ 索引状态
+- `a5460ff` docs(032): 百万单元能力与预算曲线（1.0M 单元：串行 6.5 s/步/2.0 GB；4 进程 1.43x/0.6 GB per-rank）
+- `7cc9fbc` feat(034): free_strain --tensor 模式（各向异性收缩→面内均值等效本征应变，保留边界类型）；阶段 3a 完成
+- `ac4b808` feat(036): 路线 C 完整落地——moldingChannelCooling 多区域通道壁 BC + 验证
+- `87489dc` docs(033): 第二阴性——钳制+密度冻结致 NaN（压力方程一致性断裂）；两场表述为唯一路径
+- `8d8eeef` docs(index): 034 阶段 1/2a/2b 状态更新
+- `3ff5e31` feat(034): 各向异性收缩张量场输出（与 a 场联动）+ 用例/验证器；18/18 绿；阶段 2b 完成
+- `4552143` feat(034): 纤维各向异性收缩张量 eps=S/3(I-beta(a-I/3))（迹守恒）+ 模型测试；阶段 2a 完成
+- `9e81dc3` docs(032): nSubCycles 8 重复测量定论——稳定快 ~26%（1.35x），守恒 9.695e-4 仍在门槛内
+- `2d76436` docs(032): 求解器预算实验——nCorrectors2 越界不可用；nSubCycles8 通过且 -13%（重复测量中）
+- `ec73d00` docs(036): 覆盖核对——ε-NTU 收敛测试已在模型测试中；路线 C 物理验证完整
+- `720398a` style: 清除 033 回退残留的空行（moldingFoam.H）
+- `48a30ff` revert(033): 朴素 p 钉住实验——0.87% 质量汇/voidFraction 归零，证实必须两场表述；代码回退+记录
+- `244a4b3` docs(031): 置 done——根修完整验证（2.583e-4，176x，无修正器）；018/README 同步最终配置
+- `6a594fe` feat(018/031): 官方 highPressure 根修——maxDeltaT 1e-4（无修正器，守恒 2.58e-4，176x）；massFixGlobal 改为可选
+- `df9b6c9` docs(036): 缺口核对——Nu/推进定量已由模型测试覆盖；剩多区域能量账与路线 A 三维梯度
+- `06749fc` docs(036): 路线 C 已基本实现（moldingMoldTemperature.coolant 1D 沿程）；缺口=定量 Nu/能量守恒/梯度验收
+- `34717ae` docs(018): 记录 dt 上限根修的单窗口验证（2.0e-4，210x）与全窗口复跑待办
+- `b51e8e1` fix(031): massBudget 用实际步长记账（自适应 dt 下 deltaTValue 可能已指向下一步）+ 记录 dt 上限根修验证（[0,1.35] 2.0e-4，210x）
+- `f4bf99e` docs(031/018): 根因突破——保压质量误差为时间截断（dt^1.6 定标）；'dt 无关'为 maxDeltaT 假象；CN0.9 降 2x
+- `a05a9a4` revert(031): ddtCorr 激活零效果（逐位相同）回退；记录为第四项阴性
+- `c723179` docs(031): 空间标度非单调（相位相关 odd-even 模式）；完整排除矩阵与候选修法排序
+- `38ef088` docs(031): dt 标度实验——残差与 dt 无关（系统性偏差）；领先假设=步初密度通量的一步滞后/缺密度时变修正
+- `b732a89` revert(031): vent 通量修正零效果回退（gate-only）；记录阴性结果，诊断仪表保留
+- `e17ffd3` feat(031): 边界 alpha 通量一致性扩展到 vent + 通量分项/逐 patch 仪表
+- `48ebfcd` docs(036): 路线 C 设计定稿（moldingChannelCooling BC，仿 runnerTemperature 模式）
+- `49bd29b` docs(tasks): 031-035 状态推进（031/032/033/034 in-progress，035 done）并同步索引
+- `9fc018e` docs(033): 张力限制的公式化澄清（体密度低于 pv 密度；限制压力并引入空洞变量）
+- `15d4a1f` docs(032): 同会话强扩展——222k@4 仅 30%（带宽受限）、55k 49%；并行跨会话方差 20-25%
+- `613abac` feat(034)+docs(031/035): 结晶度-收缩耦合 + UQ 报告与阈值收紧
+- `0d53071` docs(032): 首轮性能实验——GAMG 慢 13%（弃用）、同配置跨会话方差 20-25%、解一致性 0.004%
+- `6386fc1` docs(review): 整体审查报告（完成度/精度债务/性能）+ 新增任务 031-036 + 索引状态修正
+- `9f023ef` docs: 删除临时交接文件 STATUS.md（全部任务 done）
+- `caec83d` docs(final): 013 置 done；全部任务完成，按约定删除临时 STATUS.md
+- `ffb34c2` docs(029): 干净强/弱扩展与内存报告（1.49x@4 procs、弱扩展 59%）；029 置 done
+- `e01827a` feat(013b): PVT 自由应变映射 + 双层收缩板 Timoshenko 基准（MVP）
+- `bf32790` fix(018)+docs(018a): massBudget 前一状态场在首步初始化（段错误）+ 018a 收口
+- `11c7a30` feat(018): 官方 highPressure case 启用 massFixGlobal（此前插入未匹配导致实为基线）
+
+## 2026-09-11
+
+- `0b22ce9` fix(018): massFixGlobal 不再依赖 massBudget（postSolve 提前返回 bug）+ 官方 endTime 1.6
+- `84d7151` feat(018): 保守全局质量修正器收口——40 MPa 标定 case 离散守恒 1.1e-5
+- `2f633dd` docs(STATUS): 记录全套回归结果（模型/18 用例/couette/couetteSlip/stefan/moldCHT/thermoelastic/并行契约 9.383e-04）
+- `603b759` docs(STATUS): 018 定位压力方程通量/压缩拆分 + 029 大规模基准；全套回归绿
+- `8c97761` feat(018): massFix 松弛实验（0.1/0.25/full）——事后修正器不可行，须改压力耦合定式
+- `5f5a7ee` feat(018): 保守质量修正器 massFix 实验——预算降 20x 但 Courant 崩溃
+- `f7239d0` feat(018): massBudget 四项逐步分解——dm 与 psi*dp 自洽，不一致在压力方程通量/压缩拆分
+- `18702e8` feat(018): massBudgetInterval 可选 + 逐步轨迹定位残差累积于升压段（step25-50 至 1.87%）
+- `673d435` feat(018): 求解器内离散质量预算仪表 massBudget + hp-small 证据
+- `062ebb9` docs(018): 定式级分析——密度更新为线性 psi correctRho（迭代口径一致），下一步 solver 内部质量预算仪表
+- `4c94f5a` docs(018): 误差起始定位到保压表斜率断点后 + 平滑升压实验无改善（斜坡形状排除）
+- `14d531b` docs(018): 守恒误差窗口分解——充填 3.2e-4 达标、保压期 51% 为唯一超差源
+- `53dd156` docs(018): 记录保压期零梯度U实验（尖峰不变）与守恒误差窗口分解（斜坡期主导）
+- `88b4388` docs(STATUS): 同步 018a 阶段 1–3 与 013b 文档
+- `fd108a3` docs(013b): 新增结构翘曲集成任务文档（顺序耦合数据流/基准/DoD，2026-09-10）
+- `f88837d` feat(018a): 验证器加入密封熔体压力路径对拍（求解器 -4.23 MPa ≤ pv，与 PVT 差 1.16%）
+- `0abc72f` feat(018a): voidFraction 验证器加入 PVT 逐单元对拍（熔体单元一致到 1.6e-6）
+- `b442579` feat(018a): voidFraction 改用精确 Tait rho(pv,T)（阶段 3）
+- `30c86ec` feat(018a): voidFraction 求解器场 + 密封冷却用例（阶段 2）
+- `ffefec2` docs(index): 同步 018a（阶段 1 完成）与 029（大规模基准完成）状态
+- `ff94edf` feat(018a): 封冻空洞/负压 PVT 指标（阶段 1）
+- `06a6024` docs(029): 22.3 万单元大规模基准与逐步时间分解（4 进程 455 s/516 步，热点=压力迭代随界面增长）
+- `34dda5f` feat(018): moldingPrghPressure 可选目标松弛 + 两项收口实验
+- `0992c85` docs(019): 三维水区调研结论并置 done（四基准完成，等效冷却覆盖）
+- `693108c` docs(STATUS): 注明本文件为临时交接文件，全部任务 done 后删除
+- `91e325a` feat(022): 三维热弹性悬臂基准（solidDisplacement，任务 022 完成）
+- `babf068` docs: 新增会话交接快照 ai-docs/STATUS.md（环境/任务状态/验证基线/约定）
+- `fe5f420` docs(018): 记录 nCorrectors 实验与边界通量局部误差观察（全局残差 1e-10 仍尖峰）
+- `85e6b99` feat(019): 多周期模温周期稳态趋势（019 第四阶段）
+- `3e96326` feat(019): 002 集总极限对照验收（019 第三阶段）
+- `1b77a85` docs(022): 记录 solidDisplacement 调研——热载荷语义需专项核对后再建结构基准
+- `43e512c` chore: highPressure 命名自带 verifier；run-case.sh 支持 system/verifier 覆盖
+- `c1798b6` docs(018): 补充标准BC/慢斜坡对照——振荡为浇口压力起始的出流瞬态，需压力耦合重构
+- `58e0c53` docs(018): 记录 transonic/线性容差/外迭代三项实验均不足；振荡源为浇口定压 BC 的声学刚性耦合
+- `e0c9a48` docs(018): 绝热壁隔离实验确认振荡为压力-速度耦合；transonic 候选待配套方案
+- `f4983fa` docs(009/018): 修正收口结论——<1e-3 只到约 38 MPa，40 MPa hold 为 4.5e-2
+- `e973af0` feat(022): Timoshenko 双金属曲率解析基准（022 第三阶段）
+- `b995af7` docs: 009 由 018 收口置 done（封冻前守恒 5.02e-4；空洞建模移交 018a）
+- `7e9c8a2` docs: 023 状态置 done（DoD 满足：1D 自平衡残余应力解析验证；粘弹性为增强）
+- `c34d363` feat(027): 粘弹性动量耦合 fvModel + 振荡解析验证（任务 027 完成）
+- `bed1a19` feat(022): 条带翘曲形状（1D 板方程 w''=-kappa，022 第二阶段）
+- `91b43a8` feat(019): Robin 对流冷却边界与冷却 CHT 验证（019 第二阶段）
+- `a4cabfa` docs: 022/023/027 状态置 in-progress（首阶段已落地）
+- `417630d` feat(023): 1D 自平衡弹性残余应力分布（023 第一阶段）
+- `1c6a7bb` test(020): 时间收敛确认并收口；029 记录并行契约回归
+- `ef44e06` fix: 并行单区域 constant 字典路径回退 + 弱扩展脚本（029）
+- `65f9245` feat(022): 自由翘曲解析模型（022 第一阶段）
+- `33c7042` perf(029): 缓存流道网络（入口/保压 BC 不再逐步重解析字典）
+- `e75fe19` feat(027): 单模 UCM/Giesekus 粘弹性本构（027 第一阶段）
+- `57b3587` feat(024): DSC 标定工作流（Avrami 参数拟合）——任务 024 完成
+- `a2b5df4` feat(020): 喷泉特征判据（中心前沿领先壁面 11 cell）并记录
+- `f7272cd` feat(019): 多周期多区域 CHT 集成（019 第一阶段）
+- `d7a0cdb` docs(018): 收口——验收窗口界定 + 封冻前守恒 5.02e-4；空洞建模拆为 018a
+- `63100ee` feat(018): 浇口熔体通量一致性修正（prePredictor 覆写）
+- `45cd801` docs: 025/026 状态置 done（DoD 满足）；020/024 保持 in-progress 并同步索引
+- `8fb808a` docs(020): 喷泉流第一阶段验收记录（前沿 0.013%、剖面 L2 1.64%）
+- `357a9ff` feat(020): 喷泉流基准（前沿位置 + 解析 Poiseuille 剖面对拍）
+- `e534d5b` feat(026): 热流道温度边界 moldingRunnerTemperature（026 第二阶段）
+- `7c1173d` feat(024): 结晶度黏度修正 η(χ)（024 第二阶段）
+- `c25f7fb` feat(025): 取向张量随流输运（025 第一阶段）
+- `fae6453` feat(024): 结晶度随流输运（024 第一阶段）
+- `7a97a64` docs(019): 状态置 in-progress，记录多区域落地缺口（周期通量记账/冷却水道/002 对照）
+- `1cd72a1` docs(018): 平滑封冻结果与 40 MPa 守恒主因诊断
+- `33dda1f` feat(026): 多浇口分流集成用例（026 第一阶段）
+- `ffbb9b9` feat(030): 多级工艺曲线与时间型 V/P 切换（任务 030 完成）
+- `937cc27` feat(021): 熔接痕与气穴预测（任务 021 完成）
+- `8c28e98` test(028): 压力依赖粘度（CrossWlf D3）验证（任务 028 完成）
+- `b3cca85` test(009): 40 MPa 标定 case 与根因定位（移交 018 收口）
+- `2add21b` docs(tasks): 追加 018–030 任务索引与文档，更新既有任务状态
+- `2d5b5a4` feat(013a): PVT 一致收缩/残余应力指标（013 拆分）
+- `bf87788` feat(015): 纤维取向（Folgar-Tucker + Jeffery 轨道验证，任务 015 完成）
+- `b9f4824` feat(014): 结晶动力学（Nakamura/Avrami + 潜热耦合，任务 014 完成）
+- `9e8ece0` feat(016): 1D 流道网络与型腔入口耦合（任务 016 完成）
+- `11da359` feat(008): 冷却水 1D 对流通道（任务 008 完成）
+- `2dbd9c5` feat(008): 含 VoF 充填的多区域共轭传热（路线 A 第三阶段）
+- `e5488d3` fix(008): moldCHT 验证脚本从 controlDict 读取 deltaT（支持时间步细化研究）
+- `654cedd` feat(008): 多区域共轭传热（路线 A 第二阶段）
+
+## 2026-09-10
+
+- `ad4c867` docs(009): 状态置 in-progress（机理/Pareto 完成，40-100 MPa 守恒待压力耦合重构）
+- `076c48b` docs(017): 解析/文献基准完成并自动验收（done）；商用对拍无授权条件
+- `338a2ba` docs(009): 等比子循环不可替代小全局时间步（2.44e-3）——守恒与压力-密度时间离散强相关
+- `160d995` feat(010): 闸口温度型封冻判据（任务 010 完成）
+- `c4dc90e` test(012): 400 周期模温稳态收敛用例（任务 012 完成）
+- `401fbe5` feat(008): 模壁深层热阻路径（路线 B 第一阶段）
+- `73ae02d` test(012): 模温跨周期保留与升温快速用例（test-solver 支持数值校验）
+- `c60737f` docs(009): 界面配置 Pareto 与推迟密封实验结论——现状配置最优，瓶颈为困气压缩界面库朗
+- `a40503b` docs(009): 第二轮——压力连续斜坡稳定但压力耦合刚性主导（0.012s 用 685s），给出定标/自适应子循环方案
+- `b213f7c` ci: PR 级 CI 保持编译+模型测试；求解器用例/解析验证/契约 case 归夜间
+- `57cde7f` fix: run-solver-tests.sh 补可执行位（干净同步后 test-solver 权限错误）
+- `6198842` docs(009): 40 MPa 标定实验第一轮——切换压力与保压不一致导致阶跃发散，给出下一轮设计
+- `5926585` test(017): Stefan 基准收敛与判定收紧（前沿 <1%，剖面 <1K）
+- `569e1a8` test(017): Stefan 凝固解析基准与统一验证 runner
+- `c21eb77` test: 快速求解器特性用例框架（xmake run test-solver）
+- `2a89a04` feat(003): 困气诊断（选项 B，并行连通域）
+- `bf63fc1` docs: 验收基线更新为黏性生热开启后的 9.383e-04
+- `0bb12c2` feat(012): 多周期运行（周期循环与流场重置）
+- `9256122` docs(010): 评审修订——闸口温度判据被固定 480 K 入口阻塞，依赖 016 流道热耦合
+- `64fe7e7` feat(011): Navier 壁面滑移边界
+- `a047a95` feat(003): 排气反压（准稳态孔口模型，选项 A）
+- `1445a48` feat(007): 黏性生热（能量方程剪切耗散项）
+- `11f1576` docs: README 契约 v1.3/v1.4 与任务报告/立项（001-017）
+- `1236964` feat(006): 注塑周期物理完备化（排气密封 / 压力切换 / 闸口封冻）
+- `e8d4419` fix(001)+feat(002): 潜热峰移出物性传输与集总模温边界
+- `ed62152` docs: 001 状态更新为 in-progress
+- `7980090` docs(001): he 型能量预报器完整研发提示词
+- `1128b04` fix: 潜热实验性回退至 latentHeat 0（T 矩阵与带内负 Cv 不兼容）
+- `4ef2728` fix(004): 构造函数记录 moldingDict 基线修改时间
+- `d579d5f` ci(005): 夜间契约 case 回归
+- `ca9364a` feat(004): moldingDict 运行时重载
+- `270f23d` feat(001 部分): 能量预报器覆写 + 潜热半隐式线性化（实验性）
+
+## 2026-09-09
+
+- `912f1f7` docs(ai-docs): 研发缺口与路线任务计划
+- `a793907` test: hMelt dHs/dT 差分步长细化，恢复 1e-8 严格容差
+- `cd1e9db` docs: 潜热 hMelt/限制说明、契约 v1.2 变更日志、目录树更新
+- `10ee20c` fix(solver): 顶出判据改用 cooling.releasePressure
+- `34c6845` feat(thermo): hMelt 潜热热力学组合
+- `20081d8` perf(Tait): 派生量单遍求值重构，公开 Tt/meltWeight/latentCpWeight
+- `4d74a6e` perf: 求解热路径循环不变量提升与冗余求值消除
+- `d26ae07` ci: 移除 CI/CD 中的契约 case，仅保留编译与模型测试
+- `7bdbe43` fix: 允许 MPI 超订运行，修复 CI 契约 case 启动失败
+- `00e404d` ci: GitHub Actions 双架构 CI 与手动 CD
+- `42c1fce` docs: README 全流程文档
+- `7ee4b28` build: xmake 编排——apt 官方二进制优先
+- `296aedb` feat: 契约 case 与自动验收
+- `54c9ecf` feat: moldingFoam 求解器模块与模型测试
+
+## 2026-09-08
+
+- `7df423d` Initial commit

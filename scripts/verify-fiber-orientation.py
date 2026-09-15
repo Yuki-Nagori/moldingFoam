@@ -44,7 +44,11 @@ def main():
     print("  max|tr(a)-1| over the run = {:.3e}".format(max(trerr)))
 
     fail = False
-    if a12[-1] < 0.05:
+
+    # Orientation floor: the shipped case settles at max|a12| = 0.1475 (and
+    # the anisotropic couplings shift it by under 1%, see task 060), so this
+    # guards the orientation transport itself, not the couplings
+    if a12[-1] < 0.10:
         print("FAIL: the shear did not orient the fibres")
         fail = True
     if max(a12) > 0.5 + 1e-9:

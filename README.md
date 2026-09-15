@@ -720,7 +720,16 @@ Da/Dt = (W·a − a·W) + λ(D·a + a·D − 2A:D) + 2·CI·γ̇·(I − 3a)
   `tests/cases/fiberOrientationAdvection` 中初始 `a=xx` 的型腔被
   `a=I/3` 的新鲜熔体驱替，平均 `a_xx=0.072`（阈值 0.5）；启用时需在
   case 的 `fvSchemes` 加 `div(phi,a)`、`fvSolution` 加 `(a|aFinal)`；
-- 缺省不写时行为不变；各向异性黏度/热导率为后续扩展。
+- 各向异性耦合**已实现**：`momentumTransport` 的 CrossWlf `lipscombRatio`
+  给黏度乘 Lipscomb 取向因子（需要 mesh 里存在 `a` 场，`orientationField`
+  可改名），`moldingDict.fiberOrientation.conductivityAnisotropy` 把能量
+  方程的 `kappa` 换成型别张量 `lambda = kappa (I + aniso (a − I/3))`（隐式
+  `fvm::laplacian`，迹保持：各向同性取向时退回标量 kappa）；
+- **但这两条耦合目前没有断言**（`fiberOrientation` 用例执行它们，验证器只
+  断言取向输运与各向异性收缩）→ 关掉耦合现有用例仍全绿。验证设计与验收
+  见 `ai-docs/tasks/060`；
+- 缺省不写时行为不变（`conductivityAnisotropy` 缺省 0、`lipscombRatio`
+  缺省 1）；纤维浓度/断裂为后续扩展。
 
 ### 结晶动力学（`crystallization`，任务 014）
 

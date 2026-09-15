@@ -283,6 +283,10 @@ case。该 solver 修复了 of14 首轮残差复用，使 `nCorrectors>1` 的每
 收敛修复，不能用“解析误差通过”替代静态收敛。完整三网格矩阵和 warpage 修复
 仍保留在 nightly 收口，070 状态继续为 `in-progress`。
 
+补充阴性试验：`warpagePlate` 将 `accelerationFactor` 从 1.9 单独提高到 2.2
+后，在有界运行中出现 `Dx Initial residual = nan`，随后线性求解失败；该候选
+被判定为不稳定并排除，未写入默认字典。
+
 补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
 明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
 均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。

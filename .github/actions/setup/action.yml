@@ -64,10 +64,4 @@ runs:
 
     - name: Build
       shell: bash
-      run: |
-        xmake
-        # OpenFOAM derives the module library name from the solver type.
-        # Keep both names as symlinks to the one built project library.
-        source /opt/openfoam14/etc/bashrc
-        ln -sf "$FOAM_USER_LIBBIN/libmoldingFoam.so" \
-          "$FOAM_USER_LIBBIN/libmoldingSolidDisplacementSolver.so"
+      run: xmake

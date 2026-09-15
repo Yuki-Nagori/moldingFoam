@@ -60,6 +60,7 @@
 | 本文件 | 任务索引 + 约定 + 基线速查 | 每次开工 |
 | `tasks/NNN-*.md` | 单任务：背景/方案/DoD/验收记录 | 接活与验收时 |
 | `review-2026-09-12.md` | 历史快照：完成度/精度债务/性能瓶颈 | 了解全局由来 |
+| [`review-2026-09-15.md`](review-2026-09-15.md) | 当前代码复核：闭合/耗散、组合状态、覆盖与效率缺口 | 查本轮审查结论及最小证据 |
 | `coverage-audit-2026-09-13.md` | 四层测试通路与缺口 G1–G11 | 查测试覆盖 |
 | `ablation-audit-2026-09-13.md` | 特性消融与断言灵敏度 | 查断言强度 |
 | `uncertainty.md` | 收敛性/定标/换算（活文档） | 做精度与门槛决策 |
@@ -84,6 +85,21 @@
   阴性清单见 `tasks/041` §4y 与 052/053。
 
 ## 任务索引
+
+| 编号 | 标题 | 优先级 | 状态 |
+|---|---|---|---|
+| [063](tasks/063-review-closure-state-consistency.md) | 审查问题收口：闭合、能量与历史状态一致性 | P1 | in-progress（R1–R8 本地修复与最小回归完成；完整 CI 待验收） |
+
+### 2026-09-15 复核后的后续任务
+
+| 编号 | 标题 | 优先级 | 状态 |
+|---|---|---|---|
+| [064](tasks/064-checkpoint-cycle-contract.md) | 检查点完整性与多周期时间语义 | P1 | planned |
+| [065](tasks/065-tait-domain-derivative-consistency.md) | Tait 有效域、截断导数与逆求解稳健性 | P1 | planned |
+| [066](tasks/066-viscoelastic-transport-stability.md) | 粘弹性输运、材料限步与相区一致性 | P1 | planned |
+| [067](tasks/067-energy-accounting-coupling.md) | 完整能量账目与耦合精度约束 | P2 | planned |
+| [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | planned |
+| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | planned |
 
 ### 契约周期与工艺（17 项）
 

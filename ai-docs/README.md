@@ -115,7 +115,7 @@
 |---|---|---|---|
 | [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | **done**（model-tests/solver-cases nightly 通过） |
 | [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（九行本地测量完成；细网格结构误差超限，独立收敛研究及新 nightly 待验收） |
-| [070](tasks/070-structural-convergence-repair.md) | 结构基准迭代收敛与细网格精度修复 | P1 | planned（S0–S4 流程已设计；先核实稳态迭代语义，再修复细网格误差） |
+| [070](tasks/070-structural-convergence-repair.md) | 结构基准迭代收敛与细网格精度修复 | P1 | in-progress（S0/S2 已完成单变量取证；细网格静态收敛与根因修复未完成） |
 
 #### 未完成项跟进顺序
 

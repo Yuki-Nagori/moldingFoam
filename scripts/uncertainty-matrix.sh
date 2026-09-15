@@ -28,7 +28,7 @@ outDir=$(cd "$outDir" && pwd)
 # Unique session directories preserve prior runs and all failed inputs/outputs.
 outDir=$(mktemp -d "$outDir/run-XXXXXXXX")
 echo "uncertainty results=$outDir"
-printf 'case\tgridScale\tdtScale\tquantity\trc\twall_seconds\tvalue\treference\trelative_error\tthreshold\twithin_threshold\ttime\n' > "$outDir/results.tsv"
+printf 'case\tgridScale\tdtScale\tquantity\trc\twall_seconds\tvalue\treference\trelative_error\tthreshold\twithin_threshold\ttime\tstructural_convergence\n' > "$outDir/results.tsv"
 overall=0
 for row in "${rows[@]}"; do
   IFS=$'\t' read -r rel scale dtscale quantity <<< "$row"
@@ -46,10 +46,20 @@ for row in "${rows[@]}"; do
     timeout "${UNCERTAINTY_MATRIX_TIMEOUT:-900}" bash "$repoDir/scripts/$runner" "$work"
   ) > "$work/runner.log" 2>&1 || rc=$?
   wall=$(( $(date +%s)-start ))
+  structural=unavailable
+  if [[ "$name" == thermoelastic || "$name" == warpagePlate ]] && [[ -f "$work/log.foamRun" ]]; then
+    if python3 "$repoDir/scripts/check-structural-convergence.py" "$work" > "$work/structural-convergence.json" 2>&1
+    then
+      structural=converged
+    else
+      structural=not_converged
+      [[ "${UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE:-0}" == 1 ]] && rc=1
+    fi
+  fi
   status=0
-  python3 - "$work/metrics.json" "$outDir/results.tsv" "$rel" "$scale" "$dtscale" "$quantity" "$rc" "$wall" <<'PYROW' || status=$?
+  python3 - "$work/metrics.json" "$outDir/results.tsv" "$rel" "$scale" "$dtscale" "$quantity" "$rc" "$wall" "$structural" <<'PYROW' || status=$?
 import csv, json, math, pathlib, sys
-metrics, table, case, grid, dt, quantity, rc, wall = sys.argv[1:]
+metrics, table, case, grid, dt, quantity, rc, wall, structural = sys.argv[1:]
 values = ['']*6
 try:
     m = json.loads(pathlib.Path(metrics).read_text())
@@ -61,7 +71,7 @@ except (OSError, ValueError, KeyError, TypeError):
         rc = '1'
     values = ['']*6
 with open(table, 'a') as output:
-    csv.writer(output, delimiter='\t').writerow([case, grid, dt, quantity, rc, wall]+values)
+    csv.writer(output, delimiter='\t').writerow([case, grid, dt, quantity, rc, wall]+values+[structural])
 sys.exit(int(rc) != 0)
 PYROW
   [[ "$status" == 0 ]] || overall=1

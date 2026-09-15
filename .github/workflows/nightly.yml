@@ -235,6 +235,7 @@ jobs:
           set -o pipefail
           source /opt/openfoam14/etc/bashrc
           UNCERTAINTY_MATRIX_TIMEOUT=900 \
+          UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE=1 \
             scripts/uncertainty-matrix.sh --run 2>&1 | tee uncertainty-matrix.txt
       - uses: actions/upload-artifact@v4
         if: always()

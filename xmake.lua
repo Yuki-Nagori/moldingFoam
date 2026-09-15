@@ -626,6 +626,32 @@ target("anisoConduction")
     end)
 target_end()
 
+target("anisoViscosity")
+    set_kind("phony")
+    add_deps("moldingFoam")
+    on_run(function (target)
+        local function in_of_env(envdir, script)
+            return os.execv("/bin/bash", {"-c",
+                "source " .. path.join(envdir, "etc", "bashrc")
+                .. " && " .. script})
+        end
+
+        local envdir, err = openfoam_envdir()
+        if envdir == nil then
+            os.raise(err)
+        end
+        print("[moldingFoam] running the Lipscomb anisotropic viscosity validation")
+        local ok = in_of_env(envdir,
+            "cd " .. projectdir .. " && "
+            .. path.join(projectdir, "scripts", "run-validation.sh")
+            .. " validation/anisoViscosity")
+        if ok ~= 0 then
+            os.raise("Lipscomb anisotropic viscosity validation failed; see "
+                .. "validation/anisoViscosity/log.foamRun")
+        end
+    end)
+target_end()
+
 -- Assemble a self-contained distribution bundle: a complete OpenFOAM-14
 -- environment tree with the moldingFoam products merged into its platform
 -- dirs, compressed into build/moldingFoam-<version>-<arch>.tar.xz. The

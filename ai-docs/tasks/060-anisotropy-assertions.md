@@ -1,7 +1,7 @@
 # 060 — 各向异性耦合的断言缺口（Lipscomb 黏度 / 各向异性热导率）
 
-- 状态：in-progress（**各向异性热导率判据已落地并验证敏感性**：新增
-  `validation/anisoConduction`；Lipscomb 黏度判据待做）
+- 状态：**done**（两条耦合的判据都已落地并各自验证了敏感性：
+  `validation/anisoConduction` 与 `validation/anisoViscosity`）
 - 优先级：P2
 - 依赖：034/040（两个耦合的实现）、025（取向集成）、043/044（断言强度补齐）
 - 预估规模：1–2 天（含两个验证 case + 解析判据）
@@ -103,6 +103,35 @@ diag(0,1,0)），`conductivityAnisotropy 0.5` → λ_yy = 0.33333（各向同性
 同步改期望值，两边一起动、当然 PASS（本轮先这么试过并踩中）。必须让
 **实现**变、期望不变：改源码分支 + 重建，才证明判据真的守得住。这条已
 记入 `ai-docs/diagnostics.md`。
+
+## 3b. 本轮落地：Lipscomb 黏度判据（2026-09-15）
+
+**设计的关键认识**：45° 取向在简单剪切里给出 `(a:D)^2/(D:D) = 1/2`、因子
+`1 + 3/4 (ratio-1)`（`ratio 4` → 3.25 倍），但**取向张量会被 Jeffery 项带动
+转动**，所以因子是历史相关的——实测同一 case 的壁面力增幅只有 +18%（ratio 4）
+/+44%（ratio 8），远小于"取向不动"的 225%。于是判据取**增幅下界**而非精确
+因子：只要耦合在场就必然超过阈值，关掉实现则增幅归零。
+
+**实现**：`validation/anisoViscosity`（`xmake run anisoViscosity`，已接入
+nightly）：45° 取向的 Couette（周期通道、移动壁 1 m/s、γ̇ = 1000 1/s、
+`lipscombRatio 4`、热导率耦合置 0 以免混淆），壁面力用
+`wallShearStress` + `surfaceFieldValue areaIntegrate` 记录。
+`scripts/verify-aniso-viscosity.py` 复用 verify-couette 的 CrossWlf/Tait 模型
+算"无修正"基线并取下界。
+
+**结果**：
+
+| 配置 | 末步壁面力 | 相对无修正基线 |
+|------|-----------|----------------|
+| `lipscombRatio 1`（修正关） | 36.214515 N | **+0.00%**（基线解析值 36.214303 N，六位吻合 → 交叉验证了模型与几何解析） |
+| `lipscombRatio 4` | 42.712777 N | **+17.97%** → PASS（阈值 8%） |
+| `lipscombRatio 8` | 52.145333 N | **+44.19%** → PASS（效应随 ratio 单调 ✓） |
+| 敏感性：源码里 `c.useOrientation = false`、字典仍写 4 | 36.214515 N | **+0.00% → FAIL** ✓ |
+
+**坑**：`forces` 函数对象不在这个打包的可用列表里（列表有 `wallShearStress`），
+改用 `wallShearStress` + `surfaceFieldValue areaIntegrate` 取壁面力；另外
+`functions` 块里追加对象要注意插在**闭合大括号之内**（我第一版插到了外面，
+对象静默未构造 ✗）。
 
 ## 4. 验收标准（DoD）
 

@@ -359,6 +359,7 @@ $ xmake run test
 | 黏性生热（`xmake run couette`） | 解析线性 Couette 剪切层（`γ̇ = 1000 1/s`、绝热、初始稳态剖面）：平均温升与独立积分模型（CrossWlf + Tait）对拍，实测相对误差 **4.1e-4**（阈值 2e-3）；速度剖面对拍线性 |
 | 各向异性热导率（`xmake run anisoConduction`） | 静止平板（40 cell、0.02 s、绝热侧壁、两端定温）叠加半正弦本征模：衰减率由沿梯度方向的 `lambda = kappa (1 + a_yy 相关各向异性)` 决定。实测末幅值 **3.2596 K vs 解析 3.2584 K（0.036%）**；把耦合从实现里关掉（字典仍写 0.5）偏差 **11.3% → 判据 FAIL**（敏感性已证，阈值 2%） |
 | CrossWlf | γ̇→0 时 η→η0(T)；高剪切 log-log 斜率→n−1；6 个手算参考点（含冻结区指数封顶）；`[ηmin,ηmax]` 夹紧 |
+| Lipscomb 各向异性黏度（`xmake run anisoViscosity`） | 45° 取向的 Couette 剪切（周期通道、移动壁 1 m/s、γ̇ = 1000 1/s）：无修正的壁面力可由 CrossWlf 解析给出（ratio=1 实测 36.2145 N vs 解析 36.2143 N，六位吻合）。耦合开启（`lipscombRatio 4`）实测 **+17.97%**、`8` 时 **+44.19%**；判据取「增幅 ≥ 8%」的下界（取向在剪切里被 Jeffery 项转动，精确因子是历史相关的），把实现里的修正关掉后增幅归零 → **FAIL**（敏感性已证） |
 
 参考值取自 openInjMoldSim 附带的 HDPE 牌号数据，由独立脚本计算后固化。
 
@@ -730,9 +731,11 @@ Da/Dt = (W·a − a·W) + λ(D·a + a·D − 2A:D) + 2·CI·γ̇·(I − 3a)
   anisoConduction`）用静止平板的半正弦本征模衰减率反比于沿梯度的
   `lambda`——实测与解析差 0.036%，而把该耦合从实现里关掉偏差 11.3%
   （判据 FAIL），敏感性已证；
-- **Lipscomb 黏度耦合仍无断言**（`fiberOrientation` 用例执行它，但该 case
-  里因子接近 1、效果 <0.5%，无法作判据）→ 判据设计与验收见
-  `ai-docs/tasks/060`；
+- **Lipscomb 黏度耦合已有断言**：`validation/anisoViscosity`（`xmake run
+  anisoViscosity`）用 45° 取向的 Couette 剪切对「无修正」基线取增幅下界
+  （`lipscombRatio 4` 实测 +17.97%、`8` 时 +44.19%，判据要求 ≥8%），把实现
+  里的修正关掉增幅归零即 FAIL —— 两条耦合因此都有带敏感性的判据（见
+  `ai-docs/tasks/060`）；
 - 缺省不写时行为不变（`conductivityAnisotropy` 缺省 0、`lipscombRatio`
   缺省 1）；纤维浓度/断裂为后续扩展。
 
@@ -1686,6 +1689,7 @@ moldingFoam/
 ├── validation/couetteSlip/  解析验证 case（壁面滑移，`xmake run couetteSlip`）
 ├── validation/stefan/       解析验证 case（凝固/潜热，`xmake run stefan`）
 ├── validation/anisoConduction/  各向异性热导率（本征模衰减率，`xmake run anisoConduction`）
+├── validation/anisoViscosity/   Lipscomb 黏度（壁面力增幅，`xmake run anisoViscosity`）
 ├── validation/moldCHT/      双区域共轭传热导热基准（`xmake run moldCHT`）
 ├── validation/moldCHT-fill/ 双区域共轭传热充填基准（同上目标）
 ├── tests/                   modelTests + cases/（快速求解器特性用例）

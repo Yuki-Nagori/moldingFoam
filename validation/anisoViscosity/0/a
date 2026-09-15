@@ -1,0 +1,48 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\    /   O peration     | Website: https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Orientation tensor for the Lipscomb-viscosity benchmark: fibres at 45
+    degrees in the shear plane, where (a:D)^2/(D:D) = 1/2 and the apparent
+    viscosity factor reaches 1 + 3/4 (lipscombRatio - 1). The first steps are
+    used for the comparison, before the shear rotates the tensor.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volSymmTensorField;
+    location    "0";
+    object      a;
+}
+dimensions      [];
+
+internalField   uniform (0.5 0.5 0 0.5 0 0);
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    bottom
+    {
+        type            zeroGradient;
+    }
+
+    top
+    {
+        type            zeroGradient;
+    }
+
+    left
+    {
+        type            cyclic;
+    }
+
+    right
+    {
+        type            cyclic;
+    }
+}

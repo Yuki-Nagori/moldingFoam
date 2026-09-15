@@ -106,7 +106,7 @@ void viscoelasticStress::addSup
     // correctors
     if (timeIndex_ != mesh().time().timeIndex())
     {
-        const scalar dt = mesh().time().deltaTValue();
+        const dimensionedScalar dt = mesh().time().deltaT();
 
         if (transportStress_)
         {
@@ -122,7 +122,7 @@ void viscoelasticStress::addSup
 
         forAll(tauc, i)
         {
-            tauc[i] = model_.advance(tauc[i], gc[i], dt);
+            tauc[i] = model_.advance(tauc[i], gc[i], dt.value());
         }
 
         tau_.correctBoundaryConditions();

@@ -63,3 +63,11 @@ alpha 就宣称完成。粘弹性储能不能全部当热耗散，和 067 协同
 新鲜 VM 原生目录 `xmake run test` 中 UCM 启动、稳态 N1、松弛和反馈模型测试
 全部通过；本次增量编译初次暴露 `label`/`ceil` 类型错误，修正后 `xmake`
 通过。均匀输运、两相界面和重启专用载体尚未执行。
+
+### 完整本地最小闭环 2026-09-15
+
+新增 `tests/cases/viscoelasticTransport` 开启 `transportStress` 并声明
+`div(phi,tau)`；of14 `run-solver-tests.sh` 通过，反馈相对误差 0.000212。
+同一 case 的中断续跑成功写出并恢复 `tau`；alpha=0.5 的两相载体单步成功。
+默认关闭与开启输运的同会话单步墙钟为 0.06 s 与 0.05 s（80 单元，噪声内），
+不据此宣称性能提升。高 We 长时矩阵和完整 CI 仍待执行，任务保持 in-progress。

@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    Manufactured stress-gradient impulse: walls are stationary;
+    tau_xy = 1e8*y initially and the interior velocity starts at zero.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField uniform (0 0 0);
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    bottom
+    {
+        type            noSlip;
+    }
+
+    top
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+
+    left
+    {
+        type            cyclic;
+    }
+
+    right
+    {
+        type            cyclic;
+    }
+}
+
+// ************************************************************************* //

@@ -1,2 +1,3 @@
 moldingFoam: crystallinity: max\(chi\)
+moldingFoam: energy budget:
 End

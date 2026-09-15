@@ -90,3 +90,7 @@ Tait 表观潜热与结晶动力学潜热同时启用时，需要明确材料潜
 
 of14 增量 `xmake` 与 `xmake run test` 全部通过；本地未开启大网格账目运行，
 因此边界通量与压力功的完整闭合残差仍交由 nightly case 验证。
+
+nightly 覆盖已接入 `tests/cases/crystallization`：启用 `energyBudget true`，
+并在 `expectedPatterns` 断言账目日志出现。该 case 同时保留结晶潜热路径，
+因此能验证边界通量、压力功和潜热诊断在同一求解器运行中共存。

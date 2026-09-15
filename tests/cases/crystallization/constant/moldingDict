@@ -44,6 +44,9 @@ cooling
 }
 
 viscousDissipation  false;
+// Exercise the opt-in boundary heat/pressure-work ledger in nightly solver
+// cases without changing the default behaviour of other validation cases.
+energyBudget        true;
 
 // Nakamura/Avrami crystallisation: the latent heat is released through
 // the relative crystallinity field chi instead of the hMelt platform

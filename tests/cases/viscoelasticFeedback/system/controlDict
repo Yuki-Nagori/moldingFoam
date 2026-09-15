@@ -1,0 +1,107 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | moldingFoam: injection molding solver modules
+   \\      /  Website      | https://openfoam.org
+    \\  /    A nd          | Copyright (C) 2026 Yuki Lu
+     \\/     M anipulation |
+-------------------------------------------------------------------------------
+Description
+    One 1e-8 s step checks the momentum impulse from a prescribed
+    initial stress gradient in an 80-cell periodic channel.
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     foamRun;
+
+solver          moldingFoam;
+
+libs            ("libmoldingFoam.so");
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime 1e-8;
+
+deltaT 1e-8;
+
+writeControl    adjustableRunTime;
+
+writeInterval 1e-8;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  8;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   8;
+
+runTimeModifiable no;
+
+adjustTimeStep  off;
+
+functions
+{
+    alphaMeltRho
+    {
+        type            multiply;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     no;
+        fields          (alpha.melt rho.melt);
+        result          alphaMeltRho;
+    }
+
+    alphaMeltRhoT
+    {
+        // Mass-weighted temperature integrand: alpha.melt*rho.melt*T
+        type            multiply;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        writeFields     no;
+        fields          (alphaMeltRho T);
+        result          alphaMeltRhoT;
+    }
+
+    meltMass
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             true;
+        cellZone        all;
+        operation       volIntegrate;
+        fields          (alphaMeltRho);
+    }
+
+    meltTemperatureIntegral
+    {
+        type            volFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     no;
+        log             true;
+        cellZone        all;
+        operation       volIntegrate;
+        fields          (alphaMeltRhoT);
+    }
+}
+
+// ************************************************************************* //

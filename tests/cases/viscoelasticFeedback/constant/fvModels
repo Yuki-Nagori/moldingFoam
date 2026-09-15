@@ -1,0 +1,14 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      fvModels;
+}
+
+viscoelastic
+{
+    type                viscoelasticStress;
+    relaxationTime      1e-4;
+    zeroShearViscosity  100;
+    mobilityFactor      0;
+}

@@ -26,26 +26,6 @@
 
 ## 1. 环境要求
 
-### Dual Domain 研究工具（暂缓求解器开发）
-
-公开 fixture 是 10 mm × 10 mm、1 mm 厚的合成薄壁中面。可运行输入校验与
-OpenFOAM 字典转换：
-
-```console
-$ python3 scripts/test-dual-domain-input.py
-$ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json
-$ python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
-$ python3 scripts/dual_domain_case.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json /tmp/dual-case/constant/dualDomainMesh
-$ python3 scripts/dual_domain_material.py /path/to/shared-material.json
-```
-
-转换结果只包含明确的 Dual Domain 节点、三角形、厚度、梁和耦合列表，执行
-mm→m 换算，不创建 `constant/polyMesh`。真实 Mug 导出 JSON 可作为命令的
-输入路径在本地读取，但不提交仓库；缺少双面匹配、法向、边界或积分规则时
-材料校验只确认 Cross-WLF/Tait 参数契约，实际公式复用现有模型，不复制实现；
-这些命令只做输入研究，不启动物理求解。恢复开发时的路线与验收状态见
-[`ai-docs/tasks/072-dual-domain-program.md`](ai-docs/tasks/072-dual-domain-program.md)。
-
 OpenFOAM-14 官方只支持 **Linux**，因此编译与验证必须发生在大小写敏感的
 Linux 文件系统上。三端指的是三种可用的构建环境（任选其一）：
 
@@ -71,6 +51,26 @@ Linux 文件系统上。三端指的是三种可用的构建环境（任选其�
 > （macOS 默认 APFS、Windows NTFS）上解压/构建会互相覆盖并污染系统头文件，
 > 上游明确不支持。macOS / Windows 用户必须按 2.2 / 2.3 节的说明，把仓库
 > 放入大小写敏感的 Linux 文件系统后再构建（macOS 另见 `vm-sync.sh`）。
+
+### Dual Domain 研究工具（暂缓求解器开发）
+
+公开 fixture 是 10 mm × 10 mm、1 mm 厚的合成薄壁中面。可运行输入校验与
+OpenFOAM 字典转换：
+
+```console
+$ python3 scripts/test-dual-domain-input.py
+$ python3 scripts/dual_domain_input.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json
+$ python3 scripts/dual_domain_case.py tests/fixtures/dual-domain-v1.sample.json /tmp/dual-case/constant/dualDomainMesh
+$ python3 scripts/dual_domain_case.py --experiment tests/fixtures/dual-domain-v1-experiment-manifest.json /tmp/dual-case/constant/dualDomainMesh
+$ python3 scripts/dual_domain_material.py /path/to/shared-material.json
+```
+
+转换结果只包含明确的 Dual Domain 节点、三角形、厚度、梁和耦合列表，执行
+mm→m 换算，不创建 `constant/polyMesh`。真实 Mug 导出 JSON 可作为命令的
+输入路径在本地读取，但不提交仓库。材料校验只确认 Cross-WLF/Tait 参数契约，
+实际公式复用现有模型，不复制实现；这些命令只做输入研究，不启动物理求解。
+恢复开发时的路线与验收状态见
+[`ai-docs/tasks/072-dual-domain-program.md`](ai-docs/tasks/072-dual-domain-program.md)。
 
 ---
 

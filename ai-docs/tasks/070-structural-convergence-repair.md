@@ -210,6 +210,13 @@ B3 复测：96×160 只增加 `nCorrectors=3`、保持 `relTol=0.99` 和
 这些扫描均未修改仓库默认字典；短窗结果只用于排除候选，完整 8% 验收仍以
 静态收敛检查和终态场为准。
 
+补充 GAMG/线性求解器排除：96×160、2000 步加入
+`nCellsInCoarsestLevel=20` 与 `mergeLevels=1` 后 24 s 完成，但末步 D 残差
+仍为 `5.03e-05 → 3.97e-05`，最终位移误差 97.830%；不是单一 GAMG 聚合数
+造成的。只把 D 改为 `smoothSolver/symGaussSeidel` 时，35 s 仅推进到伪时间
+110，Dx 每步达到 1000 次迭代且残差约 `0.173 → 0.171`，明显劣于 GAMG。
+两项配置均未写入默认字典。
+
 新增 `scripts/check-structural-convergence.py`，按最后三个输出窗口同时检查
 自由端 Q 和全场 D RMS 的相对变化；它输出 JSON 历程并在任一变化超过 1e-3
 时硬失败。该检查只表达 steadyState 的静态迭代充分性，不把 `deltaT` 当作

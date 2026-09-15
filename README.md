@@ -245,6 +245,20 @@ $ xmake
 - 建立 `libmoldingFoamSolver.so -> libmoldingFoam.so` 符号链接（供
   `foamRun` 的 `lib<Solver>Solver.so` 探测路径使用）。
 
+> **库只能存在一份实体**（任务 056）：`foamRun` 有两条加载路径——case 的
+> `libs ("libmoldingFoam.so")` 与 `solver moldingFoam` 的名字探测
+> （`lib<Solver>Solver.so`）。两条路径必须落在**同一个文件**上（实体 +
+> 符号链接）。若 `$FOAM_LIBBIN` 与 `$FOAM_USER_LIBBIN` 各有一份**实体**
+> `.so`（典型触发方式：在自带求解器库的 bundle 树上用 `--of_src` 构建，
+> 构建产物落在树内的用户目录，而树内平台目录里已有一份），**并行运行**
+> 会把同一个库映射两次：每个 runtime selection table 打印
+> `Duplicate entry`，退出阶段堆破坏——
+> `malloc_consolidate(): unaligned fastbin chunk detected`、rc=134
+> （求解结果本身正确，且**串行不复现**，所以开发期容易漏）。
+> 改法：只保留一份实体 + 符号链接，或让构建产物直接覆盖那一份；
+> 自检 `scripts/diag/check-lib-duplication.sh`（在 OpenFOAM 环境内运行，
+> 或用它扫运行日志）。
+
 > 本项目编译始终使用上游 **wmake**；OpenFOAM 本体是上游官方发布的构建
 > 产物，flags/ABI 一致性由上游打包保证。
 
@@ -288,8 +302,10 @@ $ modelTests        # 自检；case 中照常 solver moldingFoam + libs ("libmol
 架构的 Linux + libopenmpi3 运行库。`libmoldingFoam.so`/`modelTests`
 以 **基线指令集** 编译（ARMv8-A / x86-64，构建时剥离
 `-mcpu=native` 系 flags），任意同架构 CPU 均可运行；bundle 不含
-`libmoldingFoamSolver.so` 别名（controlDict 经 `libs()` 显式加载，
-避免重复加载告警）。许可与源码指引见包内
+`libmoldingFoamSolver.so` 别名（case 经 `libs()` 显式加载即可）——
+多一个别名就多一条加载路径，一旦使用者自己再构建一份实体
+`libmoldingFoam.so`，库就会被映射两次（见上文「库只能存在一份实体」）。
+许可与源码指引见包内
 `MOLDINGFOAM-BUNDLE.md`（OpenFOAM 与 moldingFoam 均为 GPL-3.0，见
 第 10 节）。
 
@@ -430,7 +446,9 @@ libs            ("libmoldingFoam.so");
 
 `foamRun` 还会探测 `lib<Solver>Solver.so`，因此构建时会安装
 `libmoldingFoamSolver.so -> libmoldingFoam.so` 符号链接，两条加载路径
-均可工作。
+均可工作。**两条路径必须指向同一个实体文件**：若别处还留着一份实体
+`libmoldingFoam.so`，并行运行会把它映射两次并在退出阶段堆破坏——规则、
+症状与自检见第 3 节「库只能存在一份实体」与 `ai-docs/diagnostics.md`。
 
 ### moldingMoldTemperature（集总模温边界，M3）
 
@@ -1123,6 +1141,25 @@ MULES 修正遍数）由 2 改为 1（v1.29）：同批 4 子域对照墙钟 **6
 `test-solver` 里跑串行+并行两遍；`parallelTrappedAir` 待 harness 用例
 复用语义修复后落地（`ai-docs/tasks/054` §5/§8）。库重载无法在 CI 里构造
 （CI 环境只有一份），以文档 + 自检脚本替代。
+
+### 环境：037 退出崩溃＝库被映射两次（任务 056，2026-09-15）
+
+多次出现的"跑完打印 `End` 之后堆破坏、rc≠0"现场，根因不在求解器，而在
+**库加载**：bundle 的 `$FOAM_LIBBIN` 与手工构建的 `$FOAM_USER_LIBBIN`
+各有一份**实体** `libmoldingFoam.so`，并行运行时同一个库被映射两次
+（机制见上一节第 3 条）。同 VM、同 case、同库内容，只改布局的对照：
+
+| 库布局 | 串行 | np4 |
+|--------|------|-----|
+| 两处各一份实体 | rc=0，零重复注册 | **rc=134，152 行 `Duplicate entry`** |
+| 只留一份（+ `<名字>Solver.so` 符号链接） | rc=0 | **rc=0** |
+
+崩溃与求解器算什么都不相关：原版教程 case 同样 np4 跑到 `End` 后 rc=0，
+输出与干净运行逐位一致。已排除（都试过、都不成立）：我们代码与
+libPstream/libOpenFOAM/libopen-pal/libc/libmpi 的小块越界（逐模块金丝雀
+零命中）、`massBudget` 路径、`MALLOC_ARENA_MAX`/`MALLOC_PERTURB_`/
+`btl self,tcp` 三个旋钮、bundle/OpenMPI 的退出通病、长跑累积（19 步即崩）。
+复现器与自检：`scripts/diag/repro-037.sh`、`scripts/diag/check-lib-duplication.sh`。
 
 ### 排查手法（最小复现优先，任务 056）
 

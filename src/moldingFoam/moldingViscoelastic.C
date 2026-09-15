@@ -128,7 +128,8 @@ Foam::symmTensor Foam::moldingViscoelastic::advance
     // Keep the explicit RK2 relaxation step bounded when a solver time step
     // is large relative to the material relaxation time.  The constitutive
     // equation is unchanged; only the integration interval is subdivided.
-    const label nSub = max<label>(1, ceil(dt/(0.25*lambda_)));
+    const label estimatedSub = static_cast<label>(ceil(dt/(0.25*lambda_)));
+    const label nSub = estimatedSub > 1 ? estimatedSub : 1;
     const scalar subDt = dt/scalar(nSub);
     symmTensor result(tau);
 

@@ -1328,6 +1328,28 @@ void runnerTreeTests()
             cpu < 5.0
         );
     }
+
+    // Opt-in solve cache: repeated identical queries are bitwise stable,
+    // while a changed flow or time key invalidates the cached result.
+    {
+        IStringStream is(runnerTreePowerLawDictString);
+        dictionary dict(is);
+        dict.set("cacheRunnerSolve", Switch(true));
+        moldingRunnerNetwork network(dict);
+
+        const scalar dp0 = network.pressureDrop(Q, 0.0);
+        const scalar dp0Again = network.pressureDrop(Q, 0.0);
+        const scalar dpQChanged = network.pressureDrop(2*Q, 0.0);
+        const scalar dpTChanged = network.pressureDrop(Q, 1.0);
+
+        checkBool
+        (
+            "runnerTree: opt-in cache reuses exact key and invalidates Q/t",
+            dp0 == dp0Again
+         && mag(dpQChanged - dp0) > 1e-12*max(mag(dp0), scalar(1))
+         && mag(dpTChanged - dp0) < 1e-10*max(mag(dp0), scalar(1))
+        );
+    }
 }
 
 

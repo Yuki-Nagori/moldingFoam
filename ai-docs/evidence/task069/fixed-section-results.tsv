@@ -1,0 +1,7 @@
+case	gridScale	dtScale	quantity	value	reference	relative_error	threshold	within_threshold	time
+thermoelastic	0.5	0.5	free-end-deflection-m	-0.08527985	0.0957275	0.1091394844741583	0.08	False	10000.0
+thermoelastic	1	1	free-end-deflection-m	-0.09050766299999999	0.0957275	0.054528082316993604	0.08	True	10000.0
+thermoelastic	2	2	free-end-deflection-m	-0.040480038125	0.0957275	0.5771326094904807	0.08	False	10000.0
+warpagePlate	0.5	0.5	free-end-deflection-m	-0.631695375	0.6526875	0.032162596954898065	0.08	True	10000.0
+warpagePlate	1	1	free-end-deflection-m	-0.63870884375	0.6526875	0.021417073637843446	0.08	True	10000.0
+warpagePlate	2	2	free-end-deflection-m	-0.58000473125	0.6526875	0.11135921670018196	0.08	False	10000.0

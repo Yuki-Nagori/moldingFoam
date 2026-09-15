@@ -227,6 +227,12 @@ S1 采样口径已落地：两个结构 verifier 现在在所有网格使用固�
 有限性和层间应力检查。旧的“最后一列中心”结果只作为历史证据，不再用于
 跨网格收敛阶比较。
 
+of14 复读固定截面结果已归档为 `ai-docs/evidence/task069/fixed-section-results.tsv`。
+thermoelastic 三档误差为 10.914% / 5.453% / 57.713%，warpagePlate 三档为
+3.216% / 2.142% / 11.136%。因此固定截面改变了参考值和部分误差，但没有消除
+96×160 热弹性及翘曲细网格的末段异常；S1 排除了采样口径作为主因，S3 的静态
+收敛与求解器稳定性修复仍未完成。
+
 新增 `scripts/diag/repro-structural-convergence.sh` 作为 S2 可重放入口：它对
 baseline、`D.relTol=0`、`accelerationFactor=1.0` 和 `nCorrectors=3` 分别创建
 新鲜副本，默认每行 120 s 超时，输出 rc、墙钟、最终时间、静态收敛状态和日志

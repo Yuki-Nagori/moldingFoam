@@ -386,6 +386,7 @@ $ xmake run test
 | `multiGate` | 双浇口共用流道网络：分流比 32.30 vs 解析 32（0.93%）（`verify-multi-gate.py`） |
 | `runnerTree` | 流道树拓扑（两级、各支路带自己的管段）：分流比 15.38 vs 解析 15.25（0.87%；扁平网络会是 32）（`verify-runner-tree.py`） |
 | `runnerValve` | 逐浇口阀时序：gate2 在 t=0.6 s 关闭，开阀期份额 6.052e-09 vs 解析 6.061e-09，关阀后该入口归零、gate1 接手全部流量（`verify-runner-valve.py`） |
+| `runnerProfile` | 多级曲线驱动多浇口网络：总流量 2e-7 → 6e-7（t=0.4 s），分流比 32.3，两浇口流量同步 ×3.0（`verify-runner-profile.py`） |
 | `runnerTemperature` | 热流道温度：闸口熔体温度 499.9712 vs 解析 499.9713 K（`verify-runner-temperature.py`） |
 | `fountainFlow` | 喷泉流：前沿位置偏差 0.013%，发展剖面 L2 1.64% vs 解析 Poiseuille，**注入压力梯度 vs 1D 润滑（Hele-Shaw）参考 −3.09%**（≤10%，残差=8 层网格半格壁面剪切的 −3.13%，`verify-fountain-flow.py`） |
 | `moldCHT-cycle` | 多周期多区域 CHT：6 周期模温 354→432 K，每周期增量 15.0→11.0 K 单调递减（末值/首值 0.74，CI x86_64）（`verify-moldcht-cycle.py`，`xmake run moldCHT`） |
@@ -656,7 +657,8 @@ L=50 mm）实测入口 499.9712 K vs 解析 499.9713 K（误差 0.0000%）。
 
 - 集成用例 `tests/cases/processProfile`：两段流量（1e-7 → 3e-7 m³/s）
   入口质量流与 ρQ 一致（0.72%/2.33%），时间型切换在 0.4005 s 触发；
-- 缺省不写时行为不变；阀浇口时序为后续扩展。
+- 缺省不写时行为不变；与流道网络组合时的优先级见「1D 流道网络」小节；
+  阀浇口开/关时序已由 058 提供（`gateOpenTime`/`gateCloseTime`）。
 
 ### 熔接痕与气穴（`writeFillTime`，任务 021）
 
@@ -790,14 +792,61 @@ Hagen–Poiseuille 压降
   `0/p_rgh` 的 `moldingPrghPressure` 可选 `runner`，保压期闸口压力 =
   保压目标 − 当前流量下的流道压降；两者（含 `moldingRunnerTemperature`）
   都把当前时间传给网络，故阀时序在三处边界上一致；
+- **网络总流量的来源**（058 起）：有 `runner` 时网络按"总流量"分流，总流量
+  取 030 的 `volumetricFlowRateProfile`（给了就用它），否则用标量
+  `totalFlowRate`；没有 `runner` 时仍按 030 的原语义（曲线优先于
+  `volumetricFlowRate`）。**注意这是一处语义变化**：此前 `runner` 会完全
+  遮蔽同 patch 上的 `volumetricFlowRateProfile`，现在两者可组合——多级
+  注射曲线驱动多浇口流道网络（此前无任何 case 同时使用两者）；
+- 逐浇口的**流量/压力目标**不需要在网络里再加一层 `Function1`：每个浇口
+  的 patch 本来就有自己的边界字典（各自的 `totalFlowRate`/曲线、
+  `moldingPrghPressure` 的保压目标），网络只负责按阻力把它们耦合起来；
+  要改变浇口之间的**先后顺序**用阀时序，要改变**分配**则调直径/长度；
 - 集成用例：`tests/cases/runnerNetwork`（单浇口，入口质量流与 ρQ 一致
   1.6%）、`tests/cases/multiGate`（扁平双浇口，分流比 32.30 vs 解析 32）、
   `tests/cases/runnerTree`（两级树、各浇口带自己的管段，分流比 15.38 vs
   解析 15.25，扁平网络会是 32）、`tests/cases/runnerValve`（gate2 在
   t=0.6 s 关闭：开阀期份额 6.052e-09 vs 解析 6.061e-09，关阀后归零且
-  gate1 接手全部流量）；缺省不写 `runner` 时行为不变。
-- 尚未支持（`ai-docs/tasks/058`）：逐浇口的**流量/压力曲线**（目前只有
-  开/关时序，流量由网络分流决定）；非圆截面仅能按等效水力直径近似。
+  gate1 接手全部流量）、`tests/cases/runnerProfile`（两段总流量曲线
+  2e-7 → 6e-7 驱动双浇口网络：分流比 32.3，两级流量按 3.0× 同步放大）；
+  缺省不写 `runner` 时行为不变。
+- 非圆截面口径见下一小节。
+
+### 非圆截面流道的等效直径口径（任务 058，供 1D/梁数据转换）
+
+流道网络的两条关系式——阻力 `128·η·L·Q/(π·D⁴)` 与壁面剪切率
+`32·Q/(π·D³)`——都是**圆管**的。非圆截面（矩形冷流道、梯形/半圆浇口、
+来自 1D/梁模型的截面数据）只能用等效直径近似：
+
+1. **水力直径**：`D_h = 4A/P`（A 截面面积、P 湿周）；矩形 `h×w` 时
+   `D_h = 2hw/(h+w)`，圆管时 `D_h = D`。把 `D_h` 直接代进上面两式；
+2. **它带来的压降偏差**：同一 `Q`、同一黏度下，真实层流压降
+   `Δp_true = C·μ·L·Q/(2·A·D_h²)`（`C = f·Re`，基于 `D_h`），与模型值之比为
+
+   ```
+   Δp_true/Δp_model(D_h) = C·π·A/(16·P²)        （圆管 = 1）
+   ```
+
+   | 截面 | `C = f·Re` | 模型相对真值 |
+   |------|-----------|--------------|
+   | 圆 | 64 | 1.00 |
+   | 正方形 | 56.91 | **偏大 1.43×** |
+   | 2:1 矩形 | 62.19 | 偏大 1.47× |
+   | 4:1 矩形 | 72.93 | 偏大 1.75× |
+   | 8:1 矩形 | 82.34 | 偏大 2.5× |
+
+   即"直接代 `D_h`"对越扁的截面越**高估**压降（浇口通常最扁，最受影响）；
+3. **标定直径**（定黏度下可精确匹配压降）：令模型压降等于 `Δp_true` 得
+
+   ```
+   D_cal = D_h·(16·P²/(π·C·A))^(1/4)     （圆管退化为 D_cal = D）
+   ```
+
+   正方形：`D_cal = 1.094·a`；8:1 矩形：`D_cal = 1.26·D_h`；
+4. **限制**：剪切变稀的熔体里 `γ̇_wall` 也随截面形状变化，单个 `D_cal` 只能
+   同时吻合压降、不能同时吻合黏度（幂律/CrossWlf 会偏），所以网络始终是
+   **集总 1D 近似**：定黏度用 `D_cal`、其余先按 `D_h` 并对具体截面用一次
+   3D 短射校核（或把 `D_cal` 当作拟合参数反推）。
 
 ### 黏性生热（`viscousDissipation`，任务 007）
 
@@ -1695,7 +1744,7 @@ x86_64 为准、arm64 差异记录在案（任务 045 的口径决策 B）。为
 | job | 内容 |
 |-----|------|
 | `model-tests` | `xmake run test` |
-| `solver-cases` | `xmake run test-solver`（30 用例） |
+| `solver-cases` | `xmake run test-solver`（31 用例） |
 | `validation-thermal-flow` | couette/couetteSlip/stefan/thermoelastic/coolantWater/coolantMold/highPressure |
 | `validation-structural` | warpageAniso/warpagePlate/shrinkBar/anisoShrinkBar |
 | `validation-cht` | `moldCHT`（双区域共轭传热 6 案例） |

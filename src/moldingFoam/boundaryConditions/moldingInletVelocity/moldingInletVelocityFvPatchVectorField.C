@@ -103,11 +103,14 @@ moldingInletVelocityFvPatchVectorField::moldingInletVelocityFvPatchVectorField
                 << "requires the gate name: gate" << exit(FatalIOError);
         }
 
-        if (totalFlowRate_ <= 0)
+        // The network needs a total flow rate from somewhere: the process
+        // profile when it is given, otherwise the scalar
+        if (totalFlowRate_ <= 0 && !flowRateProfile_.valid())
         {
             FatalIOErrorInFunction(dict)
                 << "The runner-coupled moldingInletVelocity condition "
-                << "requires a positive totalFlowRate: totalFlowRate = "
+                << "requires a positive totalFlowRate or a "
+                << "volumetricFlowRateProfile: totalFlowRate = "
                 << totalFlowRate_ << exit(FatalIOError);
         }
 
@@ -243,19 +246,29 @@ void moldingInletVelocityFvPatchVectorField::updateCoeffs()
 
         scalar Q = volumetricFlowRate_;
 
-        if (flowRateProfile_.valid())
-        {
-            Q = flowRateProfile_->value(patch().time().value());
-        }
-
         if (network_.valid())
         {
+            // The runner splits a *total* flow rate: the process profile
+            // (task 030) sets that total when it is given, otherwise the
+            // scalar totalFlowRate does (task 058 - the profile used to be
+            // shadowed by the network)
+            const scalar Qtotal
+            (
+                flowRateProfile_.valid()
+              ? flowRateProfile_->value(patch().time().value())
+              : totalFlowRate_
+            );
+
             Q = network_->gateFlow
             (
                 gateIndex_,
-                totalFlowRate_,
+                Qtotal,
                 patch().time().value()
             );
+        }
+        else if (flowRateProfile_.valid())
+        {
+            Q = flowRateProfile_->value(patch().time().value());
         }
 
         operator==(patch().nf()*(-Q/area_));

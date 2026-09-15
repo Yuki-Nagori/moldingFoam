@@ -209,6 +209,12 @@ def main():
         exponent = 2 if mode == "crystal" else 0
         heat = prepare("validation/couette", f"heat-{mode}", "1e-5", "1e-5")
         setkey(heat/"constant/moldingDict", "viscousDissipation", "true")
+        # The crystallisation source is the sole latent-heat representation
+        # in this carrier; disable the hMelt apparent-Cp latent peak.
+        meltProps = heat/"constant/physicalProperties.melt"
+        meltProps.write_text(
+            re.sub(r"(latentHeat\s+)2e5", r"\g<1>0", meltProps.read_text(), count=1)
+        )
         with (heat/"constant/moldingDict").open("a") as f:
             f.write("\ncrystallization { avramiExponent 2; rateConstant 1e-30; peakTemperature 400; windowWidth 40; latentHeat 0; rho 800; }\n")
         chi = (heat/"0/T").read_text()

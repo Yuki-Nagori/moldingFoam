@@ -64,5 +64,10 @@ Tait 表观潜热与结晶动力学潜热同时启用时，需要明确材料潜
 未纳入代码；该失败已回退，避免以未编译方案改变求解器。后续需在热物性字典
 构造阶段设计不依赖具体运行时类型的检查。
 
+随后改为在求解器构造阶段读取 `physicalProperties.<melt>.mixture.thermodynamics`
+字典并拒绝非零平台潜热；`verify-review-regression.py` 的结晶热载体同步显式
+写入 `latentHeat 0`。of14 review regression 全部通过，双开配置的拒绝路径已
+有真实载体证据。
+
 `verify-review-regression.py` 随后在同一 of14 会话的新鲜构建目录通过：重启、
 预算、并行质量诊断、汽蚀参考密度和两项生热倍率均通过；未运行全周期契约。

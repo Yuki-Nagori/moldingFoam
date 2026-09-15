@@ -396,6 +396,39 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
         // replaces the fixed hMelt latent-Cp platform
         if (moldingDict.found("crystallization"))
         {
+            const fileName meltPropsPath
+            (
+                constantDictPath
+                (
+                    mesh,
+                    word("physicalProperties." + mixture_.phase1Name())
+                )
+            );
+            IFstream meltPropsIs(meltPropsPath);
+
+            if (!meltPropsIs.good())
+            {
+                FatalIOErrorInFunction(meltPropsPath)
+                    << "Cannot read melt properties while checking the "
+                    << "crystallization latent-heat configuration"
+                    << exit(FatalIOError);
+            }
+
+            dictionary meltPropsDict(meltPropsIs);
+            const dictionary& thermoDict =
+                meltPropsDict.subDict("mixture").subDict("thermodynamics");
+            const scalar platformLatentHeat =
+                thermoDict.lookupOrDefault<scalar>("latentHeat", 0);
+
+            if (platformLatentHeat > small)
+            {
+                FatalIOErrorInFunction(thermoDict)
+                    << "crystallization and hMelt latentHeat cannot both be "
+                    << "enabled: hMelt latentHeat = " << platformLatentHeat
+                    << "; use one latent-heat representation"
+                    << exit(FatalIOError);
+            }
+
             crystallization_.reset
             (
                 new moldingCrystallization

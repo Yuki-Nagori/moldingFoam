@@ -114,7 +114,7 @@
 | 编号 | 标题 | 优先级 | 状态 |
 |---|---|---|---|
 | [068](tasks/068-runner-convergence-cache.md) | 流道非线性收敛诊断与重复求解优化 | P2 | **done**（model-tests/solver-cases nightly 通过） |
-| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（九行本地测量完成；细网格结构误差超限，独立收敛研究及新 nightly 待验收） |
+| [069](tasks/069-validation-harness-uncertainty.md) | 验证工具稳健性与精度覆盖收口 | P2 | in-progress（九行矩阵纳入结构静态收敛字段；细网格仍待收口） |
 | [070](tasks/070-structural-convergence-repair.md) | 结构基准迭代收敛与细网格精度修复 | P1 | in-progress（thermoelastic 中网格已收敛；warpage 中网格静态变化超限；三网格矩阵待收口） |
 | [071](tasks/071-solid-displacement-corrector-convergence.md) | solidDisplacement 校正循环的真实收敛控制 | P1 | done（模块派生 solver 已接入两个结构验证载体；of14 契约与 nCorrectors=3 实测通过） |
 

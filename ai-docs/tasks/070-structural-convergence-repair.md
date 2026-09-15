@@ -287,6 +287,11 @@ case。该 solver 修复了 of14 首轮残差复用，使 `nCorrectors>1` 的每
 后，在有界运行中出现 `Dx Initial residual = nan`，随后线性求解失败；该候选
 被判定为不稳定并排除，未写入默认字典。
 
+CI 收口补充：`scripts/uncertainty-matrix.sh` 现对 thermoelastic 与 warpagePlate
+矩阵行生成 `structural-convergence.json` 并写入结果表；nightly 设置
+`UNCERTAINTY_REQUIRE_STRUCTURAL_CONVERGENCE=1`，任一结构行未达到静态判据即
+失败并上传原始日志，避免只凭解析误差通过。
+
 补记：提交 `a0d7099` 后已在宿主执行无环境负向测试，脚本返回 rc=2 并给出
 明确配置错误；`bash -n`、`git diff --check` 和 `python3 scripts/docs/check-docs.py .`
 均通过。该变更只修正诊断执行契约，没有宣称数值根因已解决。

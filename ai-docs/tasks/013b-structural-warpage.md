@@ -11,7 +11,7 @@
 
 - 解析/指标层：自由翘曲 κ=αΔT/h、条带挠度、Timoshenko 双金属、
   1D 自平衡残余应力、PVT 收缩 S 与热应力指标（013a/023）；
-- 结构求解层：`validation/thermoelastic`（`solidDisplacement`）三维
+- 结构求解层：`validation/thermoelastic`（`moldingSolidDisplacement`）三维
   悬臂基准，自由端挠度与 κx²/2 误差 5.46%（48×80，网格收敛），
   `xmake run thermoelastic` 与夜间 CI 已接入。
 

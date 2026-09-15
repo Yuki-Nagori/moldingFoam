@@ -597,7 +597,7 @@ regionSolvers
 
 ### 三维热弹性基准（任务 022 第四阶段）
 
-`validation/thermoelastic`（`solidDisplacement`）：30×1×1 悬臂、
+`validation/thermoelastic`（`moldingSolidDisplacement`）：30×1×1 悬臂、
 厚度线性温度剖面（300→320 K）、固定端 + 自由面；48×80 网格下自由端
 中性轴挠度与解析 `κL²/2` 误差 **5.46%**（阈值 10%，网格加密收敛）；
 `xmake run thermoelastic` 与夜间 CI 已接入。`alphav` 语义为线性膨胀

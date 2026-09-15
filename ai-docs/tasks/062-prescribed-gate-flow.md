@@ -1,0 +1,88 @@
+# 062 — 流量受控浇口（逐浇口给定流量，其余按阻力分配）
+
+- 状态：planned（设计已定稿，可直接执行；本轮先纠正 058 §2d 的错误论据）
+- 优先级：P2
+- 依赖：016/026（流道网络）、058（树拓扑与阀时序）、030（工艺曲线）
+- 预估规模：2–3 天（含两个求解器 + 用例 + 敏感性实验）
+- 来源：Kairos 侧 T82/T83 明确要求"逐浇口流量/压力曲线"；058 曾以"边界层
+  已可表达"为由不做，**该论据对流量不成立**（见 §1）
+
+## 1. 背景（先纠正一条错误论据）
+
+058 §2d 当时写的是"逐浇口的流量/压力目标在边界层已可表达（每个浇口 patch
+有自己的字典）"。**对压力成立、对流量不成立**：
+
+- `0/p_rgh` 的 `moldingPrghPressure` 是**逐 patch** 的 ✓ → 每个浇口的保压
+  目标/曲线本来就能各写一份 ✓；
+- 但 `0/U` 的 `moldingInletVelocity` 在**有 `runner` 时**把 patch 上的
+  `volumetricFlowRate(Profile)` 当作**网络的总流量**（`Qtotal`），再用
+  `gateFlow(gate, Qtotal, t)` 取该 patch 的份额 → patch 自己的曲线**不是**
+  该浇口的流量 ✗。
+
+所以"某浇口由执行机构给定流量、其余浇口争剩余"这种工况（阀浇口的常见控制
+方式）目前无法表达。README §6 与 058 §2d 已按此更正。
+
+## 2. 目标语义（定稿）
+
+浇口（扁平 `gates` 条目或 `tree` 叶子）新增可选 `gateFlowProfile`
+（`Function1`，量纲 `[0 3 -1 0 0 0 0]`，单位 m³/s；写 `type constant; value …;`
+即常数）：
+
+1. 该浇口的流量 = 曲线值（钳到 ≥ 0），**不参与**等压降分配；
+2. **剩余流量**（总流量 − Σ 已给定）在**其余开通浇口**之间按阻力等压降分配
+   （树模式下逐节点局部扣除：某节点的子节点里有给定流量的，先从该节点入流里
+   扣掉，再对剩下的自由子节点按等效阻力分配）；
+3. **阀优先级**：`gateOpenTime`/`gateCloseTime` 判为关闭的浇口流量恒为 0，
+   **覆盖**给定曲线（阀门是执行机构的硬约束）；
+4. **退化定义**：若某层/网络里**没有自由浇口**，该层的压降取"给定流量浇口的
+   流量加权平均压降"（`pressureDrop()` 因此仍有定义，写进文档）；
+5. **总流量仍由上游决定**（`totalFlowRate` 或 030 的曲线）✓ 不变；
+6. 校验：Σ 给定流量 > 总流量时，自由浇口按 0 处理并打印预警（不静默）；
+7. **未写 `gateFlowProfile` 时两条求解路径逐位不变**（与前几轮同样的口径：
+   新增分支由 `anyPrescribedFlow_` 守卫，旧算术不动）。
+
+## 3. 实现要点（已勘定位置）
+
+- `moldingRunnerNetwork.H`：`PtrList<Function1<scalar>> gateFlowProfile_`
+  （空项 = 自由）、`bool anyPrescribedFlow_`、私有 `prescribedFlow(g, t)`；
+- 解析：`readValve()` 里追加 `gateFlowProfile`（`Function1<scalar>::New(...)`）；
+- 扁平：`splitValved()` 内先算 `qPrescribed`/`qFree`，迭代只对**自由**开通
+  浇口做（给定浇口保持曲线值）；不做则退化为现有行为；
+- 树：`solveTree()` 的兄弟分配段（现为 `qTgt[j] = qTgt[i]*(1/Req[j])/invSum`）
+  同样先扣给定份额、再对自由子节点分配；根的分配同理；
+  `dpChild` 用 `qFreeRoot/invSumRoot`，无自由根时用 §2.4 的退化定义；
+- BC **无需改动**（`gateFlow(g, Qtotal, t)` 已经返回该浇口份额 ✓✓）。
+
+## 4. 验证
+
+- 模型测试（`tests/modelTests.C`）：
+  - 扁平：两浇口、其一给常数流量 → 该浇口 = 给定值、另一浇口 = 总量 − 给定
+    （定黏度下与解析一致，rtol 1e-10）；给定 + 关闭 → 0（阀优先）；Σ 给定 >
+    总量 → 自由浇口 0 且总量守恒；
+  - 树：给定**叶子**深一层 → 其兄弟按剩余分配、其**上游**管段仍按总流量；
+  - 幂律 + 给定流量的守恒性；
+- 用例（`tests/cases/runnerPrescribed` 或扩展现有）：两个浇口各挂一个 patch，
+  一个走 `gateFlowProfile` 曲线（两段：3e-8 → 1e-7）、另一个自由 →
+  验证器核对"曲线段内该入口质量流 = ρ·曲线值"、"另一入口 = 总量 − 曲线值"、
+  "切换前后守恒"；
+- **敏感性（按 061/diagnostics §4c 的纪律）**：必须让**实现**失效、期望不变
+  （例如把 `qPrescribed` 清零）→ 判据 FAIL；
+- 回归：`runnerNetwork`/`multiGate`/`runnerTree`/`runnerValve`/`runnerProfile`
+  数值不变，模型测试全绿。
+
+## 5. 风险
+
+- 树模式下的"逐节点扣减"会改变**上游管段**的流量语义吗？——不会：上游段仍
+  携带该子树的全部流量（给定 + 自由），只是"分配方式"变了；用例要专门断言
+  上游段流量（例如通过闸口压力耦合反推）；
+- 与 `pressureDrop()` 的耦合：保压期压力边界用网络压降，若某层无自由浇口
+  会走 §2.4 的退化定义 → 文档必须写明，避免使用者误以为那是等压降结果。
+
+## 6. 涉及文件
+
+- `src/moldingFoam/moldingRunnerNetwork.{H,C}`
+- `tests/modelTests.C`、`tests/cases/runnerPrescribed/`（或扩展）
+- `scripts/verify-runner-*.py`、`README.md` §6、`xmake.lua`/nightly
+
+> 相关：058（树拓扑/阀时序；§2d 的错误论据已补记更正）、030（总流量曲线）、
+> 061 与 `diagnostics.md` §4c（敏感性实验的纪律）。

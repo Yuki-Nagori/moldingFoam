@@ -824,10 +824,14 @@ Hagen–Poiseuille 压降
   `volumetricFlowRate`）。**注意这是一处语义变化**：此前 `runner` 会完全
   遮蔽同 patch 上的 `volumetricFlowRateProfile`，现在两者可组合——多级
   注射曲线驱动多浇口流道网络（此前无任何 case 同时使用两者）；
-- 逐浇口的**流量/压力目标**不需要在网络里再加一层 `Function1`：每个浇口
-  的 patch 本来就有自己的边界字典（各自的 `totalFlowRate`/曲线、
-  `moldingPrghPressure` 的保压目标），网络只负责按阻力把它们耦合起来；
-  要改变浇口之间的**先后顺序**用阀时序，要改变**分配**则调直径/长度；
+- 逐浇口的**压力**目标不需要在网络里另加机制：每个浇口的 patch 有自己的
+  `0/p_rgh` 字典（各自的保压目标/曲线），网络只负责按阻力耦合；改变浇口
+  之间的**先后顺序**用阀时序，改变**分配**调直径/长度；
+- 逐浇口的**流量**目标则**不能**靠 patch 级曲线表达——**有 `runner` 时
+  patch 上的 `volumetricFlowRate(Profile)` 被当作网络的总流量**（见上一条），
+  不是该浇口自己的流量。要做"流量受控浇口"（例：阀浇口由执行机构给定量，
+  其余浇口按阻力争剩余）需要网络内支持逐浇口给定流量，设计与验收见
+  `ai-docs/tasks/062`（尚未实现）。
 - 集成用例：`tests/cases/runnerNetwork`（单浇口，入口质量流与 ρQ 一致
   1.6%）、`tests/cases/multiGate`（扁平双浇口，分流比 32.30 vs 解析 32）、
   `tests/cases/runnerTree`（两级树、各浇口带自己的管段，分流比 15.38 vs

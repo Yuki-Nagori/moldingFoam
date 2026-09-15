@@ -129,6 +129,7 @@
 | [034](tasks/034-warpage-full-chain.md) | 结晶/纤维/粘弹耦合的收缩-翘曲全链 | P2 | **done**（全链 3a–3e + 自由收缩条机器精度；哑铃以 warpageAniso+shrinkBar 替代） | 024/025/027/013b | 3–5 周 |
 | [036](tasks/036-3d-coolant-flow.md) | 三维冷却水流动（019 遗留） | P3 | **done**（路线 C `moldingChannelCooling`+coolantMold；路线 A `moldingCoolantFluid`+coolantWater/coolantWaterMold CHT 能量平衡 1.2e-7） | 019/008 | 3–6 周 |
 | [040](tasks/040-tensor-eigenstrain-source.md) | 非均匀张量本征应变的域内源（034 跟进） | P2 | **done**（`moldingEigenstrain` 域内源 + 符号修正；永久基准 `eigenstrainGraded` 偏差 0.83%<1.5%，接入 xmake/nightly） | 034 | 1–2 天 |
+| [062](tasks/062-prescribed-gate-flow.md) | 流量受控浇口（逐浇口给定流量，其余按阻力分配） | P2 | planned（Kairos T82/T83 的流量曲线；058 曾以"边界层已可表达"为由不做，**该论据对流量不成立**——有 runner 时 patch 曲线是网络总流量而非该浇口流量；语义/两个求解器改法/阀优先级/退化定义/测试与敏感性实验已全部写进文档，可直接执行） | 016/026/058/030 | 2–3 天 |
 | [061](tasks/061-restart-continuity.md) | 重启续跑（`startFrom latestTime`）的连续性与状态持久化 | P2 | **done**（全部 case 原来都是 `startFrom startTime`、README 的"重启续读"声称零覆盖；新增 `validation/restartContinuity`：连续 vs 中途重启对拍，T 3.3e-8 / p 1.0e-7（写入精度量级），并**据此抓到并修复一个真 bug**——重启时 `moldingStage` 的 `gateSealTime_` 丢失（封闸 ramp 不一致）；状态行 `1 0 1 1 0.02` 两边逐字段一致，packing/闸口封冻/排气封堵三条路径都覆盖；顺带纠正 README 的状态载体表述——持久化走 patch 字典的 `T` 条目而非 `UniformDimensionedField` 本身；密封状态持久化留待带流动的载体） | 012/026/019 | 1 天 |
 | [060](tasks/060-anisotropy-assertions.md) | 各向异性耦合的断言缺口（Lipscomb 黏度 / 各向异性热导率） | P2 | **done**（两条耦合的判据都已落地并各自验证敏感性：`validation/anisoConduction` 本征模衰减率对拍解析（0.036%，关掉实现 11.3% FAIL）、`validation/anisoViscosity` 壁面力增幅下界（ratio 4 为 +17.97%、关掉实现 0% FAIL）；均已入 nightly） | 034/040/025/043 | 1–2 天 |
 | [059](tasks/059-dict-key-coverage-sweep.md) | 字典键覆盖扫描（未赋值键的分诊与取舍） | P3 | **done**（77 键扫描；补 `trapAirAlpha`/`deepMoldTemperature` 两处赋值，其余 8 个各附「不需要用例」的理由；产出排查纪律「改路径就确认覆盖」） | 043/044/058 | 半天 |
@@ -173,7 +174,7 @@
 | [042](tasks/042-defence-regression-wiring.md) | 防线回归接入 nightly（037 堆退出 + 038 预警/快速失败） | P1 | **done**（smoke-exit 入 nightly contract；boxFill 断言预警；快速失败记录为不回归） | 037/038 | 0.5–1 天 |
 | [055](tasks/055-case-reuse-semantics.md) | 测试流程的用例复用语义（`0/` 污染）与 054 防线落地 | P1 | **done**（每 pass 新鲜副本 + `parallelTrappedAir` 两端口验证：pre-054 FAIL / 修复后 PASS） | 054/046 | 0.5–1 天 |
 | [056](tasks/056-heap-corruption-writepoint.md) | 037 堆破坏：写入点定位（模块二分 + 内存诊断） | P1 | **done**（根因＝库被映射两次：两处各有一份实体 `libmoldingFoam.so`；单份即 rc=0、串行不复现；19 步复现器 + 库重载自检入库） | 046/054/038 | 1–2 天 |
-（001–054 已完成；055–058 为 2026-09-14 的跟进项（测试流程复用语义、037 写入点定位、I/O 与诊断开销、流道拓扑扩展），059 为 2026-09-15 的键覆盖收尾，060 为同轮延伸核查（各向异性耦合断言），061 为 2026-09-15 的重启续跑，状态见上表。）
+（001–054 已完成；055–058 为 2026-09-14 的跟进项（测试流程复用语义、037 写入点定位、I/O 与诊断开销、流道拓扑扩展），059 为 2026-09-15 的键覆盖收尾，060 为同轮延伸核查（各向异性耦合断言），061 为 2026-09-15 的重启续跑、062 为同轮发现的"流量受控浇口"缺口（设计已定稿），状态见上表。）
 
 审计与报告（按时间）：
 

@@ -94,6 +94,8 @@ class ValidationTests(unittest.TestCase):
         with table.open() as handle:
             rows = list(csv.DictReader(handle, delimiter='\t'))
         self.assertEqual(len(rows), 9)
+        self.assertIn('structural_convergence', rows[0])
+        self.assertEqual(rows[0]['structural_convergence'], 'unavailable')
         self.assertTrue(all(row['value'] == '' for row in rows))
         self.assertEqual(len(list(table.parent.glob('*/runner.log'))), 9)
 

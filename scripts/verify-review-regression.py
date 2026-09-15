@@ -203,6 +203,13 @@ def main():
     assert "conductivityAnisotropy must lie" in log
     print("PASS: non-positive conductivity rejected at construction")
 
+    doubleLatent = prepare("validation/couette", "double-latent")
+    with (doubleLatent/"constant/moldingDict").open("a") as f:
+        f.write("\ncrystallization { avramiExponent 2; rateConstant 1e-30; peakTemperature 400; windowWidth 40; latentHeat 1; rho 800; }\n")
+    log = run(doubleLatent, expected=1)
+    assert "crystallization and hMelt latentHeat cannot both be enabled" in log
+    print("PASS: duplicate latent-heat sources rejected")
+
     # Uniform Couette shear: independent fourfold material enhancements.
     rises = []
     for mode in ("base", "crystal", "fiber"):

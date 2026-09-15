@@ -694,7 +694,13 @@ Foam::solvers::moldingFoam::moldingFoam(fvMesh& mesh)
     }
     if (nCycles_ > 1)
     {
-        const bool restart = runTime.value() > small;
+        // A non-zero startTime is also valid for a fresh run.  Classify a
+        // restart from the cycle snapshot written by an earlier run instead
+        // of inferring it from the clock value alone.
+        const bool restart = Foam::isFile
+        (
+            runTime.constant()/"moldingInitial"/"alpha1Initial"
+        );
         fvModels();
         if (mesh.foundObject<volSymmTensorField>("tau"))
         {

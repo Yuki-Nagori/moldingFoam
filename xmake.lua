@@ -171,6 +171,7 @@ fi
 wmake libso src
 wmake tests
 ln -sf libmoldingFoam.so "$FOAM_USER_LIBBIN/libmoldingFoamSolver.so"
+ln -sf libmoldingFoam.so "$FOAM_USER_LIBBIN/libmoldingSolidDisplacementSolver.so"
 ]], projectdir))
         if ok ~= 0 then
             os.raise("building libmoldingFoam.so failed; see the log above")
